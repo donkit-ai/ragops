@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from donkit_ragops.agent.agent import EventType
-from donkit_ragops.agent.agent import LLMAgent
+from donkit.llm import FunctionCall, Message, ToolCall
+
+from donkit_ragops.agent.agent import EventType, LLMAgent
 from donkit_ragops.agent.local_tools.tools import AgentTool
-from donkit.llm import Message
-from donkit.llm import ToolCall
-from donkit.llm import FunctionCall
-from donkit_ragops.mcp.client import MCPClient
+from donkit_ragops.mcp.protocol import MCPClientProtocol
 
 from .conftest import BaseMockProvider
 
@@ -50,9 +47,9 @@ def local_tool_stub() -> AgentTool:
 @pytest.fixture
 def mcp_client_stub() -> AsyncMock:
     """Mock MCP client for testing."""
-    client = AsyncMock(spec=MCPClient)
-    client.command = "test-mcp-server"
-    client._alist_tools = AsyncMock(
+    client = AsyncMock(spec=MCPClientProtocol)
+    client.identifier = "test-mcp-server"
+    client.alist_tools = AsyncMock(
         return_value=[
             {
                 "name": "mcp_tool",
@@ -61,7 +58,7 @@ def mcp_client_stub() -> AsyncMock:
             }
         ]
     )
-    client._acall_tool = AsyncMock(return_value={"status": "ok"})
+    client.acall_tool = AsyncMock(return_value={"status": "ok"})
     return client
 
 
@@ -317,7 +314,7 @@ async def test_c1_successful_mcp_tool_call(
 
     assert result == "mcp result processed"
     # Check MCP tool was called
-    mcp_client_stub._acall_tool.assert_called_once_with("mcp_tool", {"param": "value"})
+    mcp_client_stub.acall_tool.assert_called_once_with("mcp_tool", {"param": "value"})
     # Check tool message was added
     assert stub_messages[2].role == "tool"
     assert stub_messages[2].name == "mcp_tool"
@@ -326,7 +323,7 @@ async def test_c1_successful_mcp_tool_call(
 @pytest.mark.asyncio
 async def test_c2_mcp_client_error(stub_messages: list[Message], mcp_client_stub: AsyncMock):
     """C2: MCP client error should be handled gracefully."""
-    mcp_client_stub._acall_tool = AsyncMock(side_effect=RuntimeError("mcp fail"))
+    mcp_client_stub.acall_tool = AsyncMock(side_effect=RuntimeError("mcp fail"))
     provider = BaseMockProvider(
         supports_tools_val=True,
         responses=[{"tool_calls": [{"name": "mcp_tool", "arguments": {}}]}],

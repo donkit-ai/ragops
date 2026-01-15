@@ -55,7 +55,7 @@ async def compress_history_if_needed(
 
         # Build new history: system + summary + recent messages
         new_history = system_msgs + [Message(role="assistant", content=summary_text)] + msgs_to_keep
-        logger.info(f"Compressed history: {len(history)} -> {len(new_history)} messages")
+        logger.debug(f"Compressed history: {len(history)} -> {len(new_history)} messages")
         return new_history
     except Exception as e:
         logger.warning(f"Failed to compress history: {e}")

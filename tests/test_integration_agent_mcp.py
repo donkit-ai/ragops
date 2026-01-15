@@ -217,7 +217,10 @@ async def test_agent_handles_mcp_tool_error() -> None:
     class ErrorMCPClient:
         """MCP client that raises errors."""
 
-        async def _alist_tools(self) -> list[dict]:
+        def __init__(self):
+            self.identifier = "error_mcp_client"
+
+        async def alist_tools(self) -> list[dict]:
             """List tools."""
             return [
                 {
@@ -227,7 +230,7 @@ async def test_agent_handles_mcp_tool_error() -> None:
                 }
             ]
 
-        async def _acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        async def acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
             """Call tool - always fails."""
             raise RuntimeError("MCP tool execution failed")
 
@@ -292,7 +295,10 @@ async def test_agent_processes_complex_mcp_result(
     class ComplexMCPClient:
         """MCP client returning complex results."""
 
-        async def _alist_tools(self) -> list[dict]:
+        def __init__(self):
+            self.identifier = "complex_mcp_client"
+
+        async def alist_tools(self) -> list[dict]:
             """List tools."""
             return [
                 {
@@ -302,7 +308,7 @@ async def test_agent_processes_complex_mcp_result(
                 }
             ]
 
-        async def _acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        async def acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
             """Call tool."""
             result = {
                 "status": "success",

@@ -7,12 +7,20 @@ language detection, and file type statistics.
 from __future__ import annotations
 
 import asyncio
+import warnings
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+# Suppress cryptography deprecation warning from pypdf
+warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="cryptography")
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning, module="pypdf._crypt_providers._cryptography"
+)
 
 
 class FileAnalyzer:

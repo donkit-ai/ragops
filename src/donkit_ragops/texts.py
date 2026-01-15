@@ -65,8 +65,6 @@ HELP_COMMANDS = [
     "  [bold]:help[/bold] - Show this help message",
     "  [bold]:q[/bold] or [bold]:quit[/bold] - Exit the agent",
     "  [bold]:clear[/bold] - Clear the conversation transcript",
-    "  [bold]:provider[/bold] - Select LLM provider",
-    "  [bold]:model[/bold] - Select LLM model",
     "",
     "  [yellow]Quick actions:[/yellow]",
     "  [bold]/[/bold] - Open command palette (autocomplete commands)",

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from donkit.llm import LLMModelAbstract, ModelFactory
+from pydantic_settings import BaseSettings
 
 from ..config import Settings, load_settings
 from .providers.mock import MockProvider
@@ -39,7 +40,9 @@ def _get_vertex_credentials(settings: Settings) -> dict:
 
 
 def get_provider(
-    settings: Settings | None = None, llm_provider: str | None = None, model_name: str | None = None
+    settings: BaseSettings | None = None,
+    llm_provider: str | None = None,
+    model_name: str | None = None,
 ) -> LLMModelAbstract:
     """
     Create LLM provider using donkit-llm ModelFactory.
@@ -62,6 +65,9 @@ def get_provider(
             "api_key": cfg.donkit_api_key,
             "base_url": cfg.donkit_base_url,
         }
+        from loguru import logger
+
+        logger.debug("using donkit provider")
         return ModelFactory.create_model(
             provider="donkit", model_name=None, credentials=credentials
         )

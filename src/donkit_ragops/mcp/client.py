@@ -3,10 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from donkit_ragops.mcp.protocol import MCPClientProtocol, ProgressCallback
 from dotenv import dotenv_values, find_dotenv
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
@@ -59,11 +59,12 @@ def _load_env_for_mcp() -> dict[str, str | None]:
     return env
 
 
-class MCPClient:
-    """Client for connecting to an MCP server using FastMCP.
+class MCPClient(MCPClientProtocol):
+    """Client for connecting to an MCP server using FastMCP over stdio.
 
     Uses the new FastMCP Client API which handles connection lifecycle
-    and protocol operations automatically.
+    and protocol operations automatically. Implements MCPClientProtocol
+    for compatibility with the agent's MCP client abstraction.
     """
 
     def __init__(
@@ -71,7 +72,7 @@ class MCPClient:
         command: str,
         args: list[str] | None = None,
         timeout: float = 999.0,
-        progress_callback: Callable[[float, float | None, str | None], None] | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Initialize MCP client.
 
@@ -81,12 +82,37 @@ class MCPClient:
             timeout: Timeout for operations in seconds
             progress_callback: Optional callback for progress updates from MCP tools
         """
-        self.command = command
-        self.args = args or []
-        self.timeout = timeout
-        self.progress_callback = progress_callback
+        self._command = command
+        self._args = args or []
+        self._timeout = timeout
+        self._progress_callback = progress_callback
         # Load environment variables for the server
         self._env = _load_env_for_mcp()
+
+    @property
+    def identifier(self) -> str:
+        """Return the command as identifier for logging."""
+        return self._command
+
+    @property
+    def command(self) -> str:
+        """Return the command (for backwards compatibility)."""
+        return self._command
+
+    @property
+    def args(self) -> list[str]:
+        """Return the command arguments."""
+        return self._args
+
+    @property
+    def timeout(self) -> float:
+        """Return the timeout in seconds."""
+        return self._timeout
+
+    @property
+    def progress_callback(self) -> ProgressCallback | None:
+        """Return the progress callback if set."""
+        return self._progress_callback
 
     async def __progress_handler(
         self,
@@ -105,7 +131,7 @@ class MCPClient:
             else:
                 print(f"Progress: {progress} - {message or ''}")
 
-    async def _alist_tools(self) -> list[dict]:
+    async def alist_tools(self) -> list[dict[str, Any]]:
         """List available tools from the MCP server."""
         # Create StdioTransport with explicit command, args, and environment
         transport = StdioTransport(
@@ -171,10 +197,10 @@ class MCPClient:
                 except Exception as e:
                     logger.debug(f"Error during transport cleanup: {e}")
 
-    def list_tools(self) -> list[dict]:
+    def list_tools(self) -> list[dict[str, Any]]:
         """Synchronously list available tools."""
         try:
-            return asyncio.run(asyncio.wait_for(self._alist_tools(), timeout=self.timeout))
+            return asyncio.run(asyncio.wait_for(self.alist_tools(), timeout=self.timeout))
         except KeyboardInterrupt:
             logger.warning("Tool listing interrupted by user")
             # Don't re-raise - return empty list to allow agent to continue
@@ -189,7 +215,7 @@ class MCPClient:
                 # No event loop available, which is fine
                 pass
 
-    async def _acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
+    async def acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
         """Call a tool on the MCP server."""
         logger.debug(f"Calling tool {name} with arguments {arguments}")
         # Create StdioTransport with explicit command, args, and environment
@@ -242,7 +268,7 @@ class MCPClient:
         """Synchronously call a tool."""
         try:
             result = asyncio.run(
-                asyncio.wait_for(self._acall_tool(name, arguments), timeout=self.timeout)
+                asyncio.wait_for(self.acall_tool(name, arguments), timeout=self.timeout)
             )
             if not isinstance(result, str):
                 return json.dumps(result)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from donkit_ragops.ui.protocol import UI
 from donkit_ragops.ui.styles import StyledText, StyleName
 
 
@@ -133,7 +134,7 @@ class PlainLiveContext:
         self.stop()
 
 
-class PlainUI:
+class PlainUI(UI):
     """Plain text UI implementation.
 
     Simple text output without colors or interactive features.

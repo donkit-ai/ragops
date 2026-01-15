@@ -514,3 +514,9 @@ class LocalREPL(BaseREPL):
             self.context.render_helper.append_agent_message(rendered)
         self.context.ui.print(f"{texts.AGENT_PREFIX} {rendered}")
         self.context.ui.newline()
+
+    def print_welcome(self) -> None:
+        """Print welcome message. Can be overridden by subclasses."""
+        self.context.ui.print("\nType your message and press Enter to start...", StyleName.DIM)
+        self.context.ui.print("\nCommands: :help, :q, :clear, :provider, :model", StyleName.DIM)
+        self.context.ui.newline()

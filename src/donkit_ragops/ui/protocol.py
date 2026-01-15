@@ -6,15 +6,16 @@ Uses Python's Protocol for structural subtyping.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from donkit_ragops.ui.components import LiveContext, ProgressBar, Spinner
     from donkit_ragops.ui.styles import StyledText, StyleName
 
+from abc import ABC
 
-@runtime_checkable
-class UI(Protocol):
+
+class UI(ABC):
     """Abstract UI interface - output + interactive components.
 
     This protocol defines all UI operations that can be performed.

@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
 
-from donkit.llm import GenerateRequest, LLMModelAbstract, Message, ModelCapability, Tool
+from donkit.llm import (
+    GenerateRequest,
+    LLMModelAbstract,
+    Message,
+    ModelCapability,
+    Tool,
+)
 from loguru import logger
 
 from donkit_ragops.agent.local_tools.checklist_tools import (
@@ -36,7 +42,7 @@ from donkit_ragops.agent.local_tools.tools import (
     tool_time_now,
     tool_update_rag_config_field,
 )
-from donkit_ragops.mcp.client import MCPClient
+from donkit_ragops.mcp.protocol import MCPClientProtocol
 
 
 class EventType(StrEnum):
@@ -88,34 +94,70 @@ class LLMAgent:
         self,
         provider: LLMModelAbstract,
         tools: list[AgentTool] | None = None,
-        mcp_clients: list[MCPClient] | None = None,
-        max_iterations: int = 50,
+        mcp_clients: list[MCPClientProtocol] | None = None,
+        max_iterations: int = 500,
+        project_id_provider: Callable[[], str | None] | None = None,
     ) -> None:
         self.provider = provider
         self.local_tools = tools or default_tools()
         self.mcp_clients = mcp_clients or []
-        self.mcp_tools: dict[str, tuple[dict, MCPClient]] = {}
+        self.mcp_tools: dict[str, tuple[dict, MCPClientProtocol]] = {}
         self.max_iterations = max_iterations
+        self._project_id_provider = project_id_provider
+        self._logged_tool_specs = False
 
-    async def ainit_mcp_tools(self) -> None:
-        """Initialize MCP tools asynchronously. Call this after creating the agent."""
+    async def ainit_mcp_tools(self, register_tools: bool = True, max_tools: int = 0) -> None:
+        """Initialize MCP tools asynchronously. Call this after creating the agent.
+
+        Args:
+            register_tools: If False, tools are fetched but NOT registered (for debugging).
+            max_tools: If > 0, only register this many tools (for debugging).
+        """
         for client in self.mcp_clients:
             try:
-                discovered = await client._alist_tools()
+                logger.info(f"[MCP] Loading tools from {client.identifier}...")
+                discovered = await client.alist_tools()
+                logger.info(f"[MCP] Discovered {len(discovered)} tools from {client.identifier}")
+                total_size = 0
+                registered_count = 0
                 for t in discovered:
                     tool_name = t["name"]
-                    # t["parameters"] = _clean_schema_for_vertex(t["parameters"])
-                    self.mcp_tools[tool_name] = (t, client)
-            except Exception:
+                    if register_tools:
+                        # Respect max_tools limit if set
+                        if max_tools > 0 and registered_count >= max_tools:
+                            logger.debug(
+                                f"[MCP] Skipping tool: {tool_name} (max_tools={max_tools})"
+                            )
+                            continue
+                        self.mcp_tools[tool_name] = (t, client)
+                        registered_count += 1
+                    # Log each tool with its size
+                    try:
+                        tool_size = len(json.dumps(t, ensure_ascii=True))
+                        total_size += tool_size
+                        logger.debug(f"[MCP] Registered tool: {tool_name} (size={tool_size} bytes)")
+                    except Exception:
+                        logger.debug(f"[MCP] Registered tool: {tool_name}")
+                logger.info(f"[MCP] Tools from {client.identifier}: total_size={total_size} bytes")
+                if not register_tools:
+                    logger.warning("[MCP] Tools fetched but NOT registered (debug mode)")
+                elif max_tools > 0:
+                    logger.warning(
+                        f"[MCP] Only {registered_count} tools registered (max_tools={max_tools})"
+                    )
+            except Exception as ex:
                 logger.error(
-                    f"Failed to list tools from MCP client {client.command}", exc_info=True
+                    f"Failed to list tools from MCP client {client.identifier}\n {ex}",
+                    exc_info=True,
                 )
                 pass
+        logger.info(f"[MCP] Total MCP tools registered: {len(self.mcp_tools)}")
 
     def _tool_specs(self) -> list[Tool]:
-        specs = [t.to_tool_spec() for t in self.local_tools]
+        local_specs = [t.to_tool_spec() for t in self.local_tools]
+        mcp_specs = []
         for tool_info, _ in self.mcp_tools.values():
-            specs.append(
+            mcp_specs.append(
                 Tool(
                     **{
                         "function": {
@@ -126,9 +168,41 @@ class LLMAgent:
                     }
                 )
             )
+        specs = local_specs + mcp_specs
+        if not self._logged_tool_specs:
+            try:
+                local_size = len(
+                    json.dumps(
+                        [s.model_dump() for s in local_specs],
+                        ensure_ascii=True,
+                    )
+                )
+                mcp_size = (
+                    len(
+                        json.dumps(
+                            [s.model_dump() for s in mcp_specs],
+                            ensure_ascii=True,
+                        )
+                    )
+                    if mcp_specs
+                    else 0
+                )
+                logger.debug(
+                    "[TOOLS] local={} ({}bytes), mcp={} ({}bytes), total={}",
+                    len(local_specs),
+                    local_size,
+                    len(mcp_specs),
+                    mcp_size,
+                    len(specs),
+                )
+            except Exception as e:
+                logger.warning(f"[TOOLS] Failed to log tool specs: {e}")
+            self._logged_tool_specs = True
         return specs
 
-    def _find_tool(self, name: str) -> tuple[AgentTool | None, tuple[dict, MCPClient] | None]:
+    def _find_tool(
+        self, name: str
+    ) -> tuple[AgentTool | None, tuple[dict, MCPClientProtocol] | None]:
         for t in self.local_tools:
             if t.name == name:
                 return t, None
@@ -182,7 +256,7 @@ class LLMAgent:
             elif mcp_tool_info:
                 logger.debug(f"Executing MCP tool {tc.function.name} with args: {args}")
                 tool_meta, client = mcp_tool_info
-                result = await client._acall_tool(tool_meta["name"], args)
+                result = await client.acall_tool(tool_meta["name"], args)
                 logger.debug(f"MCP tool {tc.function.name} result: {str(result)[:200]}...")
             else:
                 result = f"Error: Tool '{tc.function.name}' not found or MCP client not configured."
@@ -299,66 +373,93 @@ class LLMAgent:
 
         for _ in range(self.max_iterations):
             request = GenerateRequest(messages=messages, tools=tools)
-            async for chunk in self.provider.generate_stream(request):  # noqa
-                # Yield text chunks as they arrive
-                if chunk.content:
-                    yield StreamEvent(type=EventType.CONTENT, content=chunk.content)
+            streamed_content = ""
+            saw_finish_reason = False
+            saw_tool_calls = False
+            chunk_count = 0
+            try:
+                async for chunk in self.provider.generate_stream(request):  # noqa
+                    chunk_count += 1
+                    if chunk.finish_reason is not None:
+                        saw_finish_reason = True
+                    # Yield text chunks as they arrive
+                    if chunk.content:
+                        streamed_content += chunk.content
+                        yield StreamEvent(type=EventType.CONTENT, content=chunk.content)
 
-                # Handle tool calls immediately when they arrive
-                if chunk.tool_calls and self.provider.supports_capability(
-                    ModelCapability.TOOL_CALLING
-                ):
-                    # Append synthetic assistant turn
-                    self._append_synthetic_assistant_turn(messages, chunk.tool_calls)
+                    # Handle tool calls immediately when they arrive
+                    if chunk.tool_calls and self.provider.supports_capability(
+                        ModelCapability.TOOL_CALLING
+                    ):
+                        saw_tool_calls = True
+                        # Append synthetic assistant turn
+                        self._append_synthetic_assistant_turn(messages, chunk.tool_calls)
 
-                    # Execute each tool and yield events
-                    for tc in chunk.tool_calls:
-                        args = self._parse_tool_args(tc)
+                        # Execute each tool and yield events
+                        for tc in chunk.tool_calls:
+                            args = self._parse_tool_args(tc)
 
-                        # Yield tool call start event
-                        yield StreamEvent(
-                            type=EventType.TOOL_CALL_START,
-                            tool_name=tc.function.name,
-                            tool_args=args,
-                        )
-
-                        try:
-                            # Execute tool
-                            result_str = await self._aexecute_tool_call(tc, args)
-                            # Add the tool result to messages
-                            messages.append(
-                                Message(
-                                    role="tool",
-                                    name=tc.function.name,
-                                    tool_call_id=tc.id,
-                                    content=result_str,
-                                )
-                            )
-                            # Yield tool call end event
+                            # Yield tool call start event
                             yield StreamEvent(
-                                type=EventType.TOOL_CALL_END, tool_name=tc.function.name
-                            )
-                        except Exception as e:
-                            error_msg = str(e)
-                            logger.error(f"Tool {tc.function.name} failed: {error_msg}")
-                            # Add an error as the tool result
-                            messages.append(
-                                Message(
-                                    role="tool",
-                                    name=tc.function.name,
-                                    tool_call_id=tc.id,
-                                    content=f"Error: {error_msg}",
-                                )
-                            )
-                            # Yield the tool call error event
-                            yield StreamEvent(
-                                type=EventType.TOOL_CALL_ERROR,
+                                type=EventType.TOOL_CALL_START,
                                 tool_name=tc.function.name,
-                                error=error_msg,
+                                tool_args=args,
                             )
-                    # Break inner loop to start new iteration with tool results
-                    break
-            else:
+
+                            try:
+                                # Execute tool
+                                result_str = await self._aexecute_tool_call(tc, args)
+                                # Add the tool result to messages
+                                messages.append(
+                                    Message(
+                                        role="tool",
+                                        name=tc.function.name,
+                                        tool_call_id=tc.id,
+                                        content=result_str,
+                                    )
+                                )
+                                # Yield tool call end event
+                                yield StreamEvent(
+                                    type=EventType.TOOL_CALL_END, tool_name=tc.function.name
+                                )
+                            except Exception as e:
+                                error_msg = str(e)
+                                logger.error(f"Tool {tc.function.name} failed: {error_msg}")
+                                # Add an error as the tool result
+                                messages.append(
+                                    Message(
+                                        role="tool",
+                                        name=tc.function.name,
+                                        tool_call_id=tc.id,
+                                        content=f"Error: {error_msg}",
+                                    )
+                                )
+                                # Yield the tool call error event
+                                yield StreamEvent(
+                                    type=EventType.TOOL_CALL_ERROR,
+                                    tool_name=tc.function.name,
+                                    error=error_msg,
+                                )
+            except StopAsyncIteration:
+                logger.debug(
+                    "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
+                    chunk_count,
+                    saw_finish_reason,
+                )
+            except StopIteration:
+                logger.debug(
+                    "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
+                    chunk_count,
+                    saw_finish_reason,
+                )
+            if not saw_tool_calls:
+                logger.debug(
+                    "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
+                    chunk_count,
+                    saw_finish_reason,
+                )
+                if not saw_finish_reason and streamed_content:
+                    logger.warning("[AGENT STREAM] Stream ended without finish_reason;")
                 # Stream finished without tool calls - done
                 return
             # Continue outer loop - send tool results back to model

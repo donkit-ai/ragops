@@ -12,22 +12,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class EnterpriseSettings(BaseSettings):
     """Enterprise mode configuration."""
 
-    # API Gateway URL (Cloud MCP Server)
+    # API Gateway URL (REST API)
     api_url: str = Field(
         default="https://api.donkit.ai",
         description="Donkit API Gateway URL",
-    )
-
-    # MCP endpoint path
-    mcp_path: str = Field(
-        default="/mcp",
-        description="MCP endpoint path on API Gateway",
     )
 
     # Connection timeout
     timeout: int = Field(
         default=60,
         description="Connection timeout in seconds",
+    )
+
+    # Message persistence
+    persist_messages: bool = Field(
+        default=True,
+        description="Whether to persist messages to API Gateway",
     )
 
     model_config = SettingsConfigDict(
@@ -37,8 +37,9 @@ class EnterpriseSettings(BaseSettings):
 
     @property
     def mcp_url(self) -> str:
-        """Full URL for MCP endpoint."""
-        return f"{self.api_url.rstrip('/')}{self.mcp_path}"
+        """MCP URL is derived from api_url with /mcp path."""
+        base = self.api_url.rstrip("/")
+        return f"{base}/mcp"
 
 
 def load_enterprise_settings() -> EnterpriseSettings:
