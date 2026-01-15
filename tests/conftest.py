@@ -27,6 +27,30 @@ if SRC_PATH.exists():
 os.environ.setdefault("RAGOPS_API_URL", "http://localhost:8080")
 
 
+@pytest.fixture(autouse=True, scope="function")
+def clear_enterprise_env_vars():
+    """Clear enterprise env vars before each test to ensure clean state."""
+    # Save original values
+    saved_vars = {}
+    enterprise_vars = [
+        "DONKIT_ENTERPRISE_API_URL",
+        "DONKIT_ENTERPRISE_PERSIST_MESSAGES",
+        "DONKIT_ENTERPRISE_MCP_URL",
+        "DONKIT_ENTERPRISE_TIMEOUT",
+    ]
+
+    for var in enterprise_vars:
+        if var in os.environ:
+            saved_vars[var] = os.environ[var]
+            del os.environ[var]
+
+    yield
+
+    # Restore original values
+    for var, value in saved_vars.items():
+        os.environ[var] = value
+
+
 @pytest.fixture(autouse=True)
 def disable_loguru():
     """Disable loguru logging during tests to prevent pytest capture issues."""
@@ -200,10 +224,11 @@ class BaseMockMCPClient:
                 - 'handler': Callable that handles the tool call
         """
         self.name = name
+        self.identifier = name  # Add identifier attribute for agent compatibility
         self.tools = tools
         self.call_count = 0
 
-    async def _alist_tools(self) -> list[dict]:
+    async def alist_tools(self) -> list[dict]:
         """List available tools."""
         return [
             {
@@ -214,7 +239,7 @@ class BaseMockMCPClient:
             for tool_name, tool_info in self.tools.items()
         ]
 
-    async def _acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
+    async def acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
         """Call a tool."""
         self.call_count += 1
 
@@ -262,21 +287,48 @@ def mocked_mcp_client():
 
 
 @pytest.fixture
+def mock_mcp_http_client():
+    """Create a mocked MCPHttpClient that doesn't make real connections.
+
+    Usage:
+        with mock_mcp_http_client() as (client, mock_client):
+            # client is MCPHttpClient instance
+            # mock_client is the mocked Client for further patching
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _create_mock():
+        with patch("donkit_ragops.mcp.http_client.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+
+            from donkit_ragops.mcp.http_client import MCPHttpClient
+            client = MCPHttpClient(url="https://api.example.com/mcp", token="token")
+
+            yield client, mock_client
+
+    return _create_mock
+
+
+@pytest.fixture
 def cli_mocks():
     """Pre-patched CLI dependencies for testing.
 
     Returns:
-        Tuple of (mock_setup, mock_select, mock_repl)
+        Tuple of (mock_setup, mock_select, mock_repl_handler)
     """
-    with patch("donkit_ragops.cli.run_setup_if_needed") as mock_setup, patch(
-        "donkit_ragops.cli.select_model_at_startup"
-    ) as mock_select, patch("donkit_ragops.cli._run_local_mode") as mock_repl:
+    with (
+        patch("donkit_ragops.cli.run_setup_if_needed") as mock_setup,
+        patch("donkit_ragops.cli.select_model_at_startup") as mock_select,
+        patch("donkit_ragops.cli._run_repl_with_interrupt_handling") as mock_repl_handler,
+    ):
         # Default return values
         mock_setup.return_value = True
         mock_select.return_value = ("openai", "gpt-4")
-        mock_repl.return_value = None
+        mock_repl_handler.return_value = None
 
-        yield mock_setup, mock_select, mock_repl
+        yield mock_setup, mock_select, mock_repl_handler
 
 
 # ============================================================================

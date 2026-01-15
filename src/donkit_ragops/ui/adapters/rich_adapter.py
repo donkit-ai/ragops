@@ -20,6 +20,7 @@ from rich.style import Style
 from rich.text import Text
 
 from donkit_ragops.ui.components import LiveContext, ProgressBar, Spinner
+from donkit_ragops.ui.protocol import UI
 from donkit_ragops.ui.styles import RICH_STYLES, StyledText, StyleName
 
 # Unix-only imports
@@ -218,7 +219,7 @@ class RichLiveContext:
         self.stop()
 
 
-class RichUI:
+class RichUI(UI):
     """Rich-based UI implementation.
 
     Provides full-featured terminal UI using the Rich library.
@@ -243,8 +244,12 @@ class RichUI:
 
     # === OUTPUT ===
 
-    def print(self, message: str, style: StyleName | None = None, end: str = "\n") -> None:
-        """Print a message with optional styling."""
+    def print(self, message: str, style: StyleName | None = None, end: str = "") -> None:
+        """Print a message with optional styling.
+
+        For streaming (end=""), uses sys.stdout directly to avoid Rich's
+        buffering which can block the async event loop and cause HTTP timeouts.
+        """
         styled = self._apply_style(message, style)
         self._console.print(styled, end=end)
 

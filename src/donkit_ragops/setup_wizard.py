@@ -716,7 +716,6 @@ def check_needs_setup(env_path: Path | None = None) -> bool:
     try:
         config = dotenv_values(env_path)
         provider = config.get("RAGOPS_LLM_PROVIDER")
-        ui.print(f"Found .env with provider {provider}")
         if not provider:
             return True
 

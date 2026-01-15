@@ -12,12 +12,15 @@ import shlex
 import time
 
 import typer
+from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
+from pydantic_settings import BaseSettings
 
 from donkit_ragops import __version__
 from donkit_ragops.agent.agent import LLMAgent, default_tools
 from donkit_ragops.agent.prompts import get_prompt
 from donkit_ragops.config import load_settings
 from donkit_ragops.display import print_startup_header
+from donkit_ragops.enterprise.event_listener import EventListener
 from donkit_ragops.llm.provider_factory import get_provider
 from donkit_ragops.logging_config import setup_logging
 from donkit_ragops.mcp.client import MCPClient
@@ -167,45 +170,111 @@ def main(
 
 
 def _run_enterprise_mode() -> None:
-    """Run enterprise mode with Rich + prompt_toolkit REPL."""
+    """Run enterprise mode with local LLMAgent + DonkitModel.
+
+    MCP tools are accessed via API Gateway. All messages persisted.
+    """
+    from donkit_ragops.agent.agent import LLMAgent
+    from donkit_ragops.agent.local_tools.tools import (
+        tool_grep,
+        tool_interactive_user_choice,
+        tool_interactive_user_confirm,
+        tool_list_directory,
+        tool_read_file,
+    )
+    from donkit_ragops.agent.prompts import get_prompt
     from donkit_ragops.enterprise.auth import get_token
     from donkit_ragops.enterprise.config import load_enterprise_settings
+    from donkit_ragops.enterprise.message_persister import MessagePersister
+    from donkit_ragops.mcp.http_client import MCPHttpClient
     from donkit_ragops.repl.base import ReplContext
     from donkit_ragops.repl.enterprise_repl import EnterpriseREPL
+    from donkit_ragops.schemas.agent_schemas import AgentSettings
 
     ui = get_ui()
 
-    # Import API client - it's installed as a dependency
-    try:
-        from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
-    except ImportError:
-        ui.print_error("Enterprise client not installed")
-        raise typer.Exit(code=1)
-
+    # Import API client and ModelFactory
     token = get_token()
     if not token:
-        ui.print_error(
-            "Enterprise mode requires authentication.\n" "Run 'donkit-ragops login' first."
-        )
+        ui.print_error("Enterprise mode requires authentication.\nRun 'donkit-ragops login' first.")
         raise typer.Exit(code=1)
 
     enterprise_settings = load_enterprise_settings()
 
+    ui.print("Mode: enterprise", StyleName.DIM)
+
+    # Create API client for file operations and persistence
     api_client = RagopsAPIGatewayClient(
         base_url=enterprise_settings.api_url,
         api_token=token,
     )
 
-    # Create context and run REPL
+    class DonkitSettings(BaseSettings):
+        donkit_api_key: str = token
+        donkit_base_url: str = enterprise_settings.api_url
+
+    provider = get_provider(DonkitSettings(), llm_provider="donkit")
+    # Create MCPHttpClient for MCP tools via API Gateway
+    mcp_client = MCPHttpClient(
+        url=enterprise_settings.mcp_url,
+        token=token,
+        timeout=600.0,
+    )
+
+    # Create minimal local tools for enterprise mode
+    local_tools = [
+        tool_read_file(),
+        tool_list_directory(),
+        tool_grep(),
+        tool_interactive_user_confirm(),
+        tool_interactive_user_choice(),
+    ]
+
+    # Create agent settings
+    agent_settings = AgentSettings(llm_provider=provider, model=None)
+
+    # Get system prompt for enterprise mode
+    system_prompt = get_prompt("enterprise", debug=False)
+
+    # Create context first (project_id will be set during REPL init)
     context = ReplContext(
         session_started_at=time.time(),
         show_checklist=False,
+        provider=provider,
+        provider_name="donkit",
+        model=None,
+        agent=None,  # Will be set below
+        agent_settings=agent_settings,
+        system_prompt=system_prompt,
+    )
+
+    # Create LLMAgent with project_id_provider from context
+    agent = LLMAgent(
+        provider=provider,
+        tools=local_tools,
+        mcp_clients=[mcp_client],
+        project_id_provider=lambda: context.project_id,
+    )
+    context.agent = agent
+
+    # Create message persister (project_id will be set during REPL init)
+    # Can be disabled via DONKIT_ENTERPRISE_PERSIST_MESSAGES=false
+    message_persister = None
+    if enterprise_settings.persist_messages:
+        message_persister = MessagePersister(api_client=api_client, project_id="")
+
+    # Create event listener (project_id will be set during REPL init)
+    event_listener = EventListener(
+        base_url=enterprise_settings.api_url,
+        token=token,
+        project_id="",  # Will be updated after project creation
     )
 
     repl = EnterpriseREPL(
         context=context,
         api_client=api_client,
-        token=token,
+        message_persister=message_persister,
+        event_listener=event_listener,
         enterprise_settings=enterprise_settings,
     )
     _run_repl_with_interrupt_handling(repl)
@@ -337,13 +406,6 @@ def login(
 
     ui = get_ui()
 
-    # Import API client
-    try:
-        from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
-    except ImportError:
-        ui.print_error("Enterprise client not installed")
-        raise typer.Exit(code=1)
-
     settings = load_enterprise_settings()
 
     ui.print("Validating token...", StyleName.DIM)
@@ -443,6 +505,12 @@ def status() -> None:
             styled_text(
                 (StyleName.BOLD, "API URL: "),
                 (None, enterprise_settings.api_url),
+            )
+        )
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "MCP URL: "),
+                (None, enterprise_settings.mcp_url),
             )
         )
     else:

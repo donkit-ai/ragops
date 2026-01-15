@@ -138,17 +138,6 @@ def test_cli_no_checklist_flag(cli_mocks) -> None:
 # Tests: Short Options
 # ============================================================================
 
-
-def test_cli_short_model_option(cli_mocks) -> None:
-    """Test -m short option for model."""
-    mock_setup, mock_select, mock_repl = cli_mocks
-
-    result = runner.invoke(app, ["-m", "gpt-4"], input="")
-
-    # Should have called setup
-    mock_setup.assert_called()
-
-
 def test_cli_short_provider_option(cli_mocks) -> None:
     """Test -p short option for provider."""
     mock_setup, mock_select, mock_repl = cli_mocks

@@ -12,12 +12,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
+
 from donkit_ragops.mcp.client import MCPClient
 
 # ============================================================================
@@ -94,7 +92,7 @@ async def test_alist_tools_success(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.list_tools = AsyncMock(return_value=[mock_tool])
-        tools = await client._alist_tools()
+        tools = await client.alist_tools()
 
     assert len(tools) == 1
     assert tools[0]["name"] == "test_tool"
@@ -130,7 +128,7 @@ async def test_alist_tools_with_wrapped_schema(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.list_tools = AsyncMock(return_value=[mock_tool])
-        tools = await client._alist_tools()
+        tools = await client.alist_tools()
 
     assert len(tools) == 1
     # Should unwrap the schema
@@ -146,7 +144,7 @@ async def test_alist_tools_connection_error(mocked_mcp_client) -> None:
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.__aenter__ = AsyncMock(side_effect=ConnectionError("Failed to connect"))
         with pytest.raises(ConnectionError):
-            await client._alist_tools()
+            await client.alist_tools()
 
 
 @pytest.mark.asyncio
@@ -157,7 +155,7 @@ async def test_alist_tools_cancellation(mocked_mcp_client) -> None:
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError("Cancelled"))
         with pytest.raises(asyncio.CancelledError):
-            await client._alist_tools()
+            await client.alist_tools()
 
 
 # ============================================================================
@@ -172,7 +170,7 @@ def test_list_tools_success(mcp_client: MCPClient) -> None:
     mock_tool.description = "Synchronous tool"
     mock_tool.inputSchema = {"type": "object", "properties": {}}
 
-    with patch.object(mcp_client, "_alist_tools", new_callable=AsyncMock) as mock_alist:
+    with patch.object(mcp_client, "alist_tools", new_callable=AsyncMock) as mock_alist:
         mock_alist.return_value = [
             {
                 "name": "sync_tool",
@@ -189,7 +187,7 @@ def test_list_tools_success(mcp_client: MCPClient) -> None:
 
 def test_list_tools_keyboard_interrupt(mcp_client: MCPClient) -> None:
     """Test that KeyboardInterrupt returns empty list."""
-    with patch.object(mcp_client, "_alist_tools", new_callable=AsyncMock) as mock_alist:
+    with patch.object(mcp_client, "alist_tools", new_callable=AsyncMock) as mock_alist:
         mock_alist.side_effect = KeyboardInterrupt()
 
         tools = mcp_client.list_tools()
@@ -215,7 +213,7 @@ async def test_acall_tool_success(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.call_tool = AsyncMock(return_value=mock_result)
-        result = await client._acall_tool("test_tool", {"param": "value"})
+        result = await client.acall_tool("test_tool", {"param": "value"})
 
     assert result == "Tool executed successfully"
     # Verify that arguments were wrapped
@@ -236,7 +234,7 @@ async def test_acall_tool_with_data_result(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.call_tool = AsyncMock(return_value=mock_result)
-        result = await client._acall_tool("test_tool", {})
+        result = await client.acall_tool("test_tool", {})
 
     # Should serialize data to JSON
     assert isinstance(result, str)
@@ -255,7 +253,7 @@ async def test_acall_tool_empty_arguments(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.call_tool = AsyncMock(return_value=mock_result)
-        result = await client._acall_tool("test_tool", {})
+        result = await client.acall_tool("test_tool", {})
 
     assert result == "Success"
 
@@ -268,7 +266,7 @@ async def test_acall_tool_cancellation(mocked_mcp_client) -> None:
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError("Cancelled"))
         with pytest.raises(asyncio.CancelledError):
-            await client._acall_tool("test_tool", {})
+            await client.acall_tool("test_tool", {})
 
 
 @pytest.mark.asyncio
@@ -279,7 +277,7 @@ async def test_acall_tool_keyboard_interrupt(mocked_mcp_client) -> None:
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.__aenter__ = AsyncMock(side_effect=KeyboardInterrupt("User interrupted"))
         with pytest.raises(KeyboardInterrupt):
-            await client._acall_tool("test_tool", {})
+            await client.acall_tool("test_tool", {})
 
 
 # ============================================================================
@@ -291,7 +289,7 @@ def test_call_tool_success() -> None:
     """Test synchronous tool call."""
     client = MCPClient(command="python", args=["server.py"])
 
-    with patch.object(client, "_acall_tool", new_callable=AsyncMock) as mock_acall:
+    with patch.object(client, "acall_tool", new_callable=AsyncMock) as mock_acall:
         mock_acall.return_value = "Tool result"
 
         result = client.call_tool("test_tool", {"param": "value"})
@@ -303,7 +301,7 @@ def test_call_tool_keyboard_interrupt() -> None:
     """Test that KeyboardInterrupt is propagated."""
     client = MCPClient(command="python", args=["server.py"])
 
-    with patch.object(client, "_acall_tool", new_callable=AsyncMock) as mock_acall:
+    with patch.object(client, "acall_tool", new_callable=AsyncMock) as mock_acall:
         mock_acall.side_effect = KeyboardInterrupt()
 
         with pytest.raises(KeyboardInterrupt):
@@ -352,7 +350,7 @@ async def test_acall_tool_with_invalid_schema(mocked_mcp_client) -> None:
 
     with mocked_mcp_client() as (mock_class, mock_instance):
         mock_instance.call_tool = AsyncMock(return_value=mock_result)
-        result = await client._acall_tool("test_tool", {"invalid": "args"})
+        result = await client.acall_tool("test_tool", {"invalid": "args"})
 
     assert result == "Success despite invalid schema"
 

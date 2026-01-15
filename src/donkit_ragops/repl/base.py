@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from donkit.llm import LLMModelAbstract, Message
 
+from donkit_ragops.mcp.protocol import MCPClientProtocol
 from donkit_ragops.ui import UIAdapter, get_ui, set_ui_adapter
 from donkit_ragops.ui.protocol import UI
 from donkit_ragops.ui.styles import StyleName
@@ -20,7 +21,6 @@ from donkit_ragops.ui.styles import StyleName
 if TYPE_CHECKING:
     from donkit_ragops.agent.agent import LLMAgent
     from donkit_ragops.display import ScreenRenderer
-    from donkit_ragops.mcp.client import MCPClient
     from donkit_ragops.repl_helpers import MCPEventHandler, ReplRenderHelper
     from donkit_ragops.schemas.agent_schemas import AgentSettings
 
@@ -34,7 +34,7 @@ class ReplContext:
 
     # UI interface - single point for all user interaction
     set_ui_adapter(UIAdapter.RICH)
-    ui: UI = get_ui()  # field(default_factory=get_ui)
+    ui: UI = field(default_factory=get_ui)
 
     # Core state
     history: list[Message] = field(default_factory=list)
@@ -52,7 +52,7 @@ class ReplContext:
     agent: LLMAgent | None = None
 
     # MCP clients
-    mcp_clients: list[MCPClient] = field(default_factory=list)
+    mcp_clients: list[MCPClientProtocol] = field(default_factory=list)
 
     # Rendering
     renderer: ScreenRenderer | None = None
@@ -61,6 +61,9 @@ class ReplContext:
 
     # System prompt
     system_prompt: str | None = None
+
+    # Project ID for enterprise mode (auto-injected into MCP tool calls)
+    project_id: str | None = None
 
 
 class BaseREPL(ABC):
@@ -137,6 +140,6 @@ class BaseREPL(ABC):
 
     def print_welcome(self) -> None:
         """Print welcome message. Can be overridden by subclasses."""
-        self.context.ui.print("Type your message and press Enter to start...", StyleName.DIM)
-        self.context.ui.print("Commands: :help, :q, :clear, :provider, :model", StyleName.DIM)
+        self.context.ui.print("\nType your message and press Enter to start...", StyleName.DIM)
+        self.context.ui.print("\nCommands: :help, :q, :clear", StyleName.DIM)
         self.context.ui.newline()

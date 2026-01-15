@@ -27,9 +27,10 @@ import subprocess
 from pathlib import Path
 from typing import Literal, Self
 
-from donkit_ragops.schemas.config_schemas import RagConfig
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, model_validator
+
+from donkit_ragops.schemas.config_schemas import RagConfig
 
 # Package root (where compose files are stored)
 PACKAGE_ROOT = Path(__file__).parent.parent.parent

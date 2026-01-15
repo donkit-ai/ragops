@@ -16,12 +16,10 @@ the server.
 # Import these directly from submodules:
 #   from donkit_ragops.enterprise.auth import get_token, save_token, delete_token
 #   from donkit_ragops.enterprise.config import EnterpriseSettings
-#   from donkit_ragops.enterprise.ws_client import WebSocketClient
 #   from donkit_ragops.enterprise.upload import FileUploader, upload_files_to_cloud
 #   from donkit_ragops.enterprise.analyzer import FileAnalyzer
 
 __all__ = [
-    "WebSocketClient",
     "EnterpriseSettings",
     "get_token",
     "save_token",
@@ -42,10 +40,6 @@ def __getattr__(name: str):
         from donkit_ragops.enterprise import config
 
         return getattr(config, name)
-    if name == "WebSocketClient":
-        from donkit_ragops.enterprise import ws_client
-
-        return ws_client.WebSocketClient
     if name in ("FileUploader", "upload_files_to_cloud"):
         from donkit_ragops.enterprise import upload
 

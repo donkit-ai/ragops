@@ -34,7 +34,7 @@ def setup_logging(settings: Settings | None = None) -> None:
     logger.add(
         sys.stderr,
         level=level,
-        enqueue=True,
+        # enqueue=True,
         backtrace=False,
         diagnose=False,
         format=_LOGURU_FORMAT,
