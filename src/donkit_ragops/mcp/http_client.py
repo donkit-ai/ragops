@@ -10,10 +10,11 @@ import asyncio
 import json
 from typing import Any
 
-from donkit_ragops.mcp.protocol import MCPClientProtocol, ProgressCallback
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 from loguru import logger
+
+from donkit_ragops.mcp.protocol import MCPClientProtocol, ProgressCallback
 
 
 class MCPHttpClient(MCPClientProtocol):

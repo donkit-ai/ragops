@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 from typing import Any
 
-from donkit_ragops.mcp.protocol import MCPClientProtocol, ProgressCallback
 from dotenv import dotenv_values, find_dotenv
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from loguru import logger
+
+from donkit_ragops.mcp.protocol import MCPClientProtocol, ProgressCallback
 
 
 def _load_env_for_mcp() -> dict[str, str | None]:

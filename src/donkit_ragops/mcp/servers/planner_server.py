@@ -12,9 +12,10 @@ import os
 import re
 from typing import Self
 
-from donkit_ragops.schemas.config_schemas import RagConfig
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, model_validator
+
+from donkit_ragops.schemas.config_schemas import RagConfig
 
 
 class RagConfigPlanArgs(BaseModel):
