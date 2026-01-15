@@ -194,7 +194,7 @@ class InteractiveInputBox:
             complete_in_thread=False,
         )
 
-    def get_input(self) -> str:
+    async def get_input(self) -> str:
         """Get user input with prompt_toolkit."""
         try:
             if not sys.stdin.isatty():
@@ -205,20 +205,20 @@ class InteractiveInputBox:
             from donkit_ragops.checklist_manager import checklist_status_provider
 
             # Get terminal width for box
-            try:
-                terminal_width = os.get_terminal_size().columns
-            except OSError:
-                terminal_width = 80
+            # try:
+            #     terminal_width = os.get_terminal_size().columns
+            # except OSError:
+            #     terminal_width = 80
 
-            box_width = min(terminal_width - 1, 100)
+            # box_width = min(terminal_width - 1, 100)
 
             # Build input box using UI abstraction
             ui = get_ui()
             status = checklist_status_provider.status
 
             # Top border with optional status
-            top_line = "╭" + "─" * (box_width - 2) + "╮"
-            ui.print_styled(styled_text((StyleName.DIM, top_line)))
+            # top_line = "╭" + "─" * (box_width - 2) + "╮"
+            # ui.print_styled(styled_text((StyleName.DIM, top_line)))
 
             # Status line if checklist is active
             if status.total > 0:
@@ -246,13 +246,12 @@ class InteractiveInputBox:
                     )
                 )
 
-            # Bottom border connects to prompt
-            ui.print("╰", StyleName.DIM, end="")
+            # # Bottom border connects to prompt
+            # ui.print("╰", StyleName.DIM, end="")
 
             # Use prompt_toolkit for input with styled prompt
-            result = self.session.prompt(
+            result = await self.session.prompt_async(
                 [("class:prompt", "❯ ")],
-                in_thread=True,
             )
 
             # Check if result is a path and expand it
@@ -293,7 +292,7 @@ class InteractiveInputBox:
                 raise
 
 
-def get_user_input() -> str:
+async def get_user_input() -> str:
     """
     Main function to get user input.
 
@@ -304,7 +303,7 @@ def get_user_input() -> str:
         KeyboardInterrupt: When user presses Ctrl+C or Ctrl+D
     """
     input_box = InteractiveInputBox()
-    return input_box.get_input()
+    return await input_box.get_input()
 
 
 def interactive_select(

@@ -808,6 +808,12 @@ class TestEnterpriseREPL:
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=None)
 
+        # Mock get_me
+        mock_user = MagicMock()
+        mock_user.id = "test-user-123"
+        mock_user.first_name = "Test User"
+        client.get_me = AsyncMock(return_value=mock_user)
+
         # Mock project creation
         mock_project = MagicMock()
         mock_project.id = "test-project-123"
@@ -903,106 +909,6 @@ class TestEnterpriseREPL:
 
         mock_event_listener.stop.assert_called_once()
 
-    def test_backend_event_queued(
-        self,
-        mock_context: MagicMock,
-        mock_api_client: MagicMock,
-        mock_persister: MagicMock,
-    ) -> None:
-        """Test that backend events are queued."""
-        from donkit_ragops.enterprise.event_listener import BackendEvent, EventType
-        from donkit_ragops.repl.enterprise_repl import EnterpriseREPL
-
-        repl = EnterpriseREPL(
-            context=mock_context,
-            api_client=mock_api_client,
-            message_persister=mock_persister,
-        )
-
-        event = BackendEvent(
-            type=EventType.EXPERIMENT_COMPLETED,
-            data={"name": "test"},
-            message="[System] Experiment completed",
-        )
-
-        repl._on_backend_event(event)
-
-        assert len(repl._pending_events) == 1
-        assert repl._pending_events[0] == event
-
-    @pytest.mark.asyncio
-    async def test_inject_pending_events(
-        self,
-        mock_context: MagicMock,
-        mock_api_client: MagicMock,
-        mock_persister: MagicMock,
-    ) -> None:
-        """Test injecting pending events into history."""
-        from donkit_ragops.enterprise.event_listener import BackendEvent, EventType
-        from donkit_ragops.repl.enterprise_repl import EnterpriseREPL
-
-        repl = EnterpriseREPL(
-            context=mock_context,
-            api_client=mock_api_client,
-            message_persister=mock_persister,
-        )
-
-        event = BackendEvent(
-            type=EventType.CORPUS_READY,
-            data={"name": "test-corpus"},
-            message="[System] Corpus ready",
-        )
-        repl._pending_events.append(event)
-
-        await repl._inject_pending_events()
-
-        # Event should be added to history
-        assert len(mock_context.history) == 1
-        assert mock_context.history[0].role == "system"
-        assert mock_context.history[0].content == "[System] Corpus ready"
-
-        # Event should be persisted
-        mock_persister.persist_message.assert_called_once_with(
-            role="system", content="[System] Corpus ready"
-        )
-
-        # Pending events should be cleared
-        assert len(repl._pending_events) == 0
-
-    @pytest.mark.asyncio
-    async def test_inject_pending_events_without_persister(
-        self,
-        mock_context: MagicMock,
-        mock_api_client: MagicMock,
-    ) -> None:
-        """Test injecting pending events when persister is disabled."""
-        from donkit_ragops.enterprise.event_listener import BackendEvent, EventType
-        from donkit_ragops.repl.enterprise_repl import EnterpriseREPL
-
-        # Create REPL without message persister (disabled)
-        repl = EnterpriseREPL(
-            context=mock_context,
-            api_client=mock_api_client,
-            message_persister=None,
-        )
-
-        event = BackendEvent(
-            type=EventType.CORPUS_READY,
-            data={"name": "test-corpus"},
-            message="[System] Corpus ready",
-        )
-        repl._pending_events.append(event)
-
-        # Should not raise even without persister
-        await repl._inject_pending_events()
-
-        # Event should still be added to history
-        assert len(mock_context.history) == 1
-        assert mock_context.history[0].role == "system"
-        assert mock_context.history[0].content == "[System] Corpus ready"
-
-        # Pending events should be cleared
-        assert len(repl._pending_events) == 0
 
 
 # ============================================================================

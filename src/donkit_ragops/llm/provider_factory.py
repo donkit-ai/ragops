@@ -69,7 +69,7 @@ def get_provider(
 
         logger.debug("using donkit provider")
         return ModelFactory.create_model(
-            provider="donkit", model_name=None, credentials=credentials
+            provider="donkit", model_name="gpt-5.2", credentials=credentials
         )
 
     model_name = model_name or cfg.llm_model or _get_default_model(provider_key)

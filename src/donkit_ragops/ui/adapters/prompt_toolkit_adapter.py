@@ -328,11 +328,11 @@ class PromptToolkitUI:
 
         return interactive_confirm(question, default)
 
-    def text_input(self, prompt: str = "> ") -> str:
+    async def text_input(self, prompt: str = "> ") -> str:
         """Get text input from user."""
         from donkit_ragops.interactive_input import get_user_input
 
-        return get_user_input()
+        return await get_user_input()
 
     # === LIVE UPDATES ===
 
