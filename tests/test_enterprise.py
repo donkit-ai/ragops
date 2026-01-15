@@ -1013,8 +1013,8 @@ class TestEnterpriseREPL:
 class TestEnterpriseSettings:
     """Test EnterpriseSettings configuration."""
 
-    def test_default_persist_messages_is_false(self) -> None:
-        """Test that persist_messages defaults to False."""
+    def test_default_persist_messages_is_true(self) -> None:
+        """Test that persist_messages defaults to True."""
         import os
 
         from donkit_ragops.enterprise.config import EnterpriseSettings
@@ -1026,7 +1026,7 @@ class TestEnterpriseSettings:
                 del os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"]
 
             settings = EnterpriseSettings()
-            assert settings.persist_messages is False
+            assert settings.persist_messages is True
         finally:
             # Restore original value
             if original is not None:
