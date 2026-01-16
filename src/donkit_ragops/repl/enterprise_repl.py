@@ -149,13 +149,13 @@ class EnterpriseREPL(BaseREPL):
         """
         from donkit.llm import Message
 
-        # Add event as system message to history
-        event_msg = Message(role="system", content=event.message)
+        # Add event as user message (backend notification with embedded system instruction)
+        event_msg = Message(role="user", content=event.message)
         self.context.history.append(event_msg)
 
         # Persist the event message (if persistence is enabled)
         if self.message_persister:
-            await self.message_persister.persist_message(role="system", content=event.message)
+            await self.message_persister.persist_message(role="user", content=event.message)
 
         # Let LLM respond to the event
         await self._handle_event_response(event)
