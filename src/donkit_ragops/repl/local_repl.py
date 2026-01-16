@@ -90,11 +90,10 @@ class LocalREPL(BaseREPL):
 
         while self._running:
             try:
-                user_input = self.context.ui.text_input()
+                # Run text_input in a separate thread to avoid blocking event loop
+                user_input = await self.context.ui.text_input()
             except KeyboardInterrupt:
-                self.context.ui.print_warning(
-                    "Input cancelled. Press Ctrl+C again or type :quit to exit"
-                )
+                self.context.ui.print_warning("Input cancelled. Type :quit to exit")
                 continue
 
             if not user_input:
@@ -105,7 +104,7 @@ class LocalREPL(BaseREPL):
                 if not should_continue:
                     break
             except (KeyboardInterrupt, asyncio.CancelledError):
-                self.context.ui.print_warning("Operation interrupted. Press Ctrl+C again to exit.")
+                self.context.ui.print_warning("Operation interrupted.")
                 if self.context.mcp_handler:
                     self.context.mcp_handler.clear_progress()
             except Exception as e:
@@ -512,7 +511,7 @@ class LocalREPL(BaseREPL):
         rendered = render_markdown_to_rich(texts.WELCOME_MESSAGE)
         if self.context.render_helper:
             self.context.render_helper.append_agent_message(rendered)
-        self.context.ui.print(f"{texts.AGENT_PREFIX} {rendered}")
+        self.context.ui.print(f"{rendered}")
         self.context.ui.newline()
 
     def print_welcome(self) -> None:

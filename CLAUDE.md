@@ -84,8 +84,9 @@ src/donkit_ragops/
 │   ├── styles.py         # StyleName enum + theme mapping
 │   ├── components.py     # Spinner, ProgressBar, LiveContext protocols
 │   └── adapters/         # Framework implementations
-│       ├── rich_adapter.py   # RichUI (default, full-featured)
-│       └── plain_adapter.py  # PlainUI (for testing/pipes)
+│       ├── rich_adapter.py           # RichUI (default, full-featured)
+│       ├── prompt_toolkit_adapter.py # PromptToolkitUI (async input)
+│       └── plain_adapter.py          # PlainUI (for testing/pipes)
 ├── agent/                 # LLM agent core
 │   ├── agent.py          # LLMAgent class, tool execution loop
 │   ├── prompts.py        # System prompts for different modes
@@ -108,11 +109,12 @@ src/donkit_ragops/
 │   ├── provider_factory.py  # Factory for creating providers
 │   └── providers/           # OpenAI, Anthropic, Vertex, etc.
 ├── enterprise/           # Enterprise mode components
-│   ├── auth.py          # Token-based authentication (keyring)
-│   ├── config.py        # Enterprise settings
-│   ├── upload.py        # Document upload to cloud
-│   ├── analyzer.py      # File analysis before upload
-│   └── ws_client.py     # WebSocket client for API gateway
+│   ├── auth.py              # Token-based authentication (keyring)
+│   ├── config.py            # Enterprise settings
+│   ├── upload.py            # Document upload to cloud
+│   ├── analyzer.py          # File analysis before upload
+│   ├── event_listener.py    # Backend event handling (WebSocket)
+│   └── message_persister.py # Conversation persistence
 └── mode.py              # Mode detection logic
 ```
 
@@ -281,7 +283,7 @@ See parent `CLAUDE.md` at repository root (`../CLAUDE.md`) for critical organiza
 ### Testing Requirements
 
 **MANDATORY: Always Run Tests**
-- Run `poetry run pytest` before considering any work complete
+- Run `poetry run pytest` before considering complex work complete
 - Tests MUST pass before submitting changes
 - If tests fail, fix them - never ignore failing tests
 - Run tests after every significant change
@@ -314,7 +316,7 @@ See parent `CLAUDE.md` at repository root (`../CLAUDE.md`) for critical organiza
 
 ### Linting and Formatting Requirements
 
-**MANDATORY: Run Linter Before Committing**
+**MANDATORY: Run Linter ONLY Before Committing, not every changes.**
 
 Code must pass linting and formatting checks before committing:
 

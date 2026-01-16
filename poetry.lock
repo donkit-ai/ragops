@@ -1565,15 +1565,15 @@ pydantic = ">=2.8.0,<3.0.0"
 
 [[package]]
 name = "donkit-ragops-api-gateway-client"
-version = "0.1.7"
+version = "0.1.8"
 description = "Async HTTP client for interacting with the Donkit ragops-api-gateway"
 optional = false
 python-versions = "<3.14,>=3.12"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "donkit_ragops_api_gateway_client-0.1.7-py3-none-any.whl", hash = "sha256:c7a07ca79da64202d5b3c7b66e0c15752376ccc98af68254bf416610b029fc89"},
-    {file = "donkit_ragops_api_gateway_client-0.1.7.tar.gz", hash = "sha256:2e965bc81070a53226779b16ea4d1e51ecc8cd816225cdf20a89e86e311cf9ea"},
+    {file = "donkit_ragops_api_gateway_client-0.1.8-py3-none-any.whl", hash = "sha256:2a2e54a1e761a9ebea0324d5eee1a1e17b027170107d5d2e5f5684f78c496dcf"},
+    {file = "donkit_ragops_api_gateway_client-0.1.8.tar.gz", hash = "sha256:4f4ae1bdce3fbb3a6b02344132cbf2f46017a241d00b4d78cf5ff07e4a5dd3bf"},
 ]
 
 [package.dependencies]
@@ -10414,4 +10414,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "bd1b725b7a8cc9e0f6f6edc04dfe7e7132663e4f28a2a6994d9989966828e174"
+content-hash = "5f16c2568a85d09a325c38e9d04c53b0659078560cda9d42f88ef26e36ff1108"

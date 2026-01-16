@@ -68,7 +68,6 @@ class EnterpriseREPL(BaseREPL):
         self.enterprise_settings = enterprise_settings
         self.project_id: str | None = None
         self._command_registry: CommandRegistry = create_default_registry()
-        self._pending_events: list[BackendEvent] = []
 
         # Set UI adapter
         set_ui_adapter(UIAdapter.RICH)
@@ -83,12 +82,19 @@ class EnterpriseREPL(BaseREPL):
 
         try:
             async with self.api_client:
+                # Get user info
+                user_info = await self.api_client.get_me()
+                user_name = user_info.first_name or "User"
+                user_id = user_info.id
+                self.context.system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
+
+                # Create project
                 project = await self.api_client.create_project()
                 self.project_id = str(project.id)
                 self.context.system_prompt += f"\nProject ID: {self.project_id}"
                 ui.print(f"Project: {self.project_id}", StyleName.SUCCESS)
         except Exception as e:
-            ui.print_error(f"Error creating project: {e}")
+            ui.print_error(f"Error initializing: {e}")
             self.stop()
             raise
 
@@ -127,23 +133,99 @@ class EnterpriseREPL(BaseREPL):
         if self.context.system_prompt:
             self.context.history.append(Message(role="system", content=self.context.system_prompt))
 
-        # Start event listener
+        # Start event listener with callbacks
         if self.event_listener:
             self.event_listener.on_event = self._on_backend_event
+            self.event_listener.on_progress = self._on_backend_progress
             await self.event_listener.start()
 
-    def _on_backend_event(self, event: BackendEvent) -> None:
+    async def _on_backend_event(self, event: BackendEvent) -> None:
         """Handle backend event from WebSocket.
 
-        Events are queued and injected into agent on next message.
+        Sends event to LLM so it can notify the user with a contextual message.
 
         Args:
             event: Backend event
         """
-        self._pending_events.append(event)
-        # Also print notification to user
+        from donkit.llm import Message
+
+        # Add event as system message to history
+        event_msg = Message(role="system", content=event.message)
+        self.context.history.append(event_msg)
+
+        # Persist the event message (if persistence is enabled)
+        if self.message_persister:
+            await self.message_persister.persist_message(role="system", content=event.message)
+
+        # Let LLM respond to the event
+        await self._handle_event_response(event)
+
+    async def _handle_event_response(self, event: BackendEvent) -> None:
+        """Generate LLM response for backend event.
+
+        Args:
+            event: Backend event to respond to
+        """
+        from donkit.llm import Message, ModelCapability
+
         ui = get_ui()
-        ui.print(event.message, StyleName.INFO)
+
+        # Show notification that we're processing an event
+        ui.newline()
+        ui.print(f"[Event] {event.type.value}", StyleName.INFO)
+
+        try:
+            if self.context.provider and self.context.provider.supports_capability(
+                ModelCapability.STREAMING
+            ):
+                # Streaming response
+                reply = ""
+                if self.context.render_helper:
+                    self.context.render_helper.print_agent_prefix()
+
+                async for chunk in self.context.agent.arespond_stream(self.context.history):
+                    if chunk.type == chunk.type.CONTENT:
+                        ui.print(chunk.content)
+                        reply += chunk.content
+
+                if reply:
+                    self.context.history.append(Message(role="assistant", content=reply))
+                    if self.message_persister:
+                        await self.message_persister.persist_assistant_message(content=reply)
+                    ui.newline()
+            else:
+                # Non-streaming response
+                reply = await self.context.agent.arespond(self.context.history)
+                if reply:
+                    self.context.history.append(Message(role="assistant", content=reply))
+                    if self.message_persister:
+                        await self.message_persister.persist_assistant_message(content=reply)
+                    if self.context.render_helper:
+                        self.context.render_helper.print_agent_prefix()
+                    ui.print_markdown(reply)
+                    ui.newline()
+
+        except Exception as e:
+            logger.error(f"Error generating event response: {e}", exc_info=True)
+            ui.print_error(f"Failed to process event: {e}")
+
+    def _on_backend_progress(
+        self, progress: float, total: float | None, message: str | None
+    ) -> None:
+        """Handle progress event from WebSocket.
+
+        Args:
+            progress: Current progress value
+            total: Total value (if known)
+            message: Progress message
+        """
+        ui = get_ui()
+        if total:
+            pct = int((progress / total) * 100)
+            msg = message or "Processing..."
+            ui.print(f"[Progress] {pct}% - {msg}", StyleName.DIM)
+        elif message:
+            ui.print(f"[Progress] {message}", StyleName.DIM)
 
     async def run(self) -> None:
         """Run the REPL main loop."""
@@ -157,7 +239,8 @@ class EnterpriseREPL(BaseREPL):
 
         while self._running:
             try:
-                user_input = self.context.ui.text_input()
+                # Run text_input in a separate thread to avoid blocking event loop
+                user_input = await self.context.ui.text_input()
             except KeyboardInterrupt:
                 self.context.ui.print_warning("Input cancelled. Type :quit/exit/:q to exit")
                 continue
@@ -170,13 +253,13 @@ class EnterpriseREPL(BaseREPL):
                 if not should_continue:
                     break
             except (KeyboardInterrupt, asyncio.CancelledError):
-                self.context.ui.print_warning("Operation interrupted. Press Ctrl+C again to exit.")
+                self.context.ui.print_warning("Operation interrupted.")
                 if self.context.mcp_handler:
                     self.context.mcp_handler.clear_progress()
             except Exception as e:
                 if self.context.render_helper:
                     self.context.render_helper.append_error(str(e))
-                logger.error(f"Error in main loop: {e}", exc_info=True)
+                logger.opt(exception=True).error("Error in main loop: {}", repr(e))
                 raise
 
         await self.cleanup()
@@ -195,10 +278,15 @@ class EnterpriseREPL(BaseREPL):
             return await self._handle_command(user_input)
 
         # Check for file path - handle file upload
-        if not user_input.startswith(":"):
-            file_path = Path(user_input)
-            if file_path.exists():
-                return await self._handle_file_upload(file_path)
+        # Skip if input is too long to be a valid file path (max 255 chars per component)
+        if not user_input.startswith(":") and len(user_input) < 4096:
+            try:
+                file_path = Path(user_input.strip())
+                if file_path.exists():
+                    return await self._handle_file_upload(file_path)
+            except OSError:
+                # Input is not a valid file path (too long, invalid chars, etc.)
+                pass
 
         # Regular message
         await self.handle_message(user_input)
@@ -306,7 +394,7 @@ class EnterpriseREPL(BaseREPL):
         upload_message += f"\n\nFile locations: {s3_paths}"
 
         ui.newline()
-        ui.print(f"You: {upload_message[:100]}...", StyleName.INFO)
+        # ui.print(f"You: {upload_message[:100]}...", StyleName.INFO)
         ui.newline()
 
         # Handle this as a regular message to agent
@@ -319,9 +407,6 @@ class EnterpriseREPL(BaseREPL):
         Args:
             message: User's chat message
         """
-        # Inject pending backend events as system messages
-        await self._inject_pending_events()
-
         if self.context.render_helper:
             self.context.render_helper.append_user_line(message)
 
@@ -345,18 +430,6 @@ class EnterpriseREPL(BaseREPL):
             self.context.history[:] = await compress_history_if_needed(
                 self.context.history, self.context.provider
             )
-
-    async def _inject_pending_events(self) -> None:
-        """Inject pending backend events into agent history."""
-        for event in self._pending_events:
-            # Add as system message so agent is aware of the event
-            event_msg = Message(role="system", content=event.message)
-            self.context.history.append(event_msg)
-            # Persist the event message (if persistence is enabled)
-            if self.message_persister:
-                await self.message_persister.persist_message(role="system", content=event.message)
-
-        self._pending_events.clear()
 
     async def _handle_streaming_response(self) -> None:
         """Handle streaming response from agent."""
@@ -555,5 +628,5 @@ class EnterpriseREPL(BaseREPL):
         rendered = render_markdown_to_rich(texts.WELCOME_MESSAGE)
         if self.context.render_helper:
             self.context.render_helper.append_agent_message(rendered)
-        self.context.ui.print(f"{texts.AGENT_PREFIX} {rendered}")
+        self.context.ui.print(f"{rendered}", style=StyleName.HIGHLIGHTED)
         self.context.ui.newline()

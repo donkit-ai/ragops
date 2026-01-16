@@ -357,10 +357,7 @@ USER_PREFIX = "[bold]>[/bold]"
 AGENT_PREFIX = "[bold green]*[/bold green]"
 
 # Welcome message (markdown, no Rich markup needed)
-WELCOME_MESSAGE = (
-    "Hello! I'm **Donkit - RAGOps Agent**, your assistant for building RAG pipelines. "
-    "How can I help you today?"
-)
+WELCOME_MESSAGE = "\n\nLet`s build it with Donkit - RAGOps Agent\n\n"
 
 EXITING_MESSAGE = "[Exiting REPL]"
 EXITING_REPL = "[Exiting REPL]"
