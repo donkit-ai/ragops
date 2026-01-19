@@ -6,8 +6,41 @@ from typing import Any, Literal
 
 from donkit_ragops.checklist_manager import checklist_status_provider
 from donkit_ragops.db import close, kv_get, kv_set, open_db
+from donkit_ragops.ui import get_ui
+from donkit_ragops.ui.styles import StyleName
 
 from .tools import AgentTool
+
+
+def _print_checklist_to_ui(checklist_data: dict[str, Any]) -> None:
+    """Print checklist in a styled panel to UI.
+
+    Args:
+        checklist_data: Checklist data dictionary
+    """
+    ui = get_ui()
+    items = checklist_data.get("items", [])
+    if not items:
+        return
+
+    # Build checklist content with styled items
+    lines: list[str] = []
+    for item in items:
+        status = item.get("status", "pending")
+        desc = item.get("description", "")
+
+        # Status icons
+        if status == "completed":
+            icon = "[green]✓[/green]"
+        elif status == "in_progress":
+            icon = "[yellow]⚡[/yellow]"
+        else:  # pending
+            icon = "[dim]○[/dim]"
+
+        lines.append(f"  {icon} {desc}")
+
+    content = "\n".join(lines)
+    ui.print_panel(content, title="📋 Checklist", border_style=StyleName.INFO)
 
 
 def _checklist_key(name: str) -> str:
@@ -80,6 +113,9 @@ def tool_create_checklist() -> AgentTool:
         # Update status line for toolbar display
         checklist_status_provider.update_from_checklist(checklist_data)
 
+        # Print checklist to UI for user visibility
+        _print_checklist_to_ui(checklist_data)
+
         return f"Checklist '{name}' created with {len(items)} items.\n\n" + json.dumps(
             checklist_data, indent=2
         )
@@ -103,8 +139,7 @@ def tool_create_checklist() -> AgentTool:
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "List of task descriptions. "
-                        "IDs will be auto-generated as 'item_<index>'."
+                        "List of task descriptions. IDs will be auto-generated as 'item_<index>'."
                     ),
                 },
             },

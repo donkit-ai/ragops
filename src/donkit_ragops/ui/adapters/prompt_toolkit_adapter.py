@@ -270,7 +270,7 @@ class PromptToolkitUI:
 
     def print_panel(
         self,
-        content: str,
+        content: str | list[StyledText],
         title: str = "",
         border_style: StyleName | None = None,
     ) -> None:
@@ -285,8 +285,19 @@ class PromptToolkitUI:
         else:
             print_formatted_text(FormattedText([("class:dim", f"┌{border}")]))
 
-        for line in content.split("\n"):
-            print_formatted_text(f"│ {line}")
+        # Convert content to lines
+        if isinstance(content, str):
+            lines = content.split("\n")
+            for line in lines:
+                print_formatted_text(f"│ {line}")
+        else:
+            # List of StyledText lines
+            for styled_line in content:
+                formatted_parts: list[tuple[str, str]] = [("", "│ ")]
+                for style, text in styled_line:
+                    style_class = self._style_class(style) if style else ""
+                    formatted_parts.append((style_class, text))
+                print_formatted_text(FormattedText(formatted_parts), style=PT_STYLES)
 
         print_formatted_text(FormattedText([("class:dim", f"└{border}")]))
 

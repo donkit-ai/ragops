@@ -15,56 +15,90 @@ from donkit_ragops.ui.styles import StyledText, StyleName, styled_text
 # Help and Commands (plain text + styled versions)
 # ============================================================================
 
-HELP_COMMANDS_PLAIN = [
-    "",
-    "Available commands:",
-    "  :help - Show this help message",
-    "  :q or :quit - Exit the agent",
-    "  :clear - Clear the conversation transcript",
-    "  :provider - Select LLM provider",
-    "  :model - Select LLM model",
-    "",
-    "Quick actions:",
-    "  / - Open command palette (autocomplete commands)",
-    "  @/path - Attach files (enterprise mode only)",
-]
+
+def get_help_commands_plain() -> list[str]:
+    """Return plain text help commands."""
+    from donkit_ragops.config import is_enterprise_mode
+
+    commands = [
+        "",
+        "Available commands:",
+        "  /help - Show this help message",
+        "  /exit - Exit the agent",
+        "  /clear - Clear conversation and screen",
+    ]
+
+    # Add local-only commands
+    if not is_enterprise_mode():
+        commands.extend(
+            [
+                "  /provider - Select LLM provider",
+                "  /model - Select LLM model",
+            ]
+        )
+
+    commands.extend(
+        [
+            "",
+            "Quick actions:",
+            "  / - Open command palette (autocomplete commands)",
+            "  @/path - Attach files (enterprise mode only)",
+        ]
+    )
+
+    return commands
+
+
+# Legacy: Keep for backward compatibility
+HELP_COMMANDS_PLAIN = []  # Deprecated, use get_help_commands_plain() instead
 
 
 def styled_help_commands() -> list[StyledText]:
     """Return styled help commands."""
-    return [
+    from donkit_ragops.config import is_enterprise_mode
+
+    commands = [
         styled_text((None, "")),
         styled_text((StyleName.WARNING, "Available commands:")),
-        styled_text((StyleName.BOLD, "  :help"), (None, " - Show this help message")),
-        styled_text(
-            (StyleName.BOLD, "  :q"),
-            (None, " or "),
-            (StyleName.BOLD, ":quit"),
-            (None, " - Exit the agent"),
-        ),
-        styled_text((StyleName.BOLD, "  :clear"), (None, " - Clear the conversation transcript")),
-        styled_text((StyleName.BOLD, "  :provider"), (None, " - Select LLM provider")),
-        styled_text((StyleName.BOLD, "  :model"), (None, " - Select LLM model")),
-        styled_text((None, "")),
-        styled_text((StyleName.WARNING, "Quick actions:")),
-        styled_text(
-            (StyleName.BOLD, "  /"), (None, " - Open command palette (autocomplete commands)")
-        ),
-        styled_text(
-            (StyleName.BOLD, "  @/path"),
-            (None, " - Attach files "),
-            (StyleName.DIM, "(enterprise mode only)"),
-        ),
+        styled_text((StyleName.BOLD, "  /help"), (None, " - Show this help message")),
+        styled_text((StyleName.BOLD, "  /exit"), (None, " - Exit the agent")),
+        styled_text((StyleName.BOLD, "  /clear"), (None, " - Clear conversation and screen")),
     ]
+
+    # Add local-only commands
+    if not is_enterprise_mode():
+        commands.extend(
+            [
+                styled_text((StyleName.BOLD, "  /provider"), (None, " - Select LLM provider")),
+                styled_text((StyleName.BOLD, "  /model"), (None, " - Select LLM model")),
+            ]
+        )
+
+    commands.extend(
+        [
+            styled_text((None, "")),
+            styled_text((StyleName.WARNING, "Quick actions:")),
+            styled_text(
+                (StyleName.BOLD, "  /"), (None, " - Open command palette (autocomplete commands)")
+            ),
+            styled_text(
+                (StyleName.BOLD, "  @/path"),
+                (None, " - Attach files "),
+                (StyleName.DIM, "(enterprise mode only)"),
+            ),
+        ]
+    )
+
+    return commands
 
 
 # Legacy: Keep for backward compatibility (Rich markup)
 HELP_COMMANDS = [
     "",
     "  [yellow]Available commands:[/yellow]",
-    "  [bold]:help[/bold] - Show this help message",
-    "  [bold]:q[/bold] or [bold]:quit[/bold] - Exit the agent",
-    "  [bold]:clear[/bold] - Clear the conversation transcript",
+    "  [bold]/help[/bold] - Show this help message",
+    "  [bold]/exit[/bold] - Exit the agent",
+    "  [bold]/clear[/bold] - Clear conversation and screen",
     "",
     "  [yellow]Quick actions:[/yellow]",
     "  [bold]/[/bold] - Open command palette (autocomplete commands)",
@@ -260,6 +294,12 @@ MODEL_NO_PREDEFINED = (
     "[bold yellow]No predefined models for this provider.[/bold yellow]\n"
     "Current model: [cyan]{current_model_name}[/cyan]\n"
     "Please specify model name in .env file or use CLI flag."
+)
+MODEL_NOT_AVAILABLE_FOR_DONKIT = (
+    "[bold yellow]Model selection is not available for Donkit Cloud provider.[/bold yellow]\n"
+    "The model is managed by the cloud service.\n"
+    "Use [cyan]/provider[/cyan] to switch to a different provider "
+    "if you need to select a specific model."
 )
 MODEL_NO_AVAILABLE = (
     "[bold yellow]No models available for selection. "
