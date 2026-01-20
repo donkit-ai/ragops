@@ -84,7 +84,7 @@ class UI(ABC):
 
     def print_panel(
         self,
-        content: str,
+        content: str | list[StyledText],
         title: str = "",
         border_style: StyleName | None = None,
     ) -> None:
