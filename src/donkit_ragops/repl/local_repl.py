@@ -430,6 +430,13 @@ class LocalREPL(BaseREPL):
                 self.context.transcript.append(error_msg)
             logger.error(f"Error during streaming: {e}", exc_info=True)
             self.context.ui.print_error(str(e))
+            # Surface traceback in the console to pinpoint the failing line.
+            try:
+                import traceback
+
+                self.context.ui.print_error(traceback.format_exc())
+            except Exception:
+                pass
             if self.context.mcp_handler:
                 self.context.mcp_handler.clear_progress()
 

@@ -24,6 +24,7 @@ import platform
 import re
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 from typing import Literal, Self
 
@@ -70,6 +71,13 @@ AVAILABLE_SERVICES = {
         "profile": "rag-service",
         "ports": ["8000:8000"],
         "url": "http://localhost:8000",
+    },
+    "neo4j": {
+        "name": "neo4j",
+        "description": "Neo4j graph database for graph retrieval",
+        "profile": "neo4j",
+        "ports": ["7474:7474", "7687:7687"],
+        "url": "http://localhost:7474",
     },
 }
 
@@ -200,6 +208,30 @@ def get_compose_command() -> list[str]:
         return ["docker-compose"]
 
 
+def _ensure_neo4j_password(project_path: Path) -> str:
+    env_path = project_path / ".env"
+    if not env_path.exists():
+        raise FileNotFoundError(f"Compose env file not found: {env_path}")
+    lines = env_path.read_text().splitlines()
+    for line in lines:
+        if line.strip().startswith("NEO4J_PASSWORD="):
+            return line.split("=", 1)[1].strip()
+    password = "neo4j123"
+    lines.append(f"NEO4J_PASSWORD={password}")
+    env_path.write_text("\n".join(lines) + "\n")
+    return password
+
+
+def _read_env_value(project_path: Path, key: str) -> str | None:
+    env_path = project_path / ".env"
+    if not env_path.exists():
+        return None
+    for line in env_path.read_text().splitlines():
+        if line.strip().startswith(f"{key}="):
+            return line.split("=", 1)[1].strip() or None
+    return None
+
+
 server = FastMCP(
     "ragops-compose-manager",
 )
@@ -230,6 +262,9 @@ def generate_env_file(
     """Generate .env file content from RagConfig."""
     if not rag_config:
         raise ValueError("Rag_config must be provided to the env generator")
+    # When generating Docker compose env, ensure the vector DB uses container hostname.
+    if rag_config.db_type == "qdrant" and "localhost" in rag_config.database_uri:
+        rag_config = rag_config.model_copy(update={"database_uri": "http://qdrant:6333"})
     lines = [
         "# =============================================================================",
         "# RAGOps Agent CE - Docker Compose Environment Variables",
@@ -247,6 +282,7 @@ def generate_env_file(
         f"MILVUS_MINIO_CONTAINER_NAME={project_id}_milvus_minio",
         f"MILVUS_STANDALONE_CONTAINER_NAME={project_id}_milvus_standalone",
         f"RAG_SERVICE_CONTAINER_NAME={project_id}_rag_service",
+        f"NEO4J_CONTAINER_NAME={project_id}_neo4j",
         "",
         "# -----------------------------------------------------------------------------",
         "# LLM Provider Credentials",
@@ -330,6 +366,14 @@ def generate_env_file(
     lines.append(f"LOG_LEVEL={level}")
     lines.append("")
 
+    lines.append("# -----------------------------------------------------------------------------")
+    lines.append("# Graph DB (Neo4j)")
+    lines.append("# -----------------------------------------------------------------------------")
+    lines.append("")
+    neo4j_password = rag_config.graph_password or os.getenv("NEO4J_PASSWORD") or "neo4j123"
+    lines.append(f"NEO4J_PASSWORD={neo4j_password}")
+    lines.append("")
+
     return "\n".join(lines)
 
 
@@ -361,7 +405,7 @@ class StopContainerArgs(BaseModel):
 class ServicePort(BaseModel):
     """Custom port mapping for a service."""
 
-    service: Literal["qdrant", "chroma", "milvus", "rag-service"] = Field(
+    service: Literal["qdrant", "chroma", "milvus", "rag-service", "neo4j"] = Field(
         description="Service name"
     )
     port: str = Field(
@@ -371,7 +415,7 @@ class ServicePort(BaseModel):
 
 
 class StartServiceArgs(BaseModel):
-    service: Literal["qdrant", "chroma", "milvus", "rag-service"] = Field(
+    service: Literal["qdrant", "chroma", "milvus", "rag-service", "neo4j"] = Field(
         description="Service name (qdrant, chroma, milvus, rag-service)"
     )
     project_id: str = Field(description="Project ID")
@@ -401,6 +445,14 @@ class ServiceStatusArgs(BaseModel):
 class GetLogsArgs(BaseModel):
     service: str = Field(description="Service name")
     tail: int = Field(100, description="Number of lines to show")
+    project_id: str = Field(description="Project ID")
+
+
+class ResetNeo4jArgs(BaseModel):
+    project_id: str = Field(description="Project ID")
+
+
+class ResetNeo4jArgs(BaseModel):
     project_id: str = Field(description="Project ID")
 
 
@@ -532,6 +584,104 @@ async def list_containers() -> str:
 
 
 @server.tool(
+    name="reset_neo4j",
+    description=(
+        "Reset Neo4j for a project by removing its container and volume, "
+        "then starting it again with the project .env configuration."
+    ),
+)
+async def reset_neo4j(args: ResetNeo4jArgs) -> str:
+    project_path = Path(f"projects/{args.project_id}").resolve()
+    compose_file = project_path / COMPOSE_FILE
+    if not compose_file.exists():
+        return json.dumps(
+            {
+                "status": "error",
+                "message": f"Compose file not found: {compose_file}. Run init_project_compose first.",
+            }
+        )
+
+    container_name = _read_env_value(project_path, "NEO4J_CONTAINER_NAME")
+    if not container_name:
+        container_name = f"{args.project_id}_neo4j"
+
+    try:
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Failed to remove container: {e}"})
+
+    try:
+        result = subprocess.run(
+            ["docker", "volume", "ls", "--format", "{{.Name}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            volume_names = [v.strip() for v in result.stdout.splitlines() if v.strip()]
+            candidates = [
+                v
+                for v in volume_names
+                if "neo4j_data" in v and args.project_id in v
+            ]
+            for volume in candidates:
+                subprocess.run(
+                    ["docker", "volume", "rm", volume],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Failed to remove volume: {e}"})
+
+    try:
+        _ensure_neo4j_password(project_path)
+    except FileNotFoundError as e:
+        return json.dumps({"status": "error", "message": str(e)})
+
+    cmd = get_compose_command()
+    cmd.extend(
+        [
+            "-f",
+            convert_path_for_docker(compose_file),
+            "--project-name",
+            f"ragops-{args.project_id}",
+            "--profile",
+            "neo4j",
+            "up",
+            "-d",
+        ]
+    )
+
+    try:
+        run_kwargs = {
+            "capture_output": True,
+            "text": True,
+            "timeout": 120,
+        }
+        if not is_wsl2_docker():
+            run_kwargs["cwd"] = project_path
+        result = subprocess.run(cmd, **run_kwargs)
+        if result.returncode != 0:
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": "Failed to start Neo4j",
+                    "error": result.stderr,
+                }
+            )
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Failed to start Neo4j: {e}"})
+
+    return json.dumps({"status": "success", "message": "Neo4j reset and restarted"})
+
+
+@server.tool(
     name="stop_container",
     description=(
         "Stop Docker container,"
@@ -608,6 +758,12 @@ async def start_service(args: StartServiceArgs) -> str:
                 f"Run init_project_compose first.",
             }
         )
+
+    if service == "neo4j":
+        try:
+            _ensure_neo4j_password(project_path)
+        except FileNotFoundError as e:
+            return json.dumps({"status": "error", "message": str(e)})
 
     # Build command with profile and explicit project name
     cmd = get_compose_command()

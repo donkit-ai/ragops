@@ -98,7 +98,6 @@ async def search_documents(args: SearchQueryArgs) -> str:
             {"error": "Unexpected error", "detail": str(e)}, ensure_ascii=False, indent=2
         )
 
-
 @server.tool(
     name="get_rag_prompt",
     description=(

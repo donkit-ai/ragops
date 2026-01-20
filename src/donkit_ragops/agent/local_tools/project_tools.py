@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 import uuid
 from pathlib import Path
+import os
 from typing import Any, Literal
 
 from donkit_ragops.db import close
@@ -12,12 +14,29 @@ from donkit_ragops.db import kv_delete
 from donkit_ragops.db import kv_get
 from donkit_ragops.db import kv_set
 from donkit_ragops.db import open_db
+from donkit_ragops.checklist_manager import checklist_status_provider
 from donkit_ragops.schemas.config_schemas import RagConfig
 from .tools import AgentTool
 
 
 def _project_key(project_id: str) -> str:
     return f"project_{project_id}"
+
+
+def _default_database_uri() -> str:
+    if os.path.exists("/.dockerenv"):
+        return "http://qdrant:6333"
+    return "http://localhost:6333"
+
+
+def _default_graph_database_uri() -> str:
+    if os.path.exists("/.dockerenv"):
+        return "bolt://neo4j:7687"
+    return "bolt://localhost:7687"
+
+
+def _default_graph_password() -> str:
+    return os.getenv("NEO4J_PASSWORD", "neo4j123")
 
 
 def _deep_update(base: dict[str, Any], update: dict[str, Any]) -> None:
@@ -39,6 +58,82 @@ def _deep_update(base: dict[str, Any], update: dict[str, Any]) -> None:
         else:
             # Replace or add the value
             base[key] = value
+
+
+def _checklist_key(name: str) -> str:
+    return f"checklist_{name}"
+
+
+def _ensure_checklist(db, checklist_name: str, items: list[str]) -> None:
+    key = _checklist_key(checklist_name)
+    if kv_get(db, key) is not None:
+        return
+    checklist_items = [
+        {"id": f"item_{i}", "description": item, "status": "pending"}
+        for i, item in enumerate(items)
+    ]
+    checklist_data = {
+        "name": checklist_name,
+        "items": checklist_items,
+        "created_at": time.time(),
+    }
+    kv_set(db, key, json.dumps(checklist_data))
+    checklist_status_provider.update_from_checklist(checklist_data)
+
+
+def _update_checklist_for_retrieval_mode(
+    db, project_id: str, retrieval_mode: str | None
+) -> None:
+    if not retrieval_mode:
+        return
+    checklist_name = f"checklist_{project_id}"
+    key = _checklist_key(checklist_name)
+    raw = kv_get(db, key)
+    if raw is None:
+        return
+
+    try:
+        checklist_data = json.loads(raw)
+    except json.JSONDecodeError:
+        return
+
+    items = checklist_data.get("items", [])
+    if not isinstance(items, list):
+        return
+
+    mode = retrieval_mode.lower()
+    has_graph_step = False
+
+    for item in items:
+        desc = str(item.get("description", "")).lower()
+        if "graph" in desc or "neo4j" in desc:
+            has_graph_step = True
+        if mode == "graph":
+            if (
+                "vector" in desc
+                or "qdrant" in desc
+                or "load chunks" in desc
+                or "load_chunks" in desc
+                or "add loaded" in desc
+                or "add_loaded" in desc
+            ):
+                item["status"] = "completed"
+        elif mode == "vector":
+            if "graph" in desc or "neo4j" in desc:
+                item["status"] = "completed"
+
+    if mode == "graph" and not has_graph_step:
+        items.append(
+            {
+                "id": f"item_{len(items)}",
+                "description": "Deploy graph database",
+                "status": "pending",
+            }
+        )
+
+    checklist_data["items"] = items
+    kv_set(db, key, json.dumps(checklist_data))
+    checklist_status_provider.update_from_checklist(checklist_data)
 
 
 def tool_create_project() -> AgentTool:
@@ -65,6 +160,8 @@ def tool_create_project() -> AgentTool:
                 "loaded_files": [],  # List of files loaded into vectorstore with metadata
             }
             kv_set(db, key, json.dumps(project_state))
+            kv_set(db, "current_project_id", project_id)
+            _ensure_checklist(db, f"checklist_{project_id}", checklist)
             return f"Successfully created project '{project_id}'."
         finally:
             close(db)
@@ -108,6 +205,7 @@ def tool_get_project() -> AgentTool:
             if state_raw is None:
                 return f"Error: Project '{project_id}' not found."
 
+            kv_set(db, "current_project_id", project_id)
             return state_raw  # Return the raw JSON string
         finally:
             close(db)
@@ -173,6 +271,24 @@ def tool_save_rag_config() -> AgentTool:
                 "Pass either full config or partial updates."
             )
 
+        # If graph-only config is missing database_uri, inject a safe default.
+        if "database_uri" not in rag_config_update:
+            retrieval_mode = str(rag_config_update.get("retrieval_mode", "")).lower()
+            if retrieval_mode in {"graph", "hybrid"}:
+                rag_config_update["database_uri"] = _default_database_uri()
+                rag_config_update.setdefault("db_type", "qdrant")
+        if "graph_database_uri" not in rag_config_update:
+            retrieval_mode = str(rag_config_update.get("retrieval_mode", "")).lower()
+            if retrieval_mode in {"graph", "hybrid"}:
+                rag_config_update["graph_database_uri"] = _default_graph_database_uri()
+                rag_config_update.setdefault("graph_user", "neo4j")
+        if "graph_password" not in rag_config_update:
+            retrieval_mode = str(rag_config_update.get("retrieval_mode", "")).lower()
+            if retrieval_mode in {"graph", "hybrid"}:
+                rag_config_update["graph_password"] = _default_graph_password()
+        if rag_config_update.get("graph_password") == "neo4j":
+            rag_config_update["graph_password"] = _default_graph_password()
+
         db = open_db()
         try:
             key = _project_key(project_id)
@@ -230,6 +346,10 @@ def tool_save_rag_config() -> AgentTool:
                     )
 
             kv_set(db, key, json.dumps(current_state))
+            retrieval_mode = None
+            if isinstance(current_state.get("configuration"), dict):
+                retrieval_mode = current_state["configuration"].get("retrieval_mode")
+            _update_checklist_for_retrieval_mode(db, project_id, retrieval_mode)
             return f"Successfully saved RAG configuration for project '{project_id}'."
         finally:
             close(db)

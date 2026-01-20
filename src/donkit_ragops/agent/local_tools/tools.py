@@ -556,7 +556,9 @@ def tool_update_rag_config_field() -> AgentTool:
                     "chunk_size", "chunk_overlap", "split_type",
                     "vector_db (db_type)", "embedder_provider (embedder.embedder_type)",
                     "embedder_model (embedder.model_name)", "generation_model",
-                    "ranker", "partial_search", "query_rewrite", "composite_query_detection"
+                    "ranker", "partial_search", "query_rewrite", "composite_query_detection",
+                    "retrieval_mode", "graph_db_type", "graph_database_uri",
+                    "graph_user", "graph_password"
                 ]
             })
 
@@ -574,6 +576,11 @@ def tool_update_rag_config_field() -> AgentTool:
             "partial_search": ("retriever_options.partial_search", None),  # Boolean
             "query_rewrite": ("retriever_options.query_rewrite", None),  # Boolean
             "composite_query_detection": ("retriever_options.composite_query_detection", None),  # Boolean
+            "retrieval_mode": ("retrieval_mode", ["vector", "graph", "hybrid"]),
+            "graph_db_type": ("graph_db_type", ["neo4j"]),
+            "graph_database_uri": ("graph_database_uri", None),  # Free text
+            "graph_user": ("graph_user", None),  # Free text
+            "graph_password": ("graph_password", None),  # Free text
         }
 
         if field_name not in field_mappings:
@@ -622,13 +629,52 @@ def tool_update_rag_config_field() -> AgentTool:
                     "message": f"Ask user to provide new value for {field_name} in their next message."
                 })
 
-        return json.dumps({
+        additional_updates: list[dict[str, str]] = []
+        if field_name == "retrieval_mode":
+            if new_value in ["graph", "hybrid"]:
+                graph_choice = interactive_select(
+                    choices=["neo4j"],
+                    title="Select graph DB for retrieval"
+                )
+                if graph_choice is None:
+                    return json.dumps({"cancelled": True, "field_name": field_name})
+                additional_updates.append(
+                    {
+                        "field_name": "graph_db_type",
+                        "config_path": "graph_db_type",
+                        "new_value": graph_choice,
+                    }
+                )
+            if new_value in ["vector", "hybrid"]:
+                vector_choice = interactive_select(
+                    choices=["qdrant", "chroma", "milvus"],
+                    title="Select vector DB for retrieval"
+                )
+                if vector_choice is None:
+                    return json.dumps({"cancelled": True, "field_name": field_name})
+                additional_updates.append(
+                    {
+                        "field_name": "vector_db",
+                        "config_path": "db_type",
+                        "new_value": vector_choice,
+                    }
+                )
+
+        result = {
             "cancelled": False,
             "field_name": field_name,
             "config_path": config_path,
             "new_value": new_value,
             "message": f"User selected '{new_value}' for {field_name}. Use save_rag_config with partial update."
-        }, ensure_ascii=False)
+        }
+        if additional_updates:
+            result["additional_updates"] = additional_updates
+            result["message"] = (
+                "User selected retrieval mode and related DBs. "
+                "Use save_rag_config with partial updates for retrieval_mode and the DB fields."
+            )
+
+        return json.dumps(result, ensure_ascii=False)
 
     return AgentTool(
         name="update_rag_config_field",

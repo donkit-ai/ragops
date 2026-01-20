@@ -41,6 +41,8 @@ from fastmcp import FastMCP
 # Import all subservers (checklist removed - now handled by built-in agent tools)
 from .chunker_server import server as chunker_server
 from .compose_manager_server import server as compose_server
+from .graph_builder_server import server as graph_builder_server
+from .graph_query_server import server as graph_query_server
 from .planner_server import server as planner_server
 from .rag_evaluation_server import server as evaluation_server
 from .rag_query_server import server as query_server
@@ -59,6 +61,8 @@ unified_server.mount(query_server, prefix="query")
 unified_server.mount(evaluation_server, prefix="evaluation")
 unified_server.mount(reader_server, prefix="reader")
 unified_server.mount(vectorstore_server, prefix="vectorstore")
+unified_server.mount(graph_builder_server, prefix="graph-builder")
+unified_server.mount(graph_query_server, prefix="graph-query")
 
 
 def main() -> None:

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import time
+from pathlib import Path
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
@@ -15,6 +18,8 @@ from donkit.llm import (
 )
 from loguru import logger
 
+from donkit_ragops.db import close, kv_get, kv_set, open_db
+from donkit_ragops.config import load_settings
 from donkit_ragops.agent.local_tools.checklist_tools import (
     tool_create_checklist,
     tool_get_checklist,
@@ -105,6 +110,7 @@ class LLMAgent:
         self.max_iterations = max_iterations
         self._project_id_provider = project_id_provider
         self._logged_tool_specs = False
+        self.settings = load_settings()
 
     async def ainit_mcp_tools(self, register_tools: bool = True, max_tools: int = 0) -> None:
         """Initialize MCP tools asynchronously. Call this after creating the agent.
@@ -210,6 +216,220 @@ class LLMAgent:
             return None, self.mcp_tools[name]
         return None, None
 
+    def _get_current_project_id(self) -> str | None:
+        if self._project_id_provider:
+            try:
+                project_id = self._project_id_provider()
+                if project_id:
+                    return project_id
+            except Exception:
+                pass
+        db = open_db()
+        try:
+            return kv_get(db, "current_project_id")
+        finally:
+            close(db)
+
+    def _get_current_rag_config(self) -> dict | None:
+        project_id = self._get_current_project_id()
+        if not project_id:
+            return None
+        db = open_db()
+        try:
+            raw = kv_get(db, f"project_{project_id}")
+            if not raw:
+                return None
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                return None
+            config = data.get("configuration")
+            if isinstance(config, dict):
+                env_password = self._get_project_env_password()
+                if env_password and config.get("graph_password") != env_password:
+                    config["graph_password"] = env_password
+                    data["configuration"] = config
+                    kv_set(db, f"project_{project_id}", json.dumps(data))
+                return config
+            return None
+        finally:
+            close(db)
+
+    def _get_project_state(self, project_id: str) -> dict | None:
+        db = open_db()
+        try:
+            raw = kv_get(db, f"project_{project_id}")
+            if not raw:
+                return None
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                return None
+        finally:
+            close(db)
+
+    def _save_project_state(self, project_id: str, state: dict) -> None:
+        db = open_db()
+        try:
+            kv_set(db, f"project_{project_id}", json.dumps(state))
+        finally:
+            close(db)
+
+    def _running_in_docker(self) -> bool:
+        if os.path.exists("/.dockerenv"):
+            return True
+        try:
+            with open("/proc/1/cgroup", "r", encoding="utf-8") as f:
+                data = f.read()
+            return "docker" in data or "containerd" in data
+        except OSError:
+            return False
+
+    async def _ensure_compose_service_running(self, service: str) -> None:
+        if not self.settings.auto_start_services:
+            return
+        if self._running_in_docker():
+            return
+        project_id = self._get_current_project_id()
+        if not project_id:
+            return
+
+        status_tool = self.mcp_tools.get("compose_service_status")
+        start_tool = self.mcp_tools.get("compose_start_service")
+        init_tool = self.mcp_tools.get("compose_init_project_compose")
+        if not status_tool or not start_tool:
+            return
+
+        compose_file = Path(f"projects/{project_id}/docker-compose.yml")
+        if not compose_file.exists() and init_tool:
+            config = self._get_current_rag_config()
+            if isinstance(config, dict):
+                init_meta, init_client = init_tool
+                await init_client.acall_tool(
+                    init_meta["name"],
+                    {"project_id": project_id, "rag_config": config},
+                )
+
+        status_meta, status_client = status_tool
+        status_result = await status_client.acall_tool(
+            status_meta["name"],
+            {"project_id": project_id, "service": service},
+        )
+
+        is_running = False
+        try:
+            payload = json.loads(status_result) if isinstance(status_result, str) else status_result
+            services = payload.get("services", []) if isinstance(payload, dict) else []
+            for entry in services:
+                if entry.get("service") == service and entry.get("status") == "running":
+                    is_running = True
+                    break
+        except Exception:
+            is_running = False
+
+        if not is_running:
+            start_meta, start_client = start_tool
+            await start_client.acall_tool(
+                start_meta["name"],
+                {"project_id": project_id, "service": service, "detach": True},
+            )
+
+    async def _ensure_required_services(self, retrieval_mode: str, db_type: str | None) -> None:
+        if retrieval_mode in {"graph", "hybrid"}:
+            await self._ensure_compose_service_running("neo4j")
+        if retrieval_mode in {"vector", "hybrid"}:
+            service = db_type or "qdrant"
+            await self._ensure_compose_service_running(service)
+
+    def _normalize_graph_uri(self, graph_uri: str) -> str:
+        if self._running_in_docker():
+            return graph_uri
+        if "neo4j" in graph_uri and "localhost" not in graph_uri:
+            return "bolt://localhost:7687"
+        return graph_uri
+
+    def _chunks_path(self, project_id: str) -> Path:
+        return Path(f"projects/{project_id}/processed/chunked")
+
+    def _latest_chunks_mtime(self, chunks_path: Path) -> float:
+        if not chunks_path.exists():
+            return 0.0
+        latest = 0.0
+        for file_path in chunks_path.glob("*.json"):
+            try:
+                latest = max(latest, file_path.stat().st_mtime)
+            except OSError:
+                continue
+        return latest
+
+    async def _ensure_graph_built(self, config: dict) -> None:
+        await self._ensure_compose_service_running("neo4j")
+        project_id = self._get_current_project_id()
+        if not project_id:
+            return
+        graph_tool_name = "graph-builder_graph_build"
+        if graph_tool_name not in self.mcp_tools:
+            return
+        chunks_path = self._chunks_path(project_id)
+        latest_mtime = self._latest_chunks_mtime(chunks_path)
+        if latest_mtime == 0.0:
+            return
+        state = self._get_project_state(project_id) or {}
+        graph_built_at = float(state.get("graph_built_at", 0.0))
+        graph_built_mtime = float(state.get("graph_built_mtime", 0.0))
+        if graph_built_at >= latest_mtime and graph_built_mtime >= latest_mtime:
+            return
+
+        graph_args: dict = {
+            "chunks_path": str(chunks_path),
+            "project_id": project_id,
+        }
+        for key in ("graph_database_uri", "graph_user", "graph_password"):
+            value = config.get(key) if isinstance(config, dict) else None
+            if value:
+                if key == "graph_database_uri":
+                    graph_args[key] = self._normalize_graph_uri(str(value))
+                else:
+                    graph_args[key] = value
+        if "graph_password" not in graph_args:
+            env_password = self._get_project_env_password()
+            if env_password:
+                graph_args["graph_password"] = env_password
+        graph_options = config.get("graph_options") if isinstance(config, dict) else None
+        if isinstance(graph_options, dict):
+            graph_args["graph_options"] = graph_options
+
+        tool_meta, client = self.mcp_tools[graph_tool_name]
+        try:
+            await client.acall_tool(tool_meta["name"], graph_args)
+        except Exception as e:
+            error_text = str(e).lower()
+            if "unauthorized" in error_text or "authentication failure" in error_text:
+                reset_tool = "compose_reset_neo4j"
+                if reset_tool in self.mcp_tools:
+                    reset_meta, reset_client = self.mcp_tools[reset_tool]
+                    await reset_client.acall_tool(reset_meta["name"], {"project_id": project_id})
+                    await client.acall_tool(tool_meta["name"], graph_args)
+                else:
+                    raise
+            else:
+                raise
+        state["graph_built_at"] = time.time()
+        state["graph_built_mtime"] = latest_mtime
+        self._save_project_state(project_id, state)
+
+    def _get_project_env_password(self) -> str | None:
+        project_id = self._get_current_project_id()
+        if not project_id:
+            return None
+        env_path = Path(f"projects/{project_id}/.env")
+        if not env_path.exists():
+            return None
+        for line in env_path.read_text().splitlines():
+            if line.strip().startswith("NEO4J_PASSWORD="):
+                return line.split("=", 1)[1].strip() or None
+        return None
+
     # --- Internal helpers to keep respond() small and readable ---
     def _should_execute_tools(self, resp) -> bool:
         """Whether the provider response requires tool execution."""
@@ -222,7 +442,7 @@ class LLMAgent:
         messages.append(
             Message(
                 role="assistant",
-                content=None,  # No text content when calling tools
+                content="",  # OpenAI converter expects a string or iterable; keep empty text.
                 tool_calls=tool_calls,
             )
         )
@@ -244,6 +464,123 @@ class LLMAgent:
         Raises on execution error, matching previous behavior.
         """
         try:
+            if tc.function.name == "vectorstore_vectorstore_load":
+                backend = None
+                if isinstance(args, dict):
+                    params = args.get("params")
+                    if isinstance(params, dict):
+                        backend = params.get("backend")
+                config = self._get_current_rag_config()
+                retrieval_mode = "vector"
+                if isinstance(config, dict):
+                    retrieval_mode = str(config.get("retrieval_mode", "vector")).lower()
+                    if not backend:
+                        backend = str(config.get("db_type", "qdrant")).lower()
+                await self._ensure_required_services(retrieval_mode, backend)
+
+            if tc.function.name == "query_search_documents":
+                config = self._get_current_rag_config()
+                retrieval_mode = ""
+                if isinstance(config, dict):
+                    retrieval_mode = str(config.get("retrieval_mode", "")).lower()
+                    await self._ensure_required_services(
+                        retrieval_mode, str(config.get("db_type", "")).lower()
+                    )
+                if retrieval_mode in {"graph", "hybrid"}:
+                    await self._ensure_graph_built(config)
+                    graph_tool_name = "graph-query_graph_search"
+                    if graph_tool_name in self.mcp_tools:
+                        tool_meta, client = self.mcp_tools[graph_tool_name]
+                        graph_args: dict = {
+                            "query": args.get("query", ""),
+                            "k": args.get("k", 5),
+                        }
+                        for key in ("graph_database_uri", "graph_user", "graph_password"):
+                            value = config.get(key) if isinstance(config, dict) else None
+                            if value:
+                                if key == "graph_database_uri":
+                                    graph_args[key] = self._normalize_graph_uri(str(value))
+                                else:
+                                    graph_args[key] = value
+                        if "graph_password" not in graph_args:
+                            env_password = self._get_project_env_password()
+                            if env_password:
+                                graph_args["graph_password"] = env_password
+                        if isinstance(config, dict):
+                            graph_options = config.get("graph_options")
+                            if isinstance(graph_options, dict):
+                                graph_args["graph_options"] = graph_options
+                        logger.debug(
+                            f"Routing query_search_documents to {graph_tool_name} with args: {graph_args}"
+                        )
+                        result = await client.acall_tool(tool_meta["name"], graph_args)
+                        return self._serialize_tool_result(result)
+            if tc.function.name == "query_get_rag_prompt":
+                config = self._get_current_rag_config()
+                retrieval_mode = ""
+                if isinstance(config, dict):
+                    retrieval_mode = str(config.get("retrieval_mode", "")).lower()
+                    await self._ensure_required_services(
+                        retrieval_mode, str(config.get("db_type", "")).lower()
+                    )
+                if retrieval_mode in {"graph", "hybrid"}:
+                    await self._ensure_graph_built(config)
+                    graph_tool_name = "graph-query_graph_search"
+                    if graph_tool_name in self.mcp_tools:
+                        tool_meta, client = self.mcp_tools[graph_tool_name]
+                        graph_args: dict = {
+                            "query": args.get("query", ""),
+                            "k": args.get("k", 5),
+                        }
+                        for key in ("graph_database_uri", "graph_user", "graph_password"):
+                            value = config.get(key) if isinstance(config, dict) else None
+                            if value:
+                                if key == "graph_database_uri":
+                                    graph_args[key] = self._normalize_graph_uri(str(value))
+                                else:
+                                    graph_args[key] = value
+                        if "graph_password" not in graph_args:
+                            env_password = self._get_project_env_password()
+                            if env_password:
+                                graph_args["graph_password"] = env_password
+                        if isinstance(config, dict):
+                            graph_options = config.get("graph_options")
+                            if isinstance(graph_options, dict):
+                                graph_args["graph_options"] = graph_options
+                        logger.debug(
+                            f"Routing query_get_rag_prompt to {graph_tool_name} with args: {graph_args}"
+                        )
+                        search_result = await client.acall_tool(tool_meta["name"], graph_args)
+                        context_text = ""
+                        try:
+                            parsed = json.loads(search_result) if isinstance(search_result, str) else {}
+                            documents = parsed.get("documents", []) if isinstance(parsed, dict) else []
+                            context_text = "\n\n".join(
+                                str(doc.get("content", "")).strip()
+                                for doc in documents
+                                if isinstance(doc, dict)
+                            ).strip()
+                        except Exception:
+                            context_text = ""
+                        generation_prompt = ""
+                        if isinstance(config, dict):
+                            generation_prompt = str(config.get("generation_prompt", "")).strip()
+                        if generation_prompt:
+                            try:
+                                prompt = generation_prompt.format(
+                                    context=context_text, question=str(args.get("query", ""))
+                                )
+                            except Exception:
+                                prompt = (
+                                    f"{generation_prompt}\n\nContext:\n{context_text}\n\nQuestion: "
+                                    f"{args.get('query', '')}"
+                                )
+                        else:
+                            prompt = (
+                                f"Context:\n{context_text}\n\nQuestion: {args.get('query', '')}"
+                            )
+                        return self._serialize_tool_result(prompt)
+
             local_tool, mcp_tool_info = self._find_tool(tc.function.name)
             if not local_tool and not mcp_tool_info:
                 logger.warning(f"Tool not found: {tc.function.name}")
@@ -365,6 +702,7 @@ class LLMAgent:
         Returns:
             AsyncIterator that yields StreamEvent objects.
         """
+
         tools = (
             self._tool_specs()
             if self.provider.supports_capability(ModelCapability.TOOL_CALLING)
@@ -378,7 +716,17 @@ class LLMAgent:
             saw_tool_calls = False
             chunk_count = 0
             try:
-                async for chunk in self.provider.generate_stream(request):  # noqa
+                stream = self.provider.generate_stream(request)
+                # Fallback for providers that claim streaming but return None or a bad stream.
+                if stream is None:
+                    resp = await self.provider.generate(request)
+                    if self._should_execute_tools(resp):
+                        await self._ahandle_tool_calls(messages, resp.tool_calls)
+                        continue
+                    if resp.content:
+                        yield StreamEvent(type=EventType.CONTENT, content=resp.content)
+                    return
+                async for chunk in stream:  # noqa
                     chunk_count += 1
                     if chunk.finish_reason is not None:
                         saw_finish_reason = True
@@ -440,6 +788,17 @@ class LLMAgent:
                                     tool_name=tc.function.name,
                                     error=error_msg,
                                 )
+            except TypeError as e:
+                # Some providers return a non-async-iterable (or None) from generate_stream.
+                if "NoneType" in str(e) or "async iterable" in str(e) or "iterable" in str(e):
+                    resp = await self.provider.generate(request)
+                    if self._should_execute_tools(resp):
+                        await self._ahandle_tool_calls(messages, resp.tool_calls)
+                        continue
+                    if resp.content:
+                        yield StreamEvent(type=EventType.CONTENT, content=resp.content)
+                    return
+                raise
             except StopAsyncIteration:
                 logger.debug(
                     "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",

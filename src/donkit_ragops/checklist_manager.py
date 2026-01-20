@@ -236,6 +236,10 @@ def format_checklist_compact(checklist_data: dict[str, Any] | None) -> str:
     if not checklist_data or "items" not in checklist_data:
         return "[dim]No checklist available[/dim]"
 
+    items = checklist_data.get("items")
+    if not isinstance(items, list) or not items:
+        return "[dim]No checklist available[/dim]"
+
     lines = []
 
     # Header with bright styling
@@ -243,7 +247,7 @@ def format_checklist_compact(checklist_data: dict[str, Any] | None) -> str:
     lines.append("")
 
     # Items with status indicators
-    for item in checklist_data["items"]:
+    for item in items:
         status = item.get("status", "pending")
         content = item.get("description", "")  # Use "description" field from JSON
         priority = item.get("priority", "medium")
@@ -357,6 +361,8 @@ def get_active_checklist_text(since_ts: float | None = None) -> str | None:
         if not data or "items" not in data:
             return False
         items = data.get("items", [])
+        if not isinstance(items, list):
+            return False
         return any(item.get("status", "pending") != "completed" for item in items)
 
     checklists = _list_checklists()
