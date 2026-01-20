@@ -84,14 +84,14 @@ class UI(ABC):
 
     def print_panel(
         self,
-        content: str,
+        content: str | list[StyledText],
         title: str = "",
         border_style: StyleName | None = None,
     ) -> None:
         """Print content in a bordered panel.
 
         Args:
-            content: Panel content
+            content: Panel content (string or list of styled text lines)
             title: Optional panel title
             border_style: Optional border style
         """
@@ -180,4 +180,8 @@ class UI(ABC):
         Returns:
             LiveContext instance (context manager)
         """
+        ...
+
+    def clear(self) -> None:
+        """Clear the terminal screen."""
         ...

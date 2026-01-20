@@ -174,14 +174,23 @@ class PlainUI(UI):
 
     def print_panel(
         self,
-        content: str,
+        content: str | list[StyledText],
         title: str = "",
         border_style: StyleName | None = None,
     ) -> None:
         """Print content in a simple text 'panel'."""
         if title:
             print(f"=== {title} ===")
-        print(content)
+
+        # Convert content to plain text
+        if isinstance(content, str):
+            print(content)
+        else:
+            # List of StyledText lines - ignore styles
+            for styled_line in content:
+                line_text = "".join(text for _, text in styled_line)
+                print(line_text)
+
         if title:
             print("=" * (len(title) + 8))
 

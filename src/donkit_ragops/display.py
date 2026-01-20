@@ -122,7 +122,7 @@ class ScreenRenderer:
             ui.newline()
 
         ui.print("Type your message and press Enter to start...", StyleName.DIM)
-        ui.print("Commands: :help, :q, :clear, :provider, :model", StyleName.DIM)
+        ui.print("Commands: /help, /clear, /provider, /model, /exit", StyleName.DIM)
         ui.newline()
 
     @staticmethod

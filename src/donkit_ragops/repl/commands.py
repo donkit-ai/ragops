@@ -55,8 +55,9 @@ class ReplCommand(ABC):
     def matches(self, input_str: str) -> bool:
         """Check if input matches this command."""
         normalized = input_str.strip().lower()
-        all_names = [f":{self.name}"] + [f":{a}" for a in self.aliases]
-        # Also match without colon for some commands
+        # Match with slash prefix (primary)
+        all_names = [f"/{self.name}"] + [f"/{a}" for a in self.aliases]
+        # Also match without prefix for some commands
         all_names.extend([self.name] + self.aliases)
         return normalized in all_names
 
@@ -113,6 +114,8 @@ class ClearCommand(ReplCommand):
         context.history.clear()
         context.history.extend(system_msgs)
         context.transcript.clear()
+        # Clear the terminal screen
+        context.ui.clear()
         return CommandResult(styled_messages=[styled_text((StyleName.DIM, "History cleared"))])
 
 
@@ -132,9 +135,18 @@ class QuitCommand(ReplCommand):
         return "Exit the application"
 
     def matches(self, input_str: str) -> bool:
-        """Override to also match bare 'exit' and 'quit' without colon."""
+        """Override to match various exit patterns."""
         normalized = input_str.strip().lower()
-        return normalized in {":quit", ":q", ":exit", "quit", "exit"}
+        return normalized in {
+            "/exit",
+            "/quit",
+            "/q",  # Slash commands
+            ":exit",
+            ":quit",
+            ":q",  # Colon commands (legacy)
+            "exit",
+            "quit",  # Bare words
+        }
 
     async def execute(self, context: ReplContext) -> CommandResult:
         context.transcript.append("[Bye]")
@@ -142,6 +154,48 @@ class QuitCommand(ReplCommand):
             should_exit=True,
             styled_messages=[styled_text((StyleName.DIM, "Goodbye!"))],
         )
+
+
+class ProviderCommand(ReplCommand):
+    """Select LLM provider."""
+
+    @property
+    def name(self) -> str:
+        return "provider"
+
+    @property
+    def aliases(self) -> list[str]:
+        return []
+
+    @property
+    def description(self) -> str:
+        return "Select LLM provider"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that provider selection should be handled by REPL
+        # This is just a marker command - actual logic is in LocalREPL
+        return CommandResult(should_continue=True)
+
+
+class ModelCommand(ReplCommand):
+    """Select LLM model."""
+
+    @property
+    def name(self) -> str:
+        return "model"
+
+    @property
+    def aliases(self) -> list[str]:
+        return []
+
+    @property
+    def description(self) -> str:
+        return "Select LLM model"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that model selection should be handled by REPL
+        # This is just a marker command - actual logic is in LocalREPL
+        return CommandResult(should_continue=True)
 
 
 class CommandRegistry:
@@ -184,7 +238,9 @@ class CommandRegistry:
 
     def is_command(self, input_str: str) -> bool:
         """Check if input is a command."""
-        return input_str.strip().startswith(":")
+        normalized = input_str.strip()
+        # Check for slash commands or legacy colon exit commands
+        return normalized.startswith("/") or normalized in {":exit", ":quit", ":q"}
 
     def get_all_commands(self) -> list[ReplCommand]:
         """Get all registered commands."""

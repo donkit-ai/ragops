@@ -115,7 +115,7 @@ def format_model_choices(models: Iterable[str], current_model: str | None) -> li
     return choices
 
 
-def validate_model_choice(
+async def validate_model_choice(
     prov: LLMModelAbstract,
     provider_key: str,
     model_name: str,
@@ -132,7 +132,7 @@ def validate_model_choice(
         test_messages = [Message(role="user", content="test")]
         try:
             request = GenerateRequest(messages=test_messages, max_tokens=1)
-            prov.generate(request)
+            await prov.generate(request)
             agent_settings.model = model_name
             save_model_selection(provider_key, model_name)
             messages.append(texts.MODEL_SELECTED.format(model=model_name))
