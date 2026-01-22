@@ -23,12 +23,12 @@ The fastest way to install Donkit RAGOps. The installer automatically handles Py
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/donkit-ai/ragops-agent-cli/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/donkit-ai/ragops/main/ragops-agent-cli/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/donkit-ai/ragops-agent-cli/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/donkit-ai/ragops/main/ragops-agent-cli/scripts/install.ps1 | iex
 ```
 
 After installation:

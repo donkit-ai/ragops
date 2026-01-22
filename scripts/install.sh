@@ -4,6 +4,7 @@ set -e
 PYTHON_MIN_VERSION="3.12"
 PYTHON_VERSION="3.12.8"
 PACKAGE_NAME="donkit-ragops"
+REPO_BASE_URL="https://raw.githubusercontent.com/donkit-ai/ragops/main"
 
 echo ""
 echo "===================================="
@@ -18,7 +19,7 @@ detect_os() {
         Linux*)  OS="linux" ;;
         MINGW*|MSYS*|CYGWIN*)
             echo "Error: Please use install.ps1 for Windows"
-            echo "Run: irm https://raw.githubusercontent.com/donkit-ai/ragops-agent-cli/main/scripts/install.ps1 | iex"
+            echo "Run: irm ${REPO_BASE_URL}/scripts/install.ps1 | iex"
             exit 1
             ;;
         *)
