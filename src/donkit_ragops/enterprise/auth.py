@@ -33,9 +33,13 @@ class TokenService:
         """Get token from keyring.
 
         Returns:
-            The stored token, or None if not found
+            The stored token, or None if not found/access denied
         """
-        return keyring.get_password(self.service_name, TOKEN_KEY)
+        try:
+            return keyring.get_password(self.service_name, TOKEN_KEY)
+        except (keyring.errors.KeyringError, Exception):
+            # Access denied or keyring unavailable
+            return None
 
     def delete_token(self) -> None:
         """Delete token from keyring."""

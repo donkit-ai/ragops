@@ -69,6 +69,13 @@ install_python_macos() {
     sudo installer -pkg "$PKG_FILE" -target /
     rm "$PKG_FILE"
 
+    # Install SSL certificates (required for HTTPS on macOS)
+    CERT_SCRIPT="/Applications/Python 3.12/Install Certificates.command"
+    if [ -f "$CERT_SCRIPT" ]; then
+        echo "    Installing SSL certificates..."
+        "$CERT_SCRIPT" > /dev/null 2>&1 || true
+    fi
+
     # Update PATH for this session
     export PATH="/Library/Frameworks/Python.framework/Versions/3.12/bin:$PATH"
     PYTHON_CMD="python3.12"
@@ -191,6 +198,28 @@ install_ragops() {
     echo "[+] $PACKAGE_NAME installed"
 }
 
+# Fix SSL certificates on macOS
+fix_ssl_certs_macos() {
+    if [ "$OS" != "macos" ]; then
+        return 0
+    fi
+
+    # Try running Install Certificates.command if it exists
+    CERT_SCRIPT="/Applications/Python 3.12/Install Certificates.command"
+    if [ -f "$CERT_SCRIPT" ]; then
+        echo "[*] Configuring SSL certificates..."
+        "$CERT_SCRIPT" > /dev/null 2>&1 || true
+        echo "[+] SSL certificates configured"
+        return 0
+    fi
+
+    # Fallback: ensure certifi is up to date in pipx venv
+    PIPX_VENV="$HOME/.local/pipx/venvs/$PACKAGE_NAME"
+    if [ -d "$PIPX_VENV" ]; then
+        "$PIPX_VENV/bin/python" -m pip install --upgrade certifi --quiet 2>/dev/null || true
+    fi
+}
+
 # Check if Docker is available (optional)
 check_docker() {
     if command -v docker &> /dev/null; then
@@ -254,6 +283,7 @@ main() {
 
     install_pipx
     install_ragops
+    fix_ssl_certs_macos
     check_docker
     finish
 }
