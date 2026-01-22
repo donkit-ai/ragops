@@ -261,7 +261,7 @@ def _run_enterprise_mode() -> None:
     context.agent = agent
 
     # Create message persister (project_id will be set during REPL init)
-    # Can be disabled via DONKIT_ENTERPRISE_PERSIST_MESSAGES=false
+    # Can be disabled via RAGOPS_DONKIT_PERSIST_MESSAGES=false
     message_persister = None
     if enterprise_settings.persist_messages:
         message_persister = MessagePersister(api_client=api_client, project_id="")

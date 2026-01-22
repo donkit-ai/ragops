@@ -307,9 +307,9 @@ Open http://localhost:8067 in your browser. The Web UI provides:
 - Checklist visualization
 - Settings configuration
 
-## Enterprise Mode
+## Enterprise Mode (SaaS)
 
-Enterprise mode connects to Donkit cloud for team collaboration and advanced features.
+Enterprise mode is a fully managed SaaS platform. All backend infrastructure — databases, vector stores, RAG services, and experiment runners — is hosted by Donkit. You get the same CLI interface, but with powerful cloud features.
 
 ### Setup
 
@@ -327,17 +327,25 @@ donkit-ragops status
 donkit-ragops logout
 ```
 
-### Features
+### What's Included
 
-- **Cloud sync** — Projects and checklists synced to Donkit cloud
-- **Team collaboration** — Share projects with team members
+- **Managed infrastructure** — No Docker, no local setup. Everything runs in Donkit cloud
+- **Automated experiments** — Run 100+ RAG architecture iterations to find optimal configuration
+- **Experiment tracking** — Compare chunking strategies, embeddings, retrievers side-by-side
+- **Evaluation pipelines** — Batch evaluation with precision/recall/accuracy metrics
 - **File attachments** — Attach files using `@/path/to/file` syntax in chat
-- **Persistent history** — Conversation history preserved across sessions
+- **Persistent history** — Conversation and project history preserved across sessions
+- **MCP over HTTP** — All MCP tools executed server-side
 
-### Environment Variables (Enterprise)
+### Local vs Enterprise
 
-- `DONKIT_API_URL` — API gateway URL (default: https://api.donkit.ai)
-- `DONKIT_ENTERPRISE_PERSIST_MESSAGES` — Enable/disable message persistence (default: true)
+| Feature | Local Mode | Enterprise Mode |
+|---------|------------|-----------------|
+| Infrastructure | Self-hosted (Docker) | Managed by Donkit |
+| Vector stores | Local Qdrant/Milvus/Chroma | Cloud-hosted |
+| Experiments | Manual | Automated iterations |
+| Evaluation | Basic | Full pipeline with metrics |
+| Data persistence | Local files | Cloud database |
 
 ## MCP Servers
 

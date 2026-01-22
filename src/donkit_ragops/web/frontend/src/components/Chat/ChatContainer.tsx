@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChatMessage, ToolCall, WebSocketMessage } from '../../types/protocol';
+import { ChatMessage, ContentPart, ToolCall, WebSocketMessage } from '../../types/protocol';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useChecklist } from '../../hooks/useChecklist';
 import MessageList from './MessageList';
@@ -96,6 +96,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
             timestamp: message.timestamp,
             isStreaming: true,
             toolCalls: [],
+            parts: [],
           },
         ]);
         break;
@@ -105,9 +106,24 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant' && last.isStreaming) {
+              // Update parts array for chronological display
+              const parts = [...(last.parts || [])];
+              const lastPart = parts[parts.length - 1];
+
+              if (lastPart && lastPart.type === 'text') {
+                // Append to existing text part
+                parts[parts.length - 1] = {
+                  ...lastPart,
+                  content: (lastPart.content || '') + message.content,
+                };
+              } else {
+                // Create new text part
+                parts.push({ type: 'text', content: message.content });
+              }
+
               return [
                 ...prev.slice(0, -1),
-                { ...last, content: last.content + message.content },
+                { ...last, content: last.content + message.content, parts },
               ];
             }
             return prev;
@@ -124,16 +140,26 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
               // Find the last running tool call and update its progress
               const updatedToolCalls = [...last.toolCalls];
               const runningIndex = updatedToolCalls.findIndex(tc => tc.status === 'running');
+              const progressPreview = message.message ||
+                `${message.progress}${message.total ? `/${message.total}` : ''}`;
+
               if (runningIndex !== -1) {
                 updatedToolCalls[runningIndex] = {
                   ...updatedToolCalls[runningIndex],
-                  resultPreview: message.message ||
-                    `${message.progress}${message.total ? `/${message.total}` : ''}`,
+                  resultPreview: progressPreview,
                 };
               }
+
+              // Also update in parts array
+              const parts = last.parts?.map((part) =>
+                part.type === 'tool' && part.toolCall?.status === 'running'
+                  ? { ...part, toolCall: { ...part.toolCall, resultPreview: progressPreview } }
+                  : part
+              );
+
               return [
                 ...prev.slice(0, -1),
-                { ...last, toolCalls: updatedToolCalls },
+                { ...last, toolCalls: updatedToolCalls, parts },
               ];
             }
             return prev;
@@ -153,9 +179,17 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant' && last.isStreaming) {
+              // Add tool call to parts array for chronological display
+              const parts: ContentPart[] = [...(last.parts || [])];
+              parts.push({ type: 'tool', toolCall });
+
               return [
                 ...prev.slice(0, -1),
-                { ...last, toolCalls: [...(last.toolCalls || []), toolCall] },
+                {
+                  ...last,
+                  toolCalls: [...(last.toolCalls || []), toolCall],
+                  parts,
+                },
               ];
             }
             return prev;
@@ -175,15 +209,24 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant' && last.isStreaming) {
+              // Update tool call in both toolCalls and parts arrays
+              const updateToolCall = (tc: ToolCall) =>
+                tc.name === message.tool_name
+                  ? { ...tc, status: 'completed' as const, resultPreview: message.result_preview }
+                  : tc;
+
+              const parts = last.parts?.map((part) =>
+                part.type === 'tool' && part.toolCall && part.toolCall.name === message.tool_name
+                  ? { ...part, toolCall: updateToolCall(part.toolCall) }
+                  : part
+              );
+
               return [
                 ...prev.slice(0, -1),
                 {
                   ...last,
-                  toolCalls: last.toolCalls?.map((tc) =>
-                    tc.name === message.tool_name
-                      ? { ...tc, status: 'completed', resultPreview: message.result_preview }
-                      : tc
-                  ),
+                  toolCalls: last.toolCalls?.map(updateToolCall),
+                  parts,
                 },
               ];
             }
@@ -204,15 +247,24 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant' && last.isStreaming) {
+              // Update tool call in both toolCalls and parts arrays
+              const updateToolCall = (tc: ToolCall) =>
+                tc.name === message.tool_name
+                  ? { ...tc, status: 'error' as const, error: message.error }
+                  : tc;
+
+              const parts = last.parts?.map((part) =>
+                part.type === 'tool' && part.toolCall && part.toolCall.name === message.tool_name
+                  ? { ...part, toolCall: updateToolCall(part.toolCall) }
+                  : part
+              );
+
               return [
                 ...prev.slice(0, -1),
                 {
                   ...last,
-                  toolCalls: last.toolCalls?.map((tc) =>
-                    tc.name === message.tool_name
-                      ? { ...tc, status: 'error', error: message.error }
-                      : tc
-                  ),
+                  toolCalls: last.toolCalls?.map(updateToolCall),
+                  parts,
                 },
               ];
             }

@@ -33,10 +33,9 @@ def clear_enterprise_env_vars():
     # Save original values
     saved_vars = {}
     enterprise_vars = [
-        "DONKIT_ENTERPRISE_API_URL",
-        "DONKIT_ENTERPRISE_PERSIST_MESSAGES",
-        "DONKIT_ENTERPRISE_MCP_URL",
-        "DONKIT_ENTERPRISE_TIMEOUT",
+        "RAGOPS_DONKIT_BASE_URL",
+        "RAGOPS_DONKIT_PERSIST_MESSAGES",
+        "RAGOPS_DONKIT_TIMEOUT",
     ]
 
     for var in enterprise_vars:

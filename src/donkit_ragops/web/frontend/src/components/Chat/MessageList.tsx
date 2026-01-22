@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { ChatMessage } from '../../types/protocol';
+import { ChatMessage, ContentPart } from '../../types/protocol';
 import ToolCallCard from '../Tools/ToolCallCard';
 import DonkitLogo from '../../assets/donkit-logo.svg';
 
@@ -60,19 +60,36 @@ export default function MessageList({ messages }: MessageListProps) {
           >
             {message.role === 'user' ? (
               <p className="whitespace-pre-wrap text-[15px]">{message.content}</p>
-            ) : (
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              </div>
-            )}
-
-            {/* Tool calls */}
-            {message.toolCalls && message.toolCalls.length > 0 && (
-              <div className="mt-2 space-y-2">
-                {message.toolCalls.map((toolCall) => (
-                  <ToolCallCard key={toolCall.id} toolCall={toolCall} />
+            ) : message.parts && message.parts.length > 0 ? (
+              // Render parts in chronological order
+              <div className="space-y-2">
+                {message.parts.map((part: ContentPart, index: number) => (
+                  <div key={index}>
+                    {part.type === 'text' && part.content && (
+                      <div className="prose prose-sm max-w-none">
+                        <ReactMarkdown>{part.content}</ReactMarkdown>
+                      </div>
+                    )}
+                    {part.type === 'tool' && part.toolCall && (
+                      <ToolCallCard toolCall={part.toolCall} />
+                    )}
+                  </div>
                 ))}
               </div>
+            ) : (
+              // Fallback for messages without parts (backward compatibility)
+              <>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </div>
+                {message.toolCalls && message.toolCalls.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {message.toolCalls.map((toolCall) => (
+                      <ToolCallCard key={toolCall.id} toolCall={toolCall} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             {/* Streaming indicator */}
