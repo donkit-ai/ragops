@@ -47,13 +47,21 @@ export interface WebSocketMessage {
   progress?: number;
 }
 
+// Content part for chronological ordering of text and tool calls
+export interface ContentPart {
+  type: 'text' | 'tool';
+  content?: string;  // For text parts
+  toolCall?: ToolCall;  // For tool parts
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
+  content: string;  // Full concatenated content for backward compatibility
   timestamp: number;
   isStreaming?: boolean;
-  toolCalls?: ToolCall[];
+  toolCalls?: ToolCall[];  // All tool calls for backward compatibility
+  parts?: ContentPart[];  // Ordered parts for chronological display
 }
 
 export interface ToolCall {

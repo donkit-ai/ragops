@@ -1,9 +1,9 @@
 """Token management for enterprise mode.
 
-Uses keyring for secure token storage. Tokens are NEVER:
+Uses keyring for secure token storage, with fallback to .env file.
+Tokens are NEVER:
 - Logged to console/files
 - Passed to LLM prompts
-- Stored in .env files
 """
 
 from __future__ import annotations
@@ -13,6 +13,17 @@ import keyring.errors
 
 SERVICE_NAME = "donkit-ragops"
 TOKEN_KEY = "api_token"
+
+
+def _get_token_from_env() -> str | None:
+    """Get token from .env file (RAGOPS_DONKIT_API_KEY)."""
+    try:
+        from donkit_ragops.config import load_settings
+
+        settings = load_settings()
+        return settings.donkit_api_key
+    except Exception:
+        return None
 
 
 class TokenService:
@@ -30,16 +41,23 @@ class TokenService:
         keyring.set_password(self.service_name, TOKEN_KEY, token)
 
     def get_token(self) -> str | None:
-        """Get token from keyring.
+        """Get token from keyring or .env file.
+
+        Checks keyring first, then falls back to .env (RAGOPS_DONKIT_API_KEY).
 
         Returns:
             The stored token, or None if not found/access denied
         """
+        # Try keyring first
         try:
-            return keyring.get_password(self.service_name, TOKEN_KEY)
+            token = keyring.get_password(self.service_name, TOKEN_KEY)
+            if token:
+                return token
         except (keyring.errors.KeyringError, Exception):
-            # Access denied or keyring unavailable
-            return None
+            pass
+
+        # Fallback to .env file
+        return _get_token_from_env()
 
     def delete_token(self) -> None:
         """Delete token from keyring."""
@@ -67,7 +85,7 @@ def save_token(token: str) -> None:
 
 
 def get_token() -> str | None:
-    """Get token from keyring."""
+    """Get token from keyring or .env file."""
     return _default_service.get_token()
 
 

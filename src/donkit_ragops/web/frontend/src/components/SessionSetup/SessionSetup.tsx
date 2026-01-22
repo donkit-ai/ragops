@@ -18,21 +18,26 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
   const [configuredProviders, setConfiguredProviders] = useState<ProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [checkingConfig, setCheckingConfig] = useState(false);
+  const [donkitConfigured, setDonkitConfigured] = useState(false);
 
   const { getProviders } = useSettings();
 
-  // Load configured providers
+  // Load configured providers (for both modes)
   useEffect(() => {
-    if (mode === 'local') {
-      loadProviders();
-    }
-  }, [mode]);
+    loadProviders();
+  }, []);
 
   const loadProviders = async () => {
     setCheckingConfig(true);
     try {
       const response = await getProviders();
-      const configured = response.providers.filter(p => p.is_configured);
+
+      // Check if donkit is configured (for enterprise mode)
+      const donkitProvider = response.providers.find(p => p.name === 'donkit');
+      setDonkitConfigured(donkitProvider?.is_configured ?? false);
+
+      // Filter configured providers for local mode (exclude donkit as it's for enterprise)
+      const configured = response.providers.filter(p => p.is_configured && p.name !== 'donkit');
       setConfiguredProviders(configured);
 
       // Auto-select first configured provider
@@ -42,16 +47,30 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
     } catch (err) {
       console.error('Failed to load providers:', err);
       setConfiguredProviders([]);
+      setDonkitConfigured(false);
     } finally {
       setCheckingConfig(false);
     }
   };
 
   const handleStart = async () => {
-    if (mode === 'enterprise' && !apiToken && !showTokenInput) {
-      // First click - show token input
-      setShowTokenInput(true);
-      return;
+    if (mode === 'enterprise') {
+      // If donkit is configured and no manual token entered, use saved token
+      if (donkitConfigured && !showTokenInput) {
+        // Start directly with saved token
+        await onStart({
+          enterprise_mode: true,
+          api_token: undefined,  // Backend will use saved token
+          provider: undefined,
+        });
+        return;
+      }
+
+      // If not configured and token input not shown yet, show it
+      if (!donkitConfigured && !showTokenInput) {
+        setShowTokenInput(true);
+        return;
+      }
     }
 
     if (mode === 'local' && configuredProviders.length === 0) {
@@ -166,6 +185,21 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <p className="text-sm text-dark-text-secondary">
                 Connect to Donkit Cloud for managed RAG pipelines
               </p>
+              {mode === 'enterprise' && !checkingConfig && (
+                <div className="mt-3 text-xs">
+                  {donkitConfigured ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
+                      <CheckCircle2 className="w-3 h-3" />
+                      API Key configured
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-orange/10 text-accent-orange rounded">
+                      <Key className="w-3 h-3" />
+                      API Key required
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </button>
         </div>
@@ -266,7 +300,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             </>
           ) : (
             <>
-              {mode === 'enterprise' && !showTokenInput ? (
+              {mode === 'enterprise' && !donkitConfigured && !showTokenInput ? (
                 <>
                   Next
                   <ArrowRight className="w-5 h-5" />
@@ -295,6 +329,18 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           >
             <Plus className="w-4 h-4" />
             {configuredProviders.length === 0 ? 'Add Provider' : 'Add/Manage Providers'}
+          </button>
+        )}
+
+        {/* Use different token button for enterprise mode */}
+        {mode === 'enterprise' && donkitConfigured && !showTokenInput && (
+          <button
+            onClick={() => setShowTokenInput(true)}
+            disabled={loading || checkingConfig}
+            className="w-full mt-3 py-2 text-sm text-dark-text-muted hover:text-dark-text-primary flex items-center justify-center gap-2 transition-colors"
+          >
+            <Key className="w-4 h-4" />
+            Use a different API key
           </button>
         )}
 

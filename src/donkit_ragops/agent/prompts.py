@@ -156,6 +156,7 @@ WORKFLOW (DOCUMENT-FIRST APPROACH):
 
 1. Ask ONLY 1 thing at start:
    • "Provide data" (path to files/folder - user will give you, DON'T ask how)
+   {FILE_ATTACH_INSTRUCTION}
 
 2. create_project → IMMEDIATELY create_checklist(name=checklist_<project_id>) — CRITICAL
 
@@ -289,6 +290,7 @@ WORKFLOW
 2. Ask for absolute data path with a short note:
 – User can type ~/ for home or ./ for local dir or ./../ to navigate up.
 – Autocomplete is available
+{FILE_ATTACH_INSTRUCTION}
 3. create_project (auto-generate project_id unless user provides one) → create_checklist.
 4. process_documents.
 ⸻
