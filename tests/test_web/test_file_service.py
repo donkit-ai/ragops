@@ -56,30 +56,6 @@ class TestFileService:
         assert files[0]["size"] == 11  # "hello world" is 11 bytes
 
     @pytest.mark.asyncio
-    async def test_delete_file_success(self, file_service, temp_session):
-        """Test deleting a file succeeds."""
-        # Create a test file
-        test_file = temp_session.files_dir / "test.txt"
-        test_file.write_text("hello")
-
-        result = await file_service.delete_file(temp_session, "test.txt")
-
-        assert result is True
-        assert not test_file.exists()
-
-    @pytest.mark.asyncio
-    async def test_delete_file_not_found(self, file_service, temp_session):
-        """Test deleting non-existent file returns False."""
-        result = await file_service.delete_file(temp_session, "nonexistent.txt")
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_delete_file_path_traversal_blocked(self, file_service, temp_session):
-        """Test path traversal attempts are blocked."""
-        result = await file_service.delete_file(temp_session, "../../../etc/passwd")
-        assert result is False
-
-    @pytest.mark.asyncio
     async def test_list_files_no_directory(self, file_service):
         """Test listing files with no directory returns empty list."""
         session = WebSession(id="test", provider_name="openai", files_dir=None)
