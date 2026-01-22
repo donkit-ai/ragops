@@ -124,31 +124,11 @@ class TestCompressHistoryIfNeeded:
     @pytest.mark.asyncio
     async def test_compression_preserves_system_messages(self):
         """Should preserve system messages when compressing."""
-        history = [
-            Message(role="system", content="System prompt"),
-            Message(role="user", content="Q1"),
-            Message(role="assistant", content="A1"),
-            Message(role="user", content="Q2"),
-            Message(role="assistant", content="A2"),
-            Message(role="user", content="Q3"),
-            Message(role="assistant", content="A3"),
-            Message(role="user", content="Q4"),
-            Message(role="assistant", content="A4"),
-            Message(role="user", content="Q5"),
-            Message(role="assistant", content="A5"),
-            Message(role="user", content="Q6"),
-            Message(role="assistant", content="A6"),
-            Message(role="user", content="Q7"),
-            Message(role="assistant", content="A7"),
-            Message(role="user", content="Q8"),
-            Message(role="assistant", content="A8"),
-            Message(role="user", content="Q9"),
-            Message(role="assistant", content="A9"),
-            Message(role="user", content="Q10"),
-            Message(role="assistant", content="A10"),
-            Message(role="user", content="Q11"),  # 11th user message - triggers compression
-            Message(role="assistant", content="A11"),
-        ]
+        # Create 26 user messages to exceed threshold of 25
+        history = [Message(role="system", content="System prompt")]
+        for i in range(1, 27):  # Q1-Q26
+            history.append(Message(role="user", content=f"Q{i}"))
+            history.append(Message(role="assistant", content=f"A{i}"))
 
         provider = Mock()
         provider.generate = AsyncMock(
@@ -157,43 +137,29 @@ class TestCompressHistoryIfNeeded:
 
         result = await compress_history_if_needed(history, provider)
 
-        # Should have: system + summary + last turn (Q11 + A11)
+        # Should have: system + summary + last turn (Q26 + A26)
         assert len(result) == 4
         assert result[0].role == "system"
         assert result[0].content == "System prompt"
         assert result[1].role == "assistant"
         assert "[CONVERSATION HISTORY SUMMARY]" in result[1].content
-        assert result[2].content == "Q11"
-        assert result[3].content == "A11"
+        assert result[2].content == "Q26"
+        assert result[3].content == "A26"
 
     @pytest.mark.asyncio
     async def test_compression_preserves_tool_calls(self):
         """Should preserve complete turn with tool calls and results."""
         from donkit.llm import FunctionCall, ToolCall
 
-        history = [
-            Message(role="system", content="System"),
-            Message(role="user", content="Q1"),
-            Message(role="assistant", content="A1"),
-            Message(role="user", content="Q2"),
-            Message(role="assistant", content="A2"),
-            Message(role="user", content="Q3"),
-            Message(role="assistant", content="A3"),
-            Message(role="user", content="Q4"),
-            Message(role="assistant", content="A4"),
-            Message(role="user", content="Q5"),
-            Message(role="assistant", content="A5"),
-            Message(role="user", content="Q6"),
-            Message(role="assistant", content="A6"),
-            Message(role="user", content="Q7"),
-            Message(role="assistant", content="A7"),
-            Message(role="user", content="Q8"),
-            Message(role="assistant", content="A8"),
-            Message(role="user", content="Q9"),
-            Message(role="assistant", content="A9"),
-            Message(role="user", content="Q10"),
-            Message(role="assistant", content="A10"),
-            Message(role="user", content="Q11 with tool"),  # 11th - triggers compression
+        # Create 26 user messages to exceed threshold of 25
+        history = [Message(role="system", content="System")]
+        for i in range(1, 26):  # Q1-Q25
+            history.append(Message(role="user", content=f"Q{i}"))
+            history.append(Message(role="assistant", content=f"A{i}"))
+
+        # Q26 with tool calls - 26th user message triggers compression
+        history.extend([
+            Message(role="user", content="Q26 with tool"),
             Message(
                 role="assistant",
                 content=None,
@@ -206,7 +172,7 @@ class TestCompressHistoryIfNeeded:
             ),
             Message(role="tool", tool_call_id="call_123", content="Tool result"),
             Message(role="assistant", content="Final answer"),
-        ]
+        ])
 
         provider = Mock()
         provider.generate = AsyncMock(
@@ -219,7 +185,7 @@ class TestCompressHistoryIfNeeded:
         assert len(result) == 6
         assert result[0].role == "system"
         assert result[1].role == "assistant"  # Summary
-        assert result[2].content == "Q11 with tool"
+        assert result[2].content == "Q26 with tool"
         assert result[3].role == "assistant"
         assert result[3].tool_calls is not None
         assert result[4].role == "tool"

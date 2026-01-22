@@ -8,7 +8,7 @@ from __future__ import annotations
 from donkit.llm import GenerateRequest, LLMModelAbstract, Message
 from loguru import logger
 
-HISTORY_COMPRESSION_THRESHOLD = 10  # Compress when user messages exceed this
+HISTORY_COMPRESSION_THRESHOLD = 25  # Compress when user messages exceed this
 HISTORY_KEEP_RECENT_TURNS = 1  # Keep last N complete conversation turns after compression
 
 HISTORY_SUMMARY_PROMPT = """Summarize this conversation concisely.
