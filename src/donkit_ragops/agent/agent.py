@@ -251,7 +251,10 @@ class LLMAgent:
 
             if local_tool:
                 logger.debug(f"Executing local tool {tc.function.name} with args: {args}")
-                result = local_tool.handler(args)
+                if local_tool.is_async:
+                    result = await local_tool.handler(args)
+                else:
+                    result = local_tool.handler(args)
                 logger.debug(f"Local tool {tc.function.name} result: {str(result)[:200]}...")
             elif mcp_tool_info:
                 logger.debug(f"Executing MCP tool {tc.function.name} with args: {args}")

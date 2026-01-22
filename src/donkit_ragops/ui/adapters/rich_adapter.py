@@ -292,8 +292,6 @@ class RichUI(UI):
         border_style: StyleName | None = None,
     ) -> None:
         """Print content in a bordered panel."""
-        from rich.text import Text
-
         rich_border = RICH_STYLES.get(border_style, "cyan") if border_style else "cyan"
 
         # Convert content to Rich renderable

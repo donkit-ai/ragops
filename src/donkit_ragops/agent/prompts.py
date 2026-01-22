@@ -370,8 +370,8 @@ IMPORTANT LANGUAGE RULES:
 You MUST follow this sequence of steps:
 
 1.  **Gather documents**: Ask the user to provide documents relevant to their RAG use case.
-    In the CLI application, the user should use the `@` sign followed by the folder path to share documents with you.
-    For example, `@/path/to/documents`. It won't be in the user prompt though, attached_files will be provided separately. Once you have them, call the `agent_create_corpus` tool to save them as a corpus of source files.
+    {FILE_ATTACH_INSTRUCTION}
+    Once you have them, call the `agent_create_corpus` tool to save them as a corpus of source files.
 
 2.  **Figure out a RAG use case**: What goal the user is trying to achieve?
     Once you have enough information, call the `agent_update_rag_use_case` tool to set the use case for the project.
@@ -454,9 +454,32 @@ prompts = {
     "enterprise": ENTERPRISE_SYSTEM_PROMPT,
 }
 
+# File attachment instructions for different interfaces
+FILE_ATTACH_CLI = """In the CLI application, the user should use the `@` sign followed by the folder path to share documents with you.
+    For example, `@/path/to/documents`. It won't be in the user prompt though, attached_files will be provided separately."""
 
-def get_prompt(provider: str, debug: bool = False) -> str:
+FILE_ATTACH_WEB = """The user can attach files using the "Attach" button in the interface.
+    Attached files will be provided to you automatically in the attached_files parameter."""
+
+
+def get_prompt(provider: str, debug: bool = False, interface: str = "cli") -> str:
+    """Get system prompt for a provider.
+
+    Args:
+        provider: LLM provider name (vertex, openai, donkit, enterprise, etc.)
+        debug: Whether to add debug instructions
+        interface: Interface type ("cli" or "web") - affects file attachment instructions
+
+    Returns:
+        System prompt string
+    """
     prompt = prompts.get(provider, prompts["vertex"])
+
+    # Replace file attachment instruction based on interface
+    if "{FILE_ATTACH_INSTRUCTION}" in prompt:
+        file_instruction = FILE_ATTACH_WEB if interface == "web" else FILE_ATTACH_CLI
+        prompt = prompt.replace("{FILE_ATTACH_INSTRUCTION}", file_instruction)
+
     if debug:
         prompt = f"{prompt}\n\n{DEBUG_INSTRUCTIONS}"
     return prompt
