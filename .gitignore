@@ -35,6 +35,7 @@ donkit-ragops/
 vertex_service_account.json
 image_cache.json
 projects/
+!src/**/Projects/
 docs/
 /poetry.lock
 .claude/
