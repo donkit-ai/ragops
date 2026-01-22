@@ -154,8 +154,8 @@ class EnterpriseREPL(BaseREPL):
         self.context.history.append(event_msg)
 
         # Persist the event message (if persistence is enabled)
-        if self.message_persister:
-            await self.message_persister.persist_message(role="user", content=event.message)
+        # if self.message_persister:
+        #     await self.message_persister.persist_message(role="user", content=event.message)
 
         # Let LLM respond to the event
         await self._handle_event_response(event)
@@ -273,12 +273,15 @@ class EnterpriseREPL(BaseREPL):
         Returns:
             False to exit, True to continue
         """
-        # Check for commands
+        # Check for commands first
+        # is_command() now properly distinguishes between slash commands (/help, /exit)
+        # and absolute file paths (/Users/..., /home/...) by checking registered commands
         if self._command_registry.is_command(user_input) or user_input in {"quit", "exit"}:
             return await self._handle_command(user_input)
 
         # Check for file path - handle file upload
         # Skip if input is too long to be a valid file path (max 255 chars per component)
+        # This protects against OSError when pasting large JSON or other text
         if not user_input.startswith(":") and len(user_input) < 4096:
             try:
                 file_path = Path(user_input.strip())
@@ -390,31 +393,31 @@ class EnterpriseREPL(BaseREPL):
         if file_analysis:
             upload_message += f"\n\nFile analysis: {file_analysis}"
 
-        # Add S3 paths context
-        upload_message += f"\n\nFile locations: {s3_paths}"
+        # Add S3 paths context (one path per line for consistency with web UI)
+        upload_message += f"\n\nFile locations:\n{chr(10).join(s3_paths)}"
 
         ui.newline()
-        # ui.print(f"You: {upload_message[:100]}...", StyleName.INFO)
-        ui.newline()
 
-        # Handle this as a regular message to agent
-        await self.handle_message(upload_message)
+        # Handle this as a silent message to agent (don't show in UI or persist)
+        await self.handle_message(upload_message, silent=True)
         return True
 
-    async def handle_message(self, message: str) -> None:
+    async def handle_message(self, message: str, silent: bool = False) -> None:
         """Handle a chat message.
 
         Args:
             message: User's chat message
+            silent: If True, don't show in UI or persist to history (for internal messages)
         """
-        if self.context.render_helper:
-            self.context.render_helper.append_user_line(message)
+        if not silent:
+            if self.context.render_helper:
+                self.context.render_helper.append_user_line(message)
 
         # Add to history
         self.context.history.append(Message(role="user", content=message))
 
-        # Persist user message (if persistence is enabled)
-        if self.message_persister:
+        # Persist user message (if persistence is enabled and not silent)
+        if self.message_persister and not silent:
             await self.message_persister.persist_user_message(message)
 
         # Stream or non-stream response

@@ -239,8 +239,12 @@ class CommandRegistry:
     def is_command(self, input_str: str) -> bool:
         """Check if input is a command."""
         normalized = input_str.strip()
-        # Check for slash commands or legacy colon exit commands
-        return normalized.startswith("/") or normalized in {":exit", ":quit", ":q"}
+        # Legacy colon exit commands
+        if normalized in {":exit", ":quit", ":q"}:
+            return True
+        # Check if it actually matches a registered command
+        # This prevents absolute paths like /Users/... from being treated as commands
+        return self.get_command(normalized) is not None
 
     def get_all_commands(self) -> list[ReplCommand]:
         """Get all registered commands."""
