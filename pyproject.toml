@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "donkit-ragops"
-version = "0.4.7"
+version = "0.4.8"
 description = "CLI agent for building RAG pipelines"
 authors = ["Donkit AI <opensource@donkit.ai>"]
 license = "MIT"
@@ -8,7 +8,9 @@ readme = "README.md"
 packages = [{ include = "donkit_ragops", from = "src" }]
 include = [
     "src/donkit_ragops/compose/services/*.yml",
-    "src/donkit_ragops/compose/templates/*"
+    "src/donkit_ragops/compose/templates/*",
+    { path = "src/donkit_ragops/web/static/*", format = ["sdist", "wheel"] },
+    { path = "src/donkit_ragops/web/static/**/*", format = ["sdist", "wheel"] }
 ]
 
 [tool.poetry.dependencies]

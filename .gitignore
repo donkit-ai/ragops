@@ -27,6 +27,14 @@ htmlcov/
 # OS
 .DS_Store
 
+# Node.js (frontend)
+node_modules/
+frontend/dist/
+
+# Generated static files (CI builds and includes in wheel)
+src/donkit_ragops/web/static/
+
+
 # Stakpak local files
 .stakpak
 

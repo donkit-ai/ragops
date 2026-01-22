@@ -60,7 +60,7 @@ class FileService:
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(content)
 
-        logger.info(f"Uploaded file {original_name} ({file_size} bytes) to {file_path}")
+        logger.debug(f"Uploaded file {original_name} ({file_size} bytes) to {file_path}")
 
         return {
             "name": original_name,

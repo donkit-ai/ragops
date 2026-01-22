@@ -56,7 +56,7 @@ async def websocket_endpoint(
     # Accept WebSocket connection
     await websocket.accept()
     session.websocket = websocket
-    logger.info(f"WebSocket connected for session {session_id}")
+    logger.debug(f"WebSocket connected for session {session_id}")
 
     # Track connection state to avoid sending on closed connection
     connected = True
@@ -108,7 +108,7 @@ async def websocket_endpoint(
             session.event_listener.on_progress = on_backend_progress
             await session.event_listener.start()
             event_listener_started = True
-            logger.info(f"Started event listener for enterprise session {session_id}")
+            logger.debug(f"Started event listener for enterprise session {session_id}")
         except Exception as e:
             logger.warning(f"Failed to start event listener: {e}")
 
@@ -179,7 +179,7 @@ async def websocket_endpoint(
             elif msg_type == "chat":
                 content = data.get("content", "").strip()
                 silent = data.get("silent", False)  # Don't persist to history if True
-                logger.info(f"Received chat message: {content[:100]}... (silent={silent})")
+                logger.debug(f"Received chat message: {content[:100]}... (silent={silent})")
                 if not content:
                     await send_message(
                         {
@@ -244,7 +244,7 @@ async def websocket_endpoint(
                 )
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for session {session_id}")
+        logger.debug(f"WebSocket disconnected for session {session_id}")
 
     except Exception as e:
         logger.error(f"WebSocket error for session {session_id}: {e}")
@@ -257,7 +257,7 @@ async def websocket_endpoint(
         if event_listener_started and session.event_listener:
             try:
                 await session.event_listener.stop()
-                logger.info(f"Stopped event listener for session {session_id}")
+                logger.debug(f"Stopped event listener for session {session_id}")
             except Exception as e:
                 logger.warning(f"Failed to stop event listener: {e}")
 

@@ -42,7 +42,7 @@ class SessionManager:
     async def start(self) -> None:
         """Start the session manager and cleanup task."""
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
-        logger.info("Session manager started")
+        logger.debug("Session manager started")
 
     async def stop(self) -> None:
         """Stop the session manager and clean up all sessions."""
@@ -59,7 +59,7 @@ class SessionManager:
                 await self._cleanup_session(session_id)
             self._sessions.clear()
 
-        logger.info("Session manager stopped")
+        logger.debug("Session manager stopped")
 
     async def create_session(
         self,
@@ -140,7 +140,7 @@ class SessionManager:
         async with self._lock:
             self._sessions[session_id] = session
 
-        logger.info(f"Created session {session_id} with provider {provider_name}")
+        logger.debug(f"Created session {session_id} with provider {provider_name}")
         return session
 
     async def create_enterprise_session(
@@ -269,30 +269,30 @@ class SessionManager:
                     user_info = await api_client.get_me()
                     user_name = user_info.first_name or "User"
                     user_id = user_info.id
-                    logger.info(f"Retrieved user info: {user_name} (ID: {user_id})")
+                    logger.debug(f"Retrieved user info: {user_name} (ID: {user_id})")
                 except Exception as e:
                     logger.warning(f"Failed to get user info: {e}")
 
                 if existing_project_id:
                     # Connect to specific existing project
-                    logger.info(f"Connecting to existing project {existing_project_id}")
+                    logger.debug(f"Connecting to existing project {existing_project_id}")
                     # Verify project exists
                     project = await api_client.get_project(existing_project_id)
                     project_id = str(project.id)
-                    logger.info(f"Connected to enterprise project {project_id}")
+                    logger.debug(f"Connected to enterprise project {project_id}")
                 else:
                     # Get most recent project, or create new if none exist
-                    logger.info("No project specified, getting most recent project...")
+                    logger.debug("No project specified, getting most recent project...")
                     recent_projects = await api_client.get_recent_projects(limit=1)
                     if recent_projects:
                         project_id = str(recent_projects[0].get("id"))
-                        logger.info(f"Connected to most recent project {project_id}")
+                        logger.debug(f"Connected to most recent project {project_id}")
                     else:
                         # No projects exist - create first one
-                        logger.info("No projects found, creating first project...")
+                        logger.debug("No projects found, creating first project...")
                         project = await api_client.create_project()
                         project_id = str(project.id)
-                        logger.info(f"Created first enterprise project {project_id}")
+                        logger.debug(f"Created first enterprise project {project_id}")
 
                 # Load message history for the project
                 if project_id:
@@ -301,7 +301,7 @@ class SessionManager:
                             project_id=project_id,
                             limit=1000,
                         )
-                        logger.info(
+                        logger.debug(
                             f"Loaded {len(project_messages)} messages from project {project_id}"
                         )
                     except Exception as e:
@@ -358,7 +358,7 @@ class SessionManager:
                             lines.append("")
                             env_path.write_text("\n".join(lines), encoding="utf-8")
 
-                        logger.info("Saved API token to .env")
+                        logger.debug("Saved API token to .env")
                     except Exception as e:
                         logger.warning(f"Failed to save token to .env: {e}")
 
@@ -468,12 +468,12 @@ class SessionManager:
                 if role in ("user", "assistant"):
                     session.history.append(Message(role=role, content=content))
             msg_count = len([m for m in project_messages if m.get("role") in ("user", "assistant")])
-            logger.info(f"Added {msg_count} messages to session history")
+            logger.debug(f"Added {msg_count} messages to session history")
 
         async with self._lock:
             self._sessions[session_id] = session
 
-        logger.info(f"Created enterprise session {session_id} with project {project_id}")
+        logger.debug(f"Created enterprise session {session_id} with project {project_id}")
         return session
 
     async def get_session(self, session_id: str) -> WebSession | None:
@@ -491,7 +491,7 @@ class SessionManager:
                 return False
             await self._cleanup_session(session_id)
             del self._sessions[session_id]
-        logger.info(f"Deleted session {session_id}")
+        logger.debug(f"Deleted session {session_id}")
         return True
 
     async def list_sessions(self) -> list[SessionInfo]:
@@ -523,7 +523,7 @@ class SessionManager:
                 # Create new project via API
                 project = await session.api_client.create_project()
                 new_project_id = str(project.id)
-                logger.info(f"Created new project {new_project_id} for session {session_id}")
+                logger.debug(f"Created new project {new_project_id} for session {session_id}")
 
                 # Update session with new project ID
                 session.project_id = new_project_id
@@ -582,7 +582,7 @@ class SessionManager:
         try:
             await session.agent.ainit_mcp_tools()
             session.mcp_initialized = True
-            logger.info(f"MCP tools initialized for session {session_id}")
+            logger.debug(f"MCP tools initialized for session {session_id}")
             return True
         except Exception as e:
             logger.error(f"Failed to initialize MCP tools for session {session_id}: {e}")
@@ -674,4 +674,4 @@ class SessionManager:
             for session_id in expired:
                 await self._cleanup_session(session_id)
                 del self._sessions[session_id]
-                logger.info(f"Cleaned up expired session {session_id}")
+                logger.debug(f"Cleaned up expired session {session_id}")

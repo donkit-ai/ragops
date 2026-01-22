@@ -166,7 +166,7 @@ async def _upload_files_enterprise(
                             s3_path=s3_path,
                         )
                     )
-                    logger.info(f"Uploaded {temp_path.name} to {s3_path}")
+                    logger.debug(f"Uploaded {temp_path.name} to {s3_path}")
                 else:
                     errors.append(
                         {

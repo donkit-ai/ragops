@@ -189,7 +189,7 @@ class FileUploader:
             self.uploaded_files[file_path_str] = s3_path
             self.on_success(file_path_str, s3_path)
 
-            logger.info(f"Uploaded {file_name} to {s3_path}")
+            logger.debug(f"Uploaded {file_name} to {s3_path}")
             return s3_path
 
         except Exception as e:

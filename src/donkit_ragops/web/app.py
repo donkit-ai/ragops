@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     Handles startup and shutdown of the application.
     """
     # Startup
-    logger.info("Starting RAGOps Web Server...")
+    logger.debug("Starting RAGOps Web Server...")
 
     config: WebConfig = app.state.config
     session_manager = SessionManager(config)
@@ -48,14 +48,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     upload_dir = Path(config.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Server ready on http://{config.host}:{config.port}")
+    logger.debug(f"Server ready on http://{config.host}:{config.port}")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down RAGOps Web Server...")
+    logger.debug("Shutting down RAGOps Web Server...")
     await session_manager.stop()
-    logger.info("Server stopped")
+    logger.debug("Server stopped")
 
 
 def create_app(config: WebConfig | None = None) -> FastAPI:
@@ -98,17 +98,38 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(websocket_router)
 
     # Serve static files (frontend) if the directory exists
-    frontend_dist = Path(__file__).parent / "frontend" / "dist"
-    if frontend_dist.exists():
-        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
-        logger.info(f"Serving frontend from {frontend_dist}")
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists() and (static_dir / "index.html").exists():
+        app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
+        logger.debug(f"Serving frontend from {static_dir}")
 
     return app
 
 
-def _get_frontend_dir() -> Path:
-    """Get the frontend directory path."""
-    return Path(__file__).parent / "frontend"
+def _get_static_dir() -> Path:
+    """Get the static files directory path (built frontend)."""
+    return Path(__file__).parent / "static"
+
+
+def _get_frontend_source_dir() -> Path | None:
+    """Get the frontend source directory for dev mode.
+
+    Searches for frontend/ in current directory and parent directories.
+    Returns None if not found.
+    """
+    # Try current working directory first
+    cwd = Path.cwd()
+    if (cwd / "frontend" / "package.json").exists():
+        return cwd / "frontend"
+
+    # Try parent directories (up to 5 levels)
+    current = cwd
+    for _ in range(5):
+        current = current.parent
+        if (current / "frontend" / "package.json").exists():
+            return current / "frontend"
+
+    return None
 
 
 def _check_npm() -> bool:
@@ -116,53 +137,10 @@ def _check_npm() -> bool:
     return shutil.which("npm") is not None
 
 
-def _build_frontend(frontend_dir: Path) -> bool:
-    """Build the frontend if needed.
-
-    Returns True if build successful or already built.
-    """
-    dist_dir = frontend_dir / "dist"
-
-    # Already built
-    if dist_dir.exists() and (dist_dir / "index.html").exists():
-        logger.info("Frontend already built")
-        return True
-
-    # Check if frontend source exists
-    if not (frontend_dir / "package.json").exists():
-        logger.warning("Frontend source not found")
-        return False
-
-    # Check npm
-    if not _check_npm():
-        logger.warning("npm not found - cannot build frontend")
-        return False
-
-    logger.info("Building frontend...")
-
-    try:
-        # Install dependencies
-        subprocess.run(
-            ["npm", "install"],
-            cwd=frontend_dir,
-            check=True,
-            capture_output=True,
-        )
-
-        # Build
-        subprocess.run(
-            ["npm", "run", "build"],
-            cwd=frontend_dir,
-            check=True,
-            capture_output=True,
-        )
-
-        logger.info("Frontend built successfully")
-        return True
-
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Frontend build failed: {e.stderr.decode() if e.stderr else e}")
-        return False
+def _check_static_available() -> bool:
+    """Check if static frontend files are available."""
+    static_dir = _get_static_dir()
+    return static_dir.exists() and (static_dir / "index.html").exists()
 
 
 def _run_dev_mode(config: WebConfig) -> None:
@@ -170,10 +148,11 @@ def _run_dev_mode(config: WebConfig) -> None:
     import os
 
     os.environ["RAGOPS_WEB_DEV_MODE"] = "1"
-    frontend_dir = _get_frontend_dir()
+    frontend_dir = _get_frontend_source_dir()
 
-    if not (frontend_dir / "package.json").exists():
-        logger.error("Frontend source not found")
+    if frontend_dir is None:
+        logger.error("Frontend source not found (looking for frontend/package.json)")
+        logger.error("Dev mode requires frontend/ directory in project root")
         sys.exit(1)
 
     if not _check_npm():
@@ -182,10 +161,10 @@ def _run_dev_mode(config: WebConfig) -> None:
 
     # Install dependencies if needed
     if not (frontend_dir / "node_modules").exists():
-        logger.info("Installing frontend dependencies...")
+        logger.debug("Installing frontend dependencies...")
         subprocess.run(["npm", "install"], cwd=frontend_dir, check=True)
 
-    logger.info("Starting dev servers...")
+    logger.debug("Starting dev servers...")
     print(f"\n  Backend:  http://{config.host}:{config.port}")
     print("  Frontend: http://localhost:5173")
     print("\n  Press Ctrl+C to stop\n")
@@ -248,9 +227,11 @@ def main(dev: bool = False) -> None:
         _run_dev_mode(config)
         return
 
-    # Production mode - build frontend if needed
-    frontend_dir = _get_frontend_dir()
-    _build_frontend(frontend_dir)
+    # Production mode - check frontend is available
+    if not _check_static_available():
+        logger.warning("Frontend not available - API will run without UI")
+        print("  Note: Web UI not available (static files not found)")
+        print("  API endpoints will still work at /api/*\n")
 
     # Create app
     app = create_app(config)
