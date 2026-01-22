@@ -1,4 +1,4 @@
-# RAGOps Agent CE (Community Edition)
+# RAGOps Agent
 
 [![PyPI version](https://badge.fury.io/py/donkit-ragops.svg)](https://badge.fury.io/py/donkit-ragops)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -40,7 +40,7 @@ curl -sSL https://raw.githubusercontent.com/donkit-ai/ragops/main/scripts/instal
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/donkit-ai/ragops/main/ragops-agent-cli/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/donkit-ai/ragops/main/scripts/install.ps1 | iex
 ```
 
 After installation:

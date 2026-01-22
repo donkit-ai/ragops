@@ -144,6 +144,46 @@ function Install-Ragops {
     Write-Host "[+] $PACKAGE_NAME installed" -ForegroundColor Green
 }
 
+# Check if Node.js is available
+function Test-Node {
+    try {
+        $null = Get-Command node -ErrorAction Stop
+        $null = Get-Command npm -ErrorAction Stop
+        $nodeVersion = node --version
+        Write-Host "[+] Node.js $nodeVersion found" -ForegroundColor Green
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# Install Node.js
+function Install-Node {
+    Write-Host "[*] Installing Node.js..." -ForegroundColor Yellow
+
+    $NODE_VERSION = "20.11.0"
+    $NODE_URL = "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-x64.msi"
+    $installer = "$env:TEMP\node-v$NODE_VERSION-x64.msi"
+
+    # Download
+    Write-Host "    Downloading..."
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $NODE_URL -OutFile $installer -UseBasicParsing
+
+    # Install silently
+    Write-Host "    Installing..."
+    Start-Process -Wait -FilePath msiexec.exe -ArgumentList "/i", $installer, "/quiet", "/norestart"
+
+    # Clean up
+    Remove-Item $installer -Force
+
+    # Refresh PATH in current session
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + `
+                [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+
+    Write-Host "[+] Node.js installed" -ForegroundColor Green
+}
+
 # Check if Docker is available
 function Test-Docker {
     try {
@@ -210,6 +250,18 @@ function Main {
 
     Install-Pipx
     Install-Ragops
+
+    if (-not (Test-Node)) {
+        Write-Host ""
+        Write-Host "[!] Node.js not found (required for Web UI)" -ForegroundColor Yellow
+        Write-Host ""
+
+        $response = Read-Host "    Install Node.js automatically? [Y/n]"
+        if ($response -notmatch "^[Nn]") {
+            Install-Node
+        }
+    }
+
     Test-Docker
     Show-Completion
 }
