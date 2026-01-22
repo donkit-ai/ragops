@@ -4,18 +4,30 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An LLM-powered CLI agent that automates the creation and maintenance of Retrieval-Augmented Generation (RAG) pipelines. The agent orchestrates built-in tools and Model Context Protocol (MCP) servers to plan, chunk, and load documents into vector stores.
+**Optimal RAG in hours, not months.**
 
-Built by [Donkit AI](https://donkit.ai) - Open Source RAG Infrastructure.
+An LLM-powered CLI agent that automates the creation, experimentation, and deployment of Retrieval-Augmented Generation (RAG) pipelines. Instead of spending months manually tuning indexes, chunking strategies, embeddings, and evaluators — let the agent explore the design space, run experiments, and converge on what works for your data.
+
+Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
+
+## Who is this for?
+
+- **AI Engineers** building internal assistants and agents
+- **Teams** needing accuracy-sensitive RAG where errors compound across steps
+- **Organizations** running agent-dependent systems requiring trustworthy retrieval
+
+> Think of RAG like a library—with indexes, storage, and a librarian. Donkit is the library factory.
 
 ## Key Features
 
 * **Interactive REPL** — Start an interactive session with readline history and autocompletion
+* **Web UI** — Browser-based interface at http://localhost:8067 (`donkit-ragops-web`)
 * **Checklist-driven workflow** — The agent creates project checklists, asks for approval before each step, and tracks progress
 * **Session-scoped checklists** — Only current session checklists appear in the UI
-* **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, chunking, reading, vector loading)
+* **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, reading, chunking, vector loading, querying, evaluation)
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
-* **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Azure OpenAI, Ollama, OpenRouter. Coming soon: Anthropic Claude
+* **Enterprise mode** — Connect to Donkit cloud for experiments
+* **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Anthropic Claude, Azure OpenAI, Ollama, OpenRouter
 
 ## Quick Install
 
@@ -193,21 +205,41 @@ donkit-ragops -p vertexai
 
 # With custom model
 donkit-ragops -p openai -m gpt-4
+
+# Start in enterprise mode (requires login first)
+donkit-ragops --enterprise
 ```
+
+### REPL Commands
+
+Inside the interactive session, use these commands:
+
+- `/help`, `/h`, `/?` — Show available commands
+- `/exit`, `/quit`, `/q` — Exit the agent
+- `/clear` — Clear conversation history and screen
+- `/provider` — Switch LLM provider interactively
+- `/model` — Switch LLM model interactively
 
 ### Command-line Options
 
 - `-p, --provider` — Override LLM provider from settings
 - `-m, --model` — Specify model name
 - `-s, --system` — Custom system prompt
+- `--local` — Force local mode (default)
+- `--enterprise` — Force enterprise mode (requires login)
+- `--setup` — Run setup wizard to reconfigure
 - `--show-checklist/--no-checklist` — Toggle checklist panel (default: shown)
-- `--mcp-command` — Add custom MCP server (can be used multiple times)
 
 ### Subcommands
 
 ```bash
 # Health check
 donkit-ragops ping
+
+# Enterprise mode authentication
+donkit-ragops login --token YOUR_TOKEN  # Login to Donkit cloud
+donkit-ragops logout                    # Remove stored token
+donkit-ragops status                    # Show mode and auth status
 ```
 
 ### Environment Variables
@@ -226,7 +258,7 @@ donkit-ragops ping
 #### Azure OpenAI
 - `RAGOPS_AZURE_OPENAI_API_KEY` — Azure OpenAI API key
 - `RAGOPS_AZURE_OPENAI_ENDPOINT` — Azure OpenAI endpoint URL
-- `RAGOPS_AZURE_OPENAI_API_VERSION` — Azure API version (default: 2025-03-01-preview)
+- `RAGOPS_AZURE_OPENAI_API_VERSION` — Azure API version (default: 2024-02-15-preview)
 - `RAGOPS_AZURE_OPENAI_DEPLOYMENT` — Azure deployment name for chat model
 - `RAGOPS_AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT` — Azure deployment name for embeddings model
 
@@ -258,6 +290,55 @@ The agent follows a structured workflow:
 5. **Deployment** — Sets up Docker Compose infrastructure
 6. **Data Loading** — Loads documents into vector store
 
+## Web UI
+
+RAGOps includes a browser-based interface for easier interaction:
+
+```bash
+# Start Web UI server
+donkit-ragops-web
+```
+
+Open http://localhost:8067 in your browser. The Web UI provides:
+
+- Visual project management
+- File upload and attachment
+- Real-time agent responses
+- Checklist visualization
+- Settings configuration
+
+## Enterprise Mode
+
+Enterprise mode connects to Donkit cloud for team collaboration and advanced features.
+
+### Setup
+
+```bash
+# 1. Login with your API token
+donkit-ragops login --token YOUR_API_TOKEN
+
+# 2. Start in enterprise mode
+donkit-ragops --enterprise
+
+# 3. Check status
+donkit-ragops status
+
+# 4. Logout when done
+donkit-ragops logout
+```
+
+### Features
+
+- **Cloud sync** — Projects and checklists synced to Donkit cloud
+- **Team collaboration** — Share projects with team members
+- **File attachments** — Attach files using `@/path/to/file` syntax in chat
+- **Persistent history** — Conversation history preserved across sessions
+
+### Environment Variables (Enterprise)
+
+- `DONKIT_API_URL` — API gateway URL (default: https://api.donkit.ai)
+- `DONKIT_ENTERPRISE_PERSIST_MESSAGES` — Enable/disable message persistence (default: true)
+
 ## MCP Servers
 
 RAGOps Agent CE includes built-in MCP servers:
@@ -266,22 +347,19 @@ RAGOps Agent CE includes built-in MCP servers:
 
 Plans RAG pipeline configuration based on requirements.
 
-```bash
-# Example usage
-donkit-ragops --mcp-command "ragops-rag-planner"
-```
-
 **Tools:**
 - `plan_rag_config` — Generate RAG configuration from requirements
+
+### `ragops-read-engine`
+
+Processes and converts documents from various formats.
+
+**Tools:**
+- `process_documents` — Convert PDF, DOCX, PPTX, XLSX, images to text/json/markdown
 
 ### `ragops-chunker`
 
 Chunks documents for vector storage.
-
-```bash
-# Example usage
-donkit-ragops --mcp-command "ragops-chunker"
-```
 
 **Tools:**
 - `chunk_documents` — Split documents into chunks with configurable strategies
@@ -291,11 +369,6 @@ donkit-ragops --mcp-command "ragops-chunker"
 
 Loads chunks into vector databases.
 
-```bash
-# Example usage
-donkit-ragops --mcp-command "ragops-vectorstore-loader"
-```
-
 **Tools:**
 - `vectorstore_load` — Load documents into Qdrant, Chroma, or Milvus
 - `delete_from_vectorstore` — Remove documents from vector store
@@ -304,11 +377,6 @@ donkit-ragops --mcp-command "ragops-vectorstore-loader"
 
 Manages Docker Compose infrastructure.
 
-```bash
-# Example usage
-donkit-ragops --mcp-command "ragops-compose-manager"
-```
-
 **Tools:**
 - `init_project_compose` — Initialize Docker Compose for project
 - `compose_up` — Start services
@@ -316,18 +384,24 @@ donkit-ragops --mcp-command "ragops-compose-manager"
 - `compose_status` — Check service status
 - `compose_logs` — View service logs
 
-### `ragops-checklist`
+### `ragops-rag-query`
 
-Manages project checklists and progress tracking.
+Executes RAG queries against deployed services.
 
 **Tools:**
-- `create_checklist` — Create new checklist
-- `get_checklist` — Get current checklist
-- `update_checklist_item` — Update item status
+- `search_documents` — Search for relevant documents in vector database
+- `get_rag_prompt` — Get formatted RAG prompt with retrieved context
+
+### `rag-evaluation`
+
+Evaluates RAG pipeline performance with batch processing.
+
+**Tools:**
+- `evaluate_batch` — Run batch evaluation from CSV/JSON, compute Precision/Recall/Accuracy
 
 ### `donkit-ragops-mcp`
 
-**Unified MCP server** that combines all servers above into a single endpoint
+**Unified MCP server** that combines all servers above into a single endpoint.
 
 ```bash
 # Run unified server
@@ -347,15 +421,15 @@ donkit-ragops-mcp
 ```
 
 All tools are available with prefixes:
-- `checklist_*` — Checklist management
-- `chunker_*` — Document chunking  
+- `chunker_*` — Document chunking
 - `compose_*` — Docker Compose orchestration
+- `evaluation_*` — RAG evaluation
 - `planner_*` — RAG configuration planning
 - `query_*` — RAG query execution
 - `reader_*` — Document reading/parsing
 - `vectorstore_*` — Vector store operations
 
-📖 **[Full documentation](docs/UNIFIED_SERVER.md)**
+> **Note:** Checklist management is now handled by built-in agent tools, not MCP.
 
 ## Examples
 
@@ -396,35 +470,164 @@ Each project gets its own:
 
 ## Development
 
+### Prerequisites
+
+- Python 3.12+
+- [Poetry](https://python-poetry.org/) for dependency management
+- Docker Desktop (for testing vector stores and RAG services)
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/donkit-ai/ragops.git
+cd ragops/ragops-agent-cli
+
+# Install dependencies
+poetry install
+
+# Activate virtual environment
+poetry shell
+```
+
 ### Project Structure
 
 ```
-donkit-ragops/
+ragops-agent-cli/
 ├── src/donkit_ragops/
-│   ├── agent/          # LLM agent core
-│   ├── llm/            # LLM provider integrations
-│   ├── mcp/            # MCP servers and client
-│   │   └── servers/    # Built-in MCP servers
-│   ├── cli.py          # CLI commands
-│   └── config.py       # Configuration
-├── tests/
-└── pyproject.toml
+│   ├── agent/              # LLM agent core and local tools
+│   │   ├── agent.py        # Main LLMAgent class
+│   │   ├── prompts.py      # System prompts for different providers
+│   │   └── local_tools/    # Built-in agent tools
+│   ├── llm/                # LLM provider integrations
+│   │   └── providers/      # OpenAI, Vertex, Anthropic, etc.
+│   ├── mcp/                # Model Context Protocol
+│   │   ├── client.py       # MCP client implementation
+│   │   └── servers/        # Built-in MCP servers
+│   ├── repl/               # REPL implementation
+│   │   ├── base.py         # Base REPL context
+│   │   ├── local_repl.py   # Local mode REPL
+│   │   └── enterprise_repl.py  # Enterprise mode REPL
+│   ├── web/                # Web UI (FastAPI + WebSocket)
+│   │   ├── app.py          # FastAPI application
+│   │   └── routes/         # API endpoints
+│   ├── enterprise/         # Enterprise mode components
+│   ├── cli.py              # CLI entry point (Typer)
+│   └── config.py           # Configuration management
+├── tests/                  # Test suite (170+ tests)
+└── pyproject.toml          # Poetry project configuration
+```
+
+### Running the CLI Locally
+
+```bash
+# Run CLI
+poetry run donkit-ragops
+
+# Run with specific provider
+poetry run donkit-ragops -p openai -m gpt-4o
+
+# Run Web UI
+poetry run donkit-ragops-web
+
+# Run unified MCP server
+poetry run donkit-ragops-mcp
 ```
 
 ### Running Tests
 
 ```bash
+# Run all tests
 poetry run pytest
+
+# Run with coverage
+poetry run pytest --cov=donkit_ragops
+
+# Run specific test file
+poetry run pytest tests/test_agent.py
+
+# Run specific test
+poetry run pytest tests/test_agent.py::test_function_name -v
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
+# Format code (REQUIRED before commit)
 poetry run ruff format .
 
-# Lint code
+# Lint and auto-fix (REQUIRED before commit)
+poetry run ruff check . --fix
+
+# Check without fixing
 poetry run ruff check .
+```
+
+### Version Management
+
+**IMPORTANT:** Version must be incremented in `pyproject.toml` for every PR:
+
+```bash
+# Check current version
+grep "^version" pyproject.toml
+
+# Increment version in pyproject.toml before committing
+# patch: 0.4.5 → 0.4.6 (bug fixes)
+# minor: 0.4.5 → 0.5.0 (new features)
+# major: 0.4.5 → 1.0.0 (breaking changes)
+```
+
+### Adding a New MCP Server
+
+**Step 1.** Create server file in `src/donkit_ragops/mcp/servers/`:
+
+```python
+from fastmcp import FastMCP
+from pydantic import BaseModel, Field
+
+server = FastMCP("my-server")
+
+class MyToolArgs(BaseModel):
+    param: str = Field(description="Parameter description")
+
+@server.tool(name="my_tool", description="What the tool does")
+async def my_tool(args: MyToolArgs) -> str:
+    # Implementation
+    return "result"
+
+def main() -> None:
+    server.run(transport="stdio")
+```
+
+**Step 2.** Add entry point in `pyproject.toml`:
+
+```toml
+[tool.poetry.scripts]
+ragops-my-server = "donkit_ragops.mcp.servers.my_server:main"
+```
+
+**Step 3.** Mount in unified server (`donkit_ragops_mcp.py`):
+
+```python
+from .my_server import server as my_server
+unified_server.mount(my_server, prefix="my")
+```
+
+### Adding a New LLM Provider
+
+1. Create provider in `src/donkit_ragops/llm/providers/`
+2. Register in `provider_factory.py`
+3. Add configuration to `config.py`
+4. Update `supported_models.py`
+
+### Debugging
+
+```bash
+# Enable debug logging
+RAGOPS_LOG_LEVEL=DEBUG poetry run donkit-ragops
+
+# Debug MCP servers
+RAGOPS_LOG_LEVEL=DEBUG poetry run donkit-ragops-mcp
 ```
 
 ## Docker Compose Services

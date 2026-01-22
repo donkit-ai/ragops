@@ -309,7 +309,7 @@ async def call_evaluation_service(
 
 async def rerun_evaluation_from_input_csv(
     *,
-    evaluation_url: str = "http://34.58.196.231/evaluate",
+    evaluation_url: str = "",
     evaluation_input_csv_path: str | Path = "./evaluation_input.csv",
     evaluation_output_csv_path: str | Path | None = "./evaluation_output.csv",
 ) -> str:
