@@ -17,15 +17,48 @@ Built by [Donkit AI](https://donkit.ai) - Open Source RAG Infrastructure.
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
 * **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Azure OpenAI, Ollama, OpenRouter. Coming soon: Anthropic Claude
 
-## Installation
+## Quick Install
 
-### Option A: Using pip
+The fastest way to install Donkit RAGOps. The installer automatically handles Python and dependencies.
+
+**macOS / Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/donkit-ai/ragops-agent-cli/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/donkit-ai/ragops-agent-cli/main/scripts/install.ps1 | iex
+```
+
+After installation:
+```bash
+donkit-ragops        # Start CLI agent
+donkit-ragops-web    # Start Web UI at http://localhost:8067
+```
+
+---
+
+## Installation (Alternative Methods)
+
+### Option A: Using pipx (Recommended)
+
+```bash
+# Install pipx if you don't have it
+pip install pipx
+pipx ensurepath
+
+# Install donkit-ragops
+pipx install donkit-ragops
+```
+
+### Option B: Using pip
 
 ```bash
 pip install donkit-ragops
 ```
 
-### Option B: Using Poetry (Recommended for Python 3.12+)
+### Option C: Using Poetry (for development)
 
 ```bash
 # Create a new project directory
