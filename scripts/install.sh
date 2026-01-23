@@ -220,76 +220,6 @@ fix_ssl_certs_macos() {
     fi
 }
 
-# Check if Node.js/npm is available
-check_node() {
-    if command -v node &> /dev/null && command -v npm &> /dev/null; then
-        node_version=$(node --version)
-        echo "[+] Node.js $node_version found"
-        return 0
-    fi
-    return 1
-}
-
-# Install Node.js
-install_node() {
-    echo "[*] Installing Node.js..."
-
-    case "$OS" in
-        macos)
-            if command -v brew &> /dev/null; then
-                echo "    Using Homebrew..."
-                brew install node
-            else
-                echo "    Using official installer..."
-                NODE_PKG_URL="https://nodejs.org/dist/v20.11.0/node-v20.11.0.pkg"
-                NODE_PKG_FILE="/tmp/node-v20.11.0.pkg"
-                curl -sSL "$NODE_PKG_URL" -o "$NODE_PKG_FILE"
-                echo "    Installing (requires sudo)..."
-                sudo installer -pkg "$NODE_PKG_FILE" -target /
-                rm "$NODE_PKG_FILE"
-            fi
-            ;;
-        linux)
-            # Use NodeSource for latest LTS
-            if [ -f /etc/os-release ]; then
-                . /etc/os-release
-                DISTRO=$ID
-            fi
-
-            case "$DISTRO" in
-                ubuntu|debian|pop)
-                    echo "    Using NodeSource..."
-                    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-                    sudo apt-get install -y -qq nodejs
-                    ;;
-                fedora)
-                    sudo dnf install -y nodejs npm
-                    ;;
-                rhel|centos|rocky|almalinux)
-                    curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-                    sudo dnf install -y nodejs
-                    ;;
-                arch|manjaro|endeavouros)
-                    sudo pacman -Sy --noconfirm nodejs npm
-                    ;;
-                opensuse*|sles)
-                    sudo zypper install -y nodejs20 npm20
-                    ;;
-                *)
-                    echo "    Using nvm..."
-                    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-                    export NVM_DIR="$HOME/.nvm"
-                    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                    nvm install 20
-                    nvm use 20
-                    ;;
-            esac
-            ;;
-    esac
-
-    echo "[+] Node.js installed"
-}
-
 # Check if Docker is available (optional)
 check_docker() {
     if command -v docker &> /dev/null; then
@@ -354,19 +284,6 @@ main() {
     install_pipx
     install_ragops
     fix_ssl_certs_macos
-
-    if ! check_node; then
-        echo ""
-        echo "[!] Node.js not found (required for Web UI)"
-        echo ""
-        read -p "    Install Node.js automatically? [Y/n] " -n 1 -r response
-        echo ""
-
-        if [[ ! "$response" =~ ^[Nn]$ ]]; then
-            install_node
-        fi
-    fi
-
     check_docker
     finish
 }

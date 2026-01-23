@@ -144,46 +144,6 @@ function Install-Ragops {
     Write-Host "[+] $PACKAGE_NAME installed" -ForegroundColor Green
 }
 
-# Check if Node.js is available
-function Test-Node {
-    try {
-        $null = Get-Command node -ErrorAction Stop
-        $null = Get-Command npm -ErrorAction Stop
-        $nodeVersion = node --version
-        Write-Host "[+] Node.js $nodeVersion found" -ForegroundColor Green
-        return $true
-    } catch {
-        return $false
-    }
-}
-
-# Install Node.js
-function Install-Node {
-    Write-Host "[*] Installing Node.js..." -ForegroundColor Yellow
-
-    $NODE_VERSION = "20.11.0"
-    $NODE_URL = "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-x64.msi"
-    $installer = "$env:TEMP\node-v$NODE_VERSION-x64.msi"
-
-    # Download
-    Write-Host "    Downloading..."
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $NODE_URL -OutFile $installer -UseBasicParsing
-
-    # Install silently
-    Write-Host "    Installing..."
-    Start-Process -Wait -FilePath msiexec.exe -ArgumentList "/i", $installer, "/quiet", "/norestart"
-
-    # Clean up
-    Remove-Item $installer -Force
-
-    # Refresh PATH in current session
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + `
-                [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-
-    Write-Host "[+] Node.js installed" -ForegroundColor Green
-}
-
 # Check if Docker is available
 function Test-Docker {
     try {
@@ -212,15 +172,27 @@ function Show-Completion {
     Write-Host "  donkit-ragops       - Start CLI agent"
     Write-Host "  donkit-ragops-web   - Start Web UI (http://localhost:8067)"
     Write-Host ""
-    Write-Host "Get started:"
-    Write-Host "  PS> donkit-ragops"
-    Write-Host ""
 
-    # Check if commands are available
+    # Check if restart is needed
+    $needsRestart = $false
+
     try {
         $null = Get-Command donkit-ragops -ErrorAction Stop
     } catch {
-        Write-Host "[!] Please restart PowerShell for PATH changes to take effect" -ForegroundColor Yellow
+        $needsRestart = $true
+    }
+
+    if ($needsRestart) {
+        Write-Host "====================================" -ForegroundColor Yellow
+        Write-Host "   IMPORTANT: Restart Required" -ForegroundColor Yellow
+        Write-Host "====================================" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Close this PowerShell window and open a new one," -ForegroundColor Yellow
+        Write-Host "then run: donkit-ragops" -ForegroundColor Yellow
+        Write-Host ""
+    } else {
+        Write-Host "Get started:"
+        Write-Host "  PS> donkit-ragops"
         Write-Host ""
     }
 }
@@ -250,18 +222,6 @@ function Main {
 
     Install-Pipx
     Install-Ragops
-
-    if (-not (Test-Node)) {
-        Write-Host ""
-        Write-Host "[!] Node.js not found (required for Web UI)" -ForegroundColor Yellow
-        Write-Host ""
-
-        $response = Read-Host "    Install Node.js automatically? [Y/n]"
-        if ($response -notmatch "^[Nn]") {
-            Install-Node
-        }
-    }
-
     Test-Docker
     Show-Completion
 }

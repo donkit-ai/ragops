@@ -48,7 +48,7 @@ class AgentService:
         Yields:
             Dict events for WebSocket transmission
         """
-        logger.info(f"AgentService.stream_response called with message: {message[:100]}...")
+        logger.debug(f"AgentService.stream_response called with message: {message[:100]}...")
 
         if not session.agent:
             logger.error("Agent not initialized for session")
@@ -63,7 +63,7 @@ class AgentService:
         # Add user message to history
         session.history.append(Message(role="user", content=message))
         session.touch()
-        logger.info(f"History now has {len(session.history)} messages")
+        logger.debug(f"History now has {len(session.history)} messages")
 
         # Persist user message for enterprise mode (unless silent)
         if session.enterprise_mode and session.message_persister and not silent:
@@ -85,7 +85,7 @@ class AgentService:
         token = current_web_session.set(session)
 
         try:
-            logger.info("Starting agent.arespond_stream...")
+            logger.debug("Starting agent.arespond_stream...")
             async for event in session.agent.arespond_stream(session.history):
                 if event.type == EventType.CONTENT:
                     if event.content:
@@ -152,7 +152,7 @@ class AgentService:
                     }
 
         except asyncio.CancelledError:
-            logger.info("Agent stream cancelled")
+            logger.debug("Agent stream cancelled")
             yield {
                 "type": "stream_cancelled",
                 "timestamp": time.time(),
