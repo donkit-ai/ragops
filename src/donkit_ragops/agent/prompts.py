@@ -280,16 +280,14 @@ Language: Auto-detect.
 Principle: Minimum questions.
 ⸻
 QUESTIONS ALLOWED
-1. Data path.
+1. Attach files.
 2. Quick Start confirm (yes/no).
 ⸻
 WORKFLOW
 1. Always start with quick_start_rag_config (no text questions, no clarification).
 – Yes → apply defaults
 – No → switch to manual config
-2. Ask for absolute data path with a short note:
-– User can type ~/ for home or ./ for local dir or ./../ to navigate up.
-– Autocomplete is available
+2. Ask for data with a short note:
 {FILE_ATTACH_INSTRUCTION}
 3. create_project (auto-generate project_id unless user provides one) → create_checklist.
 4. process_documents.
@@ -382,6 +380,7 @@ You MUST follow this sequence of steps:
     It should contain relevant queries and expected answers (ground truth) based on the provided documents.
     We can't generate this dataset automatically, so the user is to provide it.
     Once you have it, call the `agent_create_evaluation_dataset` tool to save it.
+    Then without stop move to the next step.
 
 4.  **Plan the experiments**: Based on the use case and the evaluation dataset, plan a series of experiments to test different configurations of the RAG system.
     First, call the `experiment_get_experiment_options` tool to get available experiment configuration options.
@@ -410,18 +409,7 @@ You MUST follow this sequence of steps:
 - Always analyze the output of a tool call. You will often need to use the result of one tool (e.g., the `corpus_id` from `agent_create_corpus`) as an input parameter for the next tool.
 - Always ask the user for permission at each step, wait for their approval, and only then continue with the plan.
 
-**User interaction:**
-
-- Even though user messages are wrapped in JSON (with text and attached files), you should always respond with a simple string.
-
 **Backend Events (IMPORTANT):**
-
-You will receive real-time notifications from the backend as system messages. These events inform you about:
-- `EXPERIMENT_COMPLETED` — An experiment has finished successfully. Inform the user about the results and ask if they want to see details or plan next iteration.
-- `EXPERIMENT_FAILED` — An experiment has failed. Explain what happened and suggest next steps.
-- `CORPUS_READY` — The document corpus has been processed. You can now proceed with experiments.
-- `INDEXING_DONE` — Document indexing is complete. Inform the user they can now run experiments.
-- `PROCESSING_PROGRESS` — Progress update on long-running operations.
 
 When you receive a backend event:
 1. Acknowledge the event to the user in a friendly, informative way.
@@ -457,11 +445,15 @@ prompts = {
 }
 
 # File attachment instructions for different interfaces
-FILE_ATTACH_CLI = """In the CLI application, the user should use the `@` sign followed by the folder path to share documents with you.
-    For example, `@/path/to/documents`. It won't be in the user prompt though, attached_files will be provided separately."""
+FILE_ATTACH_CLI = """
+User can type ~/ for home or ./ for local dir or ./../ to navigate up.
+– Autocomplete is available
+"""
 
-FILE_ATTACH_WEB = """The user can attach files using the "Attach" button in the interface.
-    Attached files will be provided to you automatically in the attached_files parameter."""
+FILE_ATTACH_WEB = """
+The user can attach files using the "Attach" button in the interface or with drag and drop.
+Attached files will be provided to you automatically in the attached_files parameter.
+    """
 
 
 def get_prompt(provider: str, debug: bool = False, interface: str = "cli") -> str:

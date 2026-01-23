@@ -1489,15 +1489,15 @@ files = [
 
 [[package]]
 name = "donkit-chunker"
-version = "0.1.8"
+version = "0.1.9"
 description = "Chunking utilities for Donkit RagOps pipelines"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "donkit_chunker-0.1.8-py3-none-any.whl", hash = "sha256:7d357fada06c439ddec4ec797c64cb09abfa6ea2c9515b4c0ead0ce264fec1f4"},
-    {file = "donkit_chunker-0.1.8.tar.gz", hash = "sha256:80b9a41f194b610cce76eff104b4bc125ceb95d52b8ef93855ad632ed134ea3a"},
+    {file = "donkit_chunker-0.1.9-py3-none-any.whl", hash = "sha256:138e8bee80b5c9f5f7e8aa1ec9ebcd308e1b78e84751f23e8741cdcfaaffae88"},
+    {file = "donkit_chunker-0.1.9.tar.gz", hash = "sha256:42592b3fb2d81f86d994bd2a05a288338299c3832e3709aec5e4216fc6409fa7"},
 ]
 
 [package.dependencies]
@@ -10162,4 +10162,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "b83136d1d343847a74eb467a663540f6a74835b582e9509c07b61b424f72c972"
+content-hash = "c65960917d320858926d0b11e195c72f8ab9eba3642ab8866b44181574fed0b2"

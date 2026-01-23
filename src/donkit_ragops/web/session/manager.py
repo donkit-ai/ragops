@@ -312,8 +312,6 @@ class SessionManager:
                 if token_source == "parameter":
                     # Save to .env for web UI detection
                     try:
-                        from pathlib import Path
-
                         env_path = Path.cwd() / ".env"
                         config_to_save = {
                             "RAGOPS_DONKIT_API_KEY": token,
