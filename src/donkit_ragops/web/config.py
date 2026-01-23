@@ -41,7 +41,7 @@ class WebConfig(BaseSettings):
     def enterprise_mcp_url(self) -> str:
         """MCP URL derived from enterprise API URL."""
         base = self.enterprise_api_url.rstrip("/")
-        return f"{base}/mcp"
+        return f"{base}/mcp/"
 
 
 def get_web_config() -> WebConfig:

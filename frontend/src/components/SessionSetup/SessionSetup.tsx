@@ -32,12 +32,12 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
     try {
       const response = await getProviders();
 
-      // Check if donkit is configured (for enterprise mode)
+      // Check if donkit is configured (for both modes now)
       const donkitProvider = response.providers.find(p => p.name === 'donkit');
       setDonkitConfigured(donkitProvider?.is_configured ?? false);
 
-      // Filter configured providers for local mode (exclude donkit as it's for enterprise)
-      const configured = response.providers.filter(p => p.is_configured && p.name !== 'donkit');
+      // Filter configured providers for local mode (donkit can be used in both modes now)
+      const configured = response.providers.filter(p => p.is_configured);
       setConfiguredProviders(configured);
 
       // Auto-select first configured provider
