@@ -44,6 +44,7 @@ vertex_service_account.json
 image_cache.json
 projects/
 !src/**/Projects/
+!frontend/**/Projects/
 docs/
 /poetry.lock
 .claude/
