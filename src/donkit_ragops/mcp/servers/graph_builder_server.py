@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import warnings
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ warnings.simplefilter("ignore", DeprecationWarning)
 
 from fastmcp import FastMCP
 from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 from pydantic import BaseModel, Field
 
 from donkit_ragops.schemas.config_schemas import GraphOptions
@@ -73,6 +75,20 @@ def _normalize_graph_uri(graph_uri: str) -> str:
     return graph_uri
 
 
+def _wait_for_neo4j(driver: GraphDatabase.driver, retries: int = 10, delay: float = 1.0) -> None:
+    last_exc: Exception | None = None
+    for _ in range(retries):
+        try:
+            with driver.session() as session:
+                session.run("RETURN 1")
+            return
+        except (ServiceUnavailable, OSError) as exc:
+            last_exc = exc
+            time.sleep(delay)
+    if last_exc:
+        raise last_exc
+
+
 class GraphBuildArgs(BaseModel):
     chunks_path: str = Field(
         description=(
@@ -118,6 +134,7 @@ async def graph_build(args: GraphBuildArgs) -> str:
     files_loaded = 0
 
     try:
+        _wait_for_neo4j(driver)
         with driver.session() as session:
             constraint_name = _safe_identifier(f"{node_label}_id_unique", "chunk_id_unique")
             session.run(

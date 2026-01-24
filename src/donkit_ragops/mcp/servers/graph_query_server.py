@@ -96,7 +96,7 @@ server = FastMCP("rag-graph-query")
     ),
 )
 async def graph_search(args: GraphQueryArgs) -> str:
-    password = args.graph_password or os.getenv("NEO4J_PASSWORD", "neo4j")
+    password = args.graph_password or os.getenv("NEO4J_PASSWORD", "neo4j123")
     node_label = _safe_identifier(args.graph_options.node_label, "Chunk")
     edge_type = _safe_identifier(args.graph_options.edge_type, "NEXT")
     index_name = _safe_identifier(args.graph_options.index_name, "chunk_content")
@@ -174,7 +174,7 @@ async def graph_search(args: GraphQueryArgs) -> str:
     ),
 )
 async def graph_overview(args: GraphInspectArgs) -> str:
-    password = args.graph_password or os.getenv("NEO4J_PASSWORD", "neo4j")
+    password = args.graph_password or os.getenv("NEO4J_PASSWORD", "neo4j123")
     node_label = _safe_identifier(args.graph_options.node_label, "Chunk")
     edge_type = _safe_identifier(args.graph_options.edge_type, "NEXT")
 
