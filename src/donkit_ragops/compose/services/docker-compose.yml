@@ -146,6 +146,7 @@ services:
   neo4j:
     image: neo4j:5
     container_name: ${NEO4J_CONTAINER_NAME:-neo4j}
+    hostname: neo4j
     profiles:
       - neo4j
     ports:
