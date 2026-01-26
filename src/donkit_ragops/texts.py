@@ -36,6 +36,14 @@ def get_help_commands_plain() -> list[str]:
                 "  /model - Select LLM model",
             ]
         )
+    else:
+        # Add enterprise-only commands
+        commands.extend(
+            [
+                "  /projects - List and switch projects",
+                "  /new-project - Create a new project",
+            ]
+        )
 
     commands.extend(
         [
@@ -71,6 +79,14 @@ def styled_help_commands() -> list[StyledText]:
             [
                 styled_text((StyleName.BOLD, "  /provider"), (None, " - Select LLM provider")),
                 styled_text((StyleName.BOLD, "  /model"), (None, " - Select LLM model")),
+            ]
+        )
+    else:
+        # Add enterprise-only commands
+        commands.extend(
+            [
+                styled_text((StyleName.BOLD, "  /projects"), (None, " - List and switch projects")),
+                styled_text((StyleName.BOLD, "  /new-project"), (None, " - Create a new project")),
             ]
         )
 
