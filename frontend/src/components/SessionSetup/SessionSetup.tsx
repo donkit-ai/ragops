@@ -145,7 +145,8 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <p className="text-sm text-dark-text-secondary">
                 Run everything locally with your own LLM provider
               </p>
-              <div className="mt-3 text-xs mt-auto">
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
                 {mode === 'local' && !checkingConfig ? (
                   configuredProviders.length > 0 ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
@@ -187,7 +188,8 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <p className="text-sm text-dark-text-secondary">
                 Connect to Donkit Cloud for managed RAG pipelines
               </p>
-              <div className="mt-3 text-xs mt-auto">
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
                 {mode === 'saas' && !checkingConfig ? (
                   donkitConfigured ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
@@ -216,12 +218,19 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <Building2 className="w-12 h-12 mb-3 text-dark-text-muted" />
               <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Enterprise</h3>
               <p className="text-sm text-dark-text-secondary">
-                On-premise deployment for your infrastructure
+                Deploy locally on-premises or within your corporate VPC
               </p>
-              <div className="mt-3 text-xs mt-auto">
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-dark-bg text-dark-text-muted rounded">
-                  Coming soon
-                </span>
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
+                <a
+                  href="https://donkit.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-dark-bg text-dark-text-muted rounded hover:text-dark-text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Contact Us
+                </a>
               </div>
             </div>
           </button>
