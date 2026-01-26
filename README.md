@@ -6,28 +6,33 @@
 
 **Optimal RAG in hours, not months.**
 
-An LLM-powered CLI agent that automates the creation, experimentation, and deployment of Retrieval-Augmented Generation (RAG) pipelines. Instead of spending months manually tuning indexes, chunking strategies, embeddings, and evaluators — let the agent explore the design space, run experiments, and converge on what works for your data.
+A smart, LLM-powered CLI agent that automates the entire lifecycle of Retrieval-Augmented Generation (RAG) pipelines — from creation and experimentation to deployment.
+Forget spending months tweaking chunking strategies, embeddings, and vector DBs by hand. Just describe what you need, and let the agent run 100+ parallel experiments to discover what actually works for your data — fast, accurate, and infra-agnostic.
 
 Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
 
 ## Who is this for?
 
-- **AI Engineers** building internal assistants and agents
-- **Teams** needing accuracy-sensitive RAG where errors compound across steps
-- **Organizations** running agent-dependent systems requiring trustworthy retrieval
-
-> Think of RAG like a library—with indexes, storage, and a librarian. Donkit is the library factory.
+- **AI Engineers** building assistants and agents
+- **Teams** in need of accuracy-sensitive and multiagentic RAG where errors compound across steps
+- **Organizations** aiming to reduce time-to-value for production AI deployments
 
 ## Key Features
 
+* **Parallel Experimentation Engine** — Explores 100s of pipeline variations (chunking, vector DBs, prompts, rerankers, etc.) to find what performs best — in hours, not months.
+* **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
+* **Built-in Evaluation & Scoring** — Automatically generates evaluation dataset (if needed), runs Q&A tests and scores pipeline accuracy on your real data.
+* **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Anthropic Claude, Azure OpenAI, Ollama, OpenRouter
+
+## Main Capabilities
 * **Interactive REPL** — Start an interactive session with readline history and autocompletion
 * **Web UI** — Browser-based interface at http://localhost:8067 (`donkit-ragops-web`)
-* **Checklist-driven workflow** — The agent creates project checklists, asks for approval before each step, and tracks progress
-* **Session-scoped checklists** — Only current session checklists appear in the UI
-* **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, reading, chunking, vector loading, querying, evaluation)
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
-* **Enterprise mode** — Connect to Donkit cloud for experiments
-* **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Anthropic Claude, Azure OpenAI, Ollama, OpenRouter
+* **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, reading, chunking, vector loading, querying, evaluation)
+* **Checklist-driven workflow** — Each RAG project is structured as a checklist — with clear stages, approvals, and progress tracking
+* **Session-scoped checklists** — Only current session checklists appear in the UI
+* **SaaS mode** — Connect to Donkit cloud for experiments
+* **Enterprise mode** — deploy to VPC or on-premises with no vendor lock-in (reach out to us via https://donkit.ai) 
 
 ## Quick Install
 
@@ -206,7 +211,7 @@ donkit-ragops -p vertexai
 # With custom model
 donkit-ragops -p openai -m gpt-4
 
-# Start in enterprise mode (requires login first)
+# Start in SaaS/enterprise mode (requires login first)
 donkit-ragops --enterprise
 ```
 
@@ -226,6 +231,7 @@ Inside the interactive session, use these commands:
 - `-m, --model` — Specify model name
 - `-s, --system` — Custom system prompt
 - `--local` — Force local mode (default)
+- `--saas` — Force SaaS mode (requires login)
 - `--enterprise` — Force enterprise mode (requires login)
 - `--setup` — Run setup wizard to reconfigure
 - `--show-checklist/--no-checklist` — Toggle checklist panel (default: shown)
@@ -236,7 +242,7 @@ Inside the interactive session, use these commands:
 # Health check
 donkit-ragops ping
 
-# Enterprise mode authentication
+# Saas/Enterprise mode authentication
 donkit-ragops login --token YOUR_TOKEN  # Login to Donkit cloud
 donkit-ragops logout                    # Remove stored token
 donkit-ragops status                    # Show mode and auth status
@@ -307,9 +313,9 @@ Open http://localhost:8067 in your browser. The Web UI provides:
 - Checklist visualization
 - Settings configuration
 
-## Enterprise Mode (SaaS)
+## SaaS Mode
 
-Enterprise mode is a fully managed SaaS platform. All backend infrastructure — databases, vector stores, RAG services, and experiment runners — is hosted by Donkit. You get the same CLI interface, but with powerful cloud features.
+SaaS mode is a fully managed SaaS platform. All backend infrastructure — databases, vector stores, RAG services, and experiment runners — is hosted by Donkit. You get the same CLI interface, but with powerful cloud features.
 
 ### Setup
 
@@ -317,8 +323,8 @@ Enterprise mode is a fully managed SaaS platform. All backend infrastructure —
 # 1. Login with your API token
 donkit-ragops login --token YOUR_API_TOKEN
 
-# 2. Start in enterprise mode
-donkit-ragops --enterprise
+# 2. Start in SaaS mode
+donkit-ragops --saas
 
 # 3. Check status
 donkit-ragops status
@@ -337,15 +343,29 @@ donkit-ragops logout
 - **Persistent history** — Conversation and project history preserved across sessions
 - **MCP over HTTP** — All MCP tools executed server-side
 
-### Local vs Enterprise
+## Enterprise Mode
 
-| Feature | Local Mode | Enterprise Mode |
-|---------|------------|-----------------|
-| Infrastructure | Self-hosted (Docker) | Managed by Donkit |
-| Vector stores | Local Qdrant/Milvus/Chroma | Cloud-hosted |
-| Experiments | Manual | Automated iterations |
-| Evaluation | Basic | Full pipeline with metrics |
-| Data persistence | Local files | Cloud database |
+Enterprise mode runs fully inside your infrastructure — no data ever leaves your network. All components — from vector databases to experiment runners — are deployed within your VPC, Kubernetes cluster, or even a single secured server. You get the same CLI and web UI, but with full control over data, compute, and compliance. No vendor lock-in, no hidden dependencies — just RAG automation, on your terms.
+
+### What's Included
+
+- **Self-hosted infrastructure** — Run the full Donkit stack in your VPC, Kubernetes cluster, or air-gapped server
+- **Automated experiments** — Execute 100+ RAG variations locally to identify the best-performing pipeline
+- **Experiment tracking** — Monitor and compare pipeline variants (chunking, retrieval, reranking) within your environment
+- **Evaluation pipelines** — Run secure, on-prem evaluation with precision, recall, and answer relevancy metrics
+- **Local file attachments** — Add documents from using `@/path/to/file` in chat or or connect your data sources via APIs
+- **Session-based state** — Preserve project and conversation history within your private deployment
+- **MCP over IPC** — All orchestration runs inside your infrastructure; no external HTTP calls required
+
+## Modes of work comparison
+
+| Feature | Local Mode | SaaS Mode |Enterprise Mode |
+|---------|------------|------------|-----------------|
+| Infrastructure | Self-hosted (Docker) | Managed by Donkit | Managed by customer |
+| Vector stores | Local Qdrant/Milvus/Chroma | Cloud-hosted | Managed by customer |
+| Experiments | Manual | Automated iterations | Automated iterations |
+| Evaluation | Basic | Full pipeline with metrics | Full pipeline with metrics |
+| Data persistence | Local files | Cloud database | Full data residency control |
 
 ## MCP Servers
 
@@ -363,7 +383,7 @@ Plans RAG pipeline configuration based on requirements.
 Processes and converts documents from various formats.
 
 **Tools:**
-- `process_documents` — Convert PDF, DOCX, PPTX, XLSX, images to text/json/markdown
+- `process_documents` — Convert PDF, DOCX, PPTX, XLSX, images to text/JSON/markdown/TOON
 
 ### `ragops-chunker`
 
@@ -461,7 +481,7 @@ The agent will:
 ### Custom Configuration
 
 ```bash
-donkit-ragops -p vertexai -m gemini-1.5-pro
+donkit-ragops -p vertexai -m gemini-2.5-pro
 ```
 
 ```
@@ -515,11 +535,11 @@ ragops-agent-cli/
 │   ├── repl/               # REPL implementation
 │   │   ├── base.py         # Base REPL context
 │   │   ├── local_repl.py   # Local mode REPL
-│   │   └── enterprise_repl.py  # Enterprise mode REPL
+│   │   └── enterprise_repl.py  # SaaS/Enterprise mode REPL
 │   ├── web/                # Web UI (FastAPI + WebSocket)
 │   │   ├── app.py          # FastAPI application
 │   │   └── routes/         # API endpoints
-│   ├── enterprise/         # Enterprise mode components
+│   ├── enterprise/         # SaaS/Enterprise mode components
 │   ├── cli.py              # CLI entry point (Typer)
 │   └── config.py           # Configuration management
 ├── tests/                  # Test suite (170+ tests)
