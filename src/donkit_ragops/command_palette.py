@@ -106,6 +106,16 @@ class CommandRegistry:
             )
         )
 
+        # Third-party integration
+        self.register(
+            Command(
+                name="/airbyte",
+                description="Connect to Airbyte",
+                category="Integration",
+                template="/airbyte",
+            )
+        )
+
         # System
         self.register(
             Command(

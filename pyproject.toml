@@ -102,3 +102,6 @@ python_functions = ["test_*"]
 markers = [
     "asyncio: marks tests as async (using pytest-asyncio)",
 ]
+
+[tool.ruff.lint.isort]
+force-single-line = true
