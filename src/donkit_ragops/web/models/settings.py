@@ -78,7 +78,7 @@ class ProviderTestResponse(BaseModel):
 class ProvidersSaveRequest(BaseModel):
     """Request to save provider configuration."""
 
-    provider: str = Field(..., description="Provider to configure (e.g., 'openai')")
+    provider: str = Field(default="donkit", description="Provider to configure (e.g., 'openai')")
     config: dict[str, str] = Field(..., description="Configuration to save")
 
 

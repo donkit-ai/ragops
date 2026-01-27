@@ -213,7 +213,8 @@ async def save_provider_config(request: ProvidersSaveRequest) -> ProvidersSaveRe
 
     # Add provider and log level to config
     config_to_save = dict(request.config)
-    config_to_save["RAGOPS_LLM_PROVIDER"] = request.provider
+    # Always set provider (default to "donkit" if somehow empty)
+    config_to_save["RAGOPS_LLM_PROVIDER"] = request.provider or "donkit"
     if "RAGOPS_LOG_LEVEL" not in config_to_save:
         config_to_save["RAGOPS_LOG_LEVEL"] = "ERROR"
 

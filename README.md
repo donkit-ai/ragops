@@ -26,7 +26,7 @@ Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
 
 ## Main Capabilities
 * **Interactive REPL** — Start an interactive session with readline history and autocompletion
-* **Web UI** — Browser-based interface at http://localhost:8067 (`donkit-ragops-web`)
+* **Web UI** — Browser-based interface at http://localhost:8067 (`donkit-ragops-web`, auto-opens browser)
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
 * **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, reading, chunking, vector loading, querying, evaluation)
 * **Checklist-driven workflow** — Each RAG project is structured as a checklist — with clear stages, approvals, and progress tracking
@@ -51,7 +51,7 @@ irm https://raw.githubusercontent.com/donkit-ai/ragops/main/scripts/install.ps1 
 After installation:
 ```bash
 donkit-ragops        # Start CLI agent
-donkit-ragops-web    # Start Web UI at http://localhost:8067
+donkit-ragops-web    # Start Web UI (browser opens automatically at http://localhost:8067)
 ```
 
 ---
@@ -301,11 +301,17 @@ The agent follows a structured workflow:
 RAGOps includes a browser-based interface for easier interaction:
 
 ```bash
-# Start Web UI server
+# Start Web UI server (browser opens automatically)
 donkit-ragops-web
+
+# Start Web UI without opening browser
+donkit-ragops-web --no-browser
+
+# Development mode with hot reload
+donkit-ragops-web --dev
 ```
 
-Open http://localhost:8067 in your browser. The Web UI provides:
+The browser will automatically open at http://localhost:8067. The Web UI provides:
 
 - Visual project management
 - File upload and attachment

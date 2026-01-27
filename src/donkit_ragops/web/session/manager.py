@@ -313,10 +313,24 @@ class SessionManager:
                     # Save to .env for web UI detection
                     try:
                         env_path = Path.cwd() / ".env"
+
+                        # Base config to save
                         config_to_save = {
+                            "RAGOPS_LLM_PROVIDER": "donkit",
                             "RAGOPS_DONKIT_API_KEY": token,
                             "RAGOPS_DONKIT_BASE_URL": "https://api.donkit.ai",
                         }
+
+                        # Add RAGOPS_LOG_LEVEL only if not already set
+                        if env_path.exists():
+                            from dotenv import dotenv_values
+
+                            existing_config = dict(dotenv_values(env_path))
+                            if "RAGOPS_LOG_LEVEL" not in existing_config:
+                                config_to_save["RAGOPS_LOG_LEVEL"] = "ERROR"
+                        else:
+                            # New file - add default log level
+                            config_to_save["RAGOPS_LOG_LEVEL"] = "ERROR"
 
                         if env_path.exists():
                             existing_text = env_path.read_text(encoding="utf-8")

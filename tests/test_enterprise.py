@@ -983,4 +983,4 @@ class TestEnterpriseSettings:
 
         # Fixture clears env vars automatically
         settings = EnterpriseSettings()
-        assert settings.mcp_url == "https://api.donkit.ai/mcp"
+        assert settings.mcp_url == "https://api.donkit.ai/mcp/"
