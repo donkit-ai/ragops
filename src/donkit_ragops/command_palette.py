@@ -88,50 +88,6 @@ class CommandRegistry:
             )
         )
 
-        # Project Management
-        self.register(
-            Command(
-                name="/projects",
-                description="List all projects",
-                category="Project Management",
-                template="List all projects",
-            )
-        )
-        self.register(
-            Command(
-                name="/create-project",
-                description="Create new RAG project",
-                category="Project Management",
-                template="Create a new RAG project",
-            )
-        )
-
-        # System
-        self.register(
-            Command(
-                name="/status",
-                description="Show system status",
-                category="System",
-                template="Show system status",
-            )
-        )
-        self.register(
-            Command(
-                name="/checklist",
-                description="Show current checklist",
-                category="System",
-                template="Show current checklist",
-            )
-        )
-        self.register(
-            Command(
-                name="/tools",
-                description="List available tools",
-                category="System",
-                template="List available tools",
-            )
-        )
-
     def register(self, command: Command) -> None:
         """Register a command."""
         self.commands.append(command)
@@ -152,6 +108,25 @@ class CommandRegistry:
                 description="Select LLM model",
                 category="Agent Control",
                 template="/model",
+            )
+        )
+
+    def register_enterprise_mode_commands(self) -> None:
+        """Register commands only available in enterprise mode."""
+        self.register(
+            Command(
+                name="/projects",
+                description="List and switch projects",
+                category="Project Management",
+                template="/projects",
+            )
+        )
+        self.register(
+            Command(
+                name="/new-project",
+                description="Create a new project",
+                category="Project Management",
+                template="/new-project",
             )
         )
 

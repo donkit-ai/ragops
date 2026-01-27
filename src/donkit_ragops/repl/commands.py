@@ -198,6 +198,46 @@ class ModelCommand(ReplCommand):
         return CommandResult(should_continue=True)
 
 
+class ProjectsCommand(ReplCommand):
+    """List projects."""
+
+    @property
+    def name(self) -> str:
+        return "projects"
+
+    @property
+    def aliases(self) -> list[str]:
+        return ["p"]
+
+    @property
+    def description(self) -> str:
+        return "List projects"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that project listing should be handled by EnterpriseREPL
+        return CommandResult(should_continue=True)
+
+
+class NewProjectCommand(ReplCommand):
+    """Create a new project."""
+
+    @property
+    def name(self) -> str:
+        return "new-project"
+
+    @property
+    def aliases(self) -> list[str]:
+        return ["new", "np"]
+
+    @property
+    def description(self) -> str:
+        return "Create a new project"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that project creation should be handled by EnterpriseREPL
+        return CommandResult(should_continue=True)
+
+
 class CommandRegistry:
     """Registry for REPL commands.
 
@@ -221,6 +261,11 @@ class CommandRegistry:
         self.register(HelpCommand())
         self.register(ClearCommand())
         self.register(QuitCommand())
+
+    def register_enterprise_commands(self) -> None:
+        """Register enterprise-specific commands."""
+        self.register(ProjectsCommand())
+        self.register(NewProjectCommand())
 
     def get_command(self, input_str: str) -> ReplCommand | None:
         """Find command matching input.

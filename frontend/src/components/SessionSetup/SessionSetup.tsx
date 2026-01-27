@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Cloud, Monitor, ArrowRight, Key, Loader2, Settings, Plus, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Building2, CheckCircle2, Cloud, Key, Loader2, Monitor, Plus, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useSettings } from '../../hooks/useSettings';
-import SetupWizard from '../SetupWizard/SetupWizard';
 import type { ProviderInfo } from '../../types/settings';
+import SetupWizard from '../SetupWizard/SetupWizard';
 
 interface SessionSetupProps {
   onStart: (options: { enterprise_mode: boolean; api_token?: string; provider?: string }) => Promise<void>;
@@ -11,7 +11,7 @@ interface SessionSetupProps {
 }
 
 export default function SessionSetup({ onStart, loading, error }: SessionSetupProps) {
-  const [mode, setMode] = useState<'local' | 'enterprise'>('local');
+  const [mode, setMode] = useState<'local' | 'saas' | 'enterprise'>('local');
   const [apiToken, setApiToken] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
@@ -54,7 +54,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
   };
 
   const handleStart = async () => {
-    if (mode === 'enterprise') {
+    if (mode === 'saas') {
       // If donkit is configured and no manual token entered, use saved token
       if (donkitConfigured && !showTokenInput) {
         // Start directly with saved token
@@ -80,13 +80,13 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
     }
 
     await onStart({
-      enterprise_mode: mode === 'enterprise',
-      api_token: mode === 'enterprise' ? apiToken || undefined : undefined,
+      enterprise_mode: mode === 'saas',
+      api_token: mode === 'saas' ? apiToken || undefined : undefined,
       provider: mode === 'local' ? selectedProvider || undefined : undefined,
     });
   };
 
-  const handleModeChange = (newMode: 'local' | 'enterprise') => {
+  const handleModeChange = (newMode: 'local' | 'saas' | 'enterprise') => {
     setMode(newMode);
     setShowTokenInput(false);
     setApiToken('');
@@ -122,12 +122,12 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
         </div>
 
         {/* Mode Selection */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Local Mode */}
           <button
             onClick={() => handleModeChange('local')}
             className={`
-              p-6 rounded-xl border-2 transition-all
+              p-6 rounded-xl border-2 transition-all h-full
               ${
                 mode === 'local'
                   ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
@@ -135,19 +135,20 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               }
             `}
           >
-            <div className="flex flex-col items-center text-center">
+            <div className="flex flex-col items-center text-center h-full">
               <Monitor
                 className={`w-12 h-12 mb-3 ${
                   mode === 'local' ? 'text-accent-blue' : 'text-dark-text-muted'
                 }`}
               />
-              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Local Mode</h3>
+              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Local</h3>
               <p className="text-sm text-dark-text-secondary">
                 Run everything locally with your own LLM provider
               </p>
-              {mode === 'local' && !checkingConfig && (
-                <div className="mt-3 text-xs">
-                  {configuredProviders.length > 0 ? (
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
+                {mode === 'local' && !checkingConfig ? (
+                  configuredProviders.length > 0 ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
                       <CheckCircle2 className="w-3 h-3" />
                       {configuredProviders.length} {configuredProviders.length === 1 ? 'provider' : 'providers'}
@@ -157,37 +158,40 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                       <Settings className="w-3 h-3" />
                       Setup required
                     </span>
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  <span className="invisible px-2 py-1">Placeholder</span>
+                )}
+              </div>
             </div>
           </button>
 
-          {/* Enterprise Mode */}
+          {/* SaaS Mode */}
           <button
-            onClick={() => handleModeChange('enterprise')}
+            onClick={() => handleModeChange('saas')}
             className={`
-              p-6 rounded-xl border-2 transition-all
+              p-6 rounded-xl border-2 transition-all h-full
               ${
-                mode === 'enterprise'
+                mode === 'saas'
                   ? 'border-accent-red bg-accent-red/10 shadow-lg shadow-accent-red/20'
                   : 'border-dark-border bg-dark-surface hover:border-dark-text-muted'
               }
             `}
           >
-            <div className="flex flex-col items-center text-center">
+            <div className="flex flex-col items-center text-center h-full">
               <Cloud
                 className={`w-12 h-12 mb-3 ${
-                  mode === 'enterprise' ? 'text-accent-red' : 'text-dark-text-muted'
+                  mode === 'saas' ? 'text-accent-red' : 'text-dark-text-muted'
                 }`}
               />
-              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Enterprise Mode</h3>
+              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">SaaS</h3>
               <p className="text-sm text-dark-text-secondary">
                 Connect to Donkit Cloud for managed RAG pipelines
               </p>
-              {mode === 'enterprise' && !checkingConfig && (
-                <div className="mt-3 text-xs">
-                  {donkitConfigured ? (
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
+                {mode === 'saas' && !checkingConfig ? (
+                  donkitConfigured ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
                       <CheckCircle2 className="w-3 h-3" />
                       API Key configured
@@ -197,9 +201,37 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                       <Key className="w-3 h-3" />
                       API Key required
                     </span>
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  <span className="invisible px-2 py-1">Placeholder</span>
+                )}
+              </div>
+            </div>
+          </button>
+
+          {/* Enterprise Mode (On-Prem) */}
+          <button
+            disabled
+            className="p-6 rounded-xl border-2 transition-all border-dark-border bg-dark-surface opacity-50 cursor-not-allowed h-full"
+          >
+            <div className="flex flex-col items-center text-center h-full">
+              <Building2 className="w-12 h-12 mb-3 text-dark-text-muted" />
+              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Enterprise</h3>
+              <p className="text-sm text-dark-text-secondary">
+                Deploy locally on-premises or within your corporate VPC
+              </p>
+              <div className="flex-1" />
+              <div className="pt-4 text-xs">
+                <a
+                  href="https://donkit.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-dark-bg text-dark-text-muted rounded hover:text-dark-text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Contact Us
+                </a>
+              </div>
             </div>
           </button>
         </div>
@@ -247,8 +279,8 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           </div>
         )}
 
-        {/* API Token Input (Enterprise only) */}
-        {mode === 'enterprise' && showTokenInput && (
+        {/* API Token Input (SaaS only) */}
+        {mode === 'saas' && showTokenInput && (
           <div className="mb-6 bg-dark-surface rounded-xl p-6 border border-dark-border shadow-sm">
             <label className="block mb-2">
               <div className="flex items-center gap-2 text-sm font-medium text-dark-text-primary mb-2">
@@ -288,7 +320,9 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             ${
               mode === 'local'
                 ? 'bg-accent-blue hover:bg-accent-blue-hover'
-                : 'bg-accent-red hover:bg-accent-red-hover'
+                : mode === 'saas'
+                  ? 'bg-accent-red hover:bg-accent-red-hover'
+                  : 'bg-dark-text-muted'
             }
             ${loading || checkingConfig ? 'opacity-50 cursor-not-allowed' : 'shadow-lg hover:shadow-xl'}
           `}
@@ -300,7 +334,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             </>
           ) : (
             <>
-              {mode === 'enterprise' && !donkitConfigured && !showTokenInput ? (
+              {mode === 'saas' && !donkitConfigured && !showTokenInput ? (
                 <>
                   Next
                   <ArrowRight className="w-5 h-5" />
@@ -312,7 +346,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 </>
               ) : (
                 <>
-                  Start {mode === 'local' ? 'Local' : 'Enterprise'} Mode
+                  Start {mode === 'local' ? 'Local' : 'SaaS'} Mode
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -332,8 +366,8 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           </button>
         )}
 
-        {/* Use different token button for enterprise mode */}
-        {mode === 'enterprise' && donkitConfigured && !showTokenInput && (
+        {/* Use different token button for SaaS mode */}
+        {mode === 'saas' && donkitConfigured && !showTokenInput && (
           <button
             onClick={() => setShowTokenInput(true)}
             disabled={loading || checkingConfig}

@@ -59,7 +59,7 @@ class EnterpriseSettings(BaseSettings):
     def mcp_url(self) -> str:
         """MCP URL is derived from api_url with /mcp path."""
         base = self.donkit_base_url.rstrip("/")
-        return f"{base}/mcp"
+        return f"{base}/mcp/"
 
 
 def load_enterprise_settings() -> EnterpriseSettings:
