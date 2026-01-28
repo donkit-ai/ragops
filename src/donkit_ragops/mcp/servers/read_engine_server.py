@@ -149,7 +149,7 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
     elif source_path.parent.exists():
         # Normalize multiple spaces in the provided path
         normalized_name = re.sub(r"\s+", " ", source_path.name)
-        logger.info(f"Looking for similar files. Normalized name: {repr(normalized_name)}")
+        logger.debug(f"Looking for similar files. Normalized name: {repr(normalized_name)}")
 
         similar_files = []
         for file_path in source_path.parent.iterdir():
@@ -195,7 +195,7 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
     # Create project output directory
     project_output_dir = Path(f"projects/{args.project_id}/processed").resolve()
     project_output_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Output directory: {project_output_dir}")
+    logger.debug(f"Output directory: {project_output_dir}")
 
     processed_files: list[str] = []
     failed_files: list[dict[str, str]] = []
@@ -206,7 +206,7 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
     total_files = len(files_to_process)
     for file_path in files_to_process:
         try:
-            logger.info(f"Processing file: {file_path}")
+            logger.debug(f"Processing file: {file_path}")
 
             # Pass output_dir to save directly to project directory (no moving needed)
             # Use async version for better performance
@@ -222,7 +222,7 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
             files_counter += 1
             logger.debug(f"DonkitReader saved to: {output_path}")
             processed_files.append(output_path)
-            logger.info(f"✓ Processed: {file_path.name} -> {output_path}")
+            logger.debug(f"✓ Processed: {file_path.name} -> {output_path}")
         except Exception as e:
             error_msg = str(e)
             failed_files.append({"file": str(file_path), "error": error_msg})
@@ -234,7 +234,7 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
         try:
             if temp_dir.exists() and temp_dir.is_dir() and not list(temp_dir.iterdir()):
                 temp_dir.rmdir()
-                logger.info(f"Cleaned up empty temp directory: {temp_dir}")
+                logger.debug(f"Cleaned up empty temp directory: {temp_dir}")
         except Exception as e:
             logger.warning(f"Could not clean up temp directory {temp_dir}: {e}")
 

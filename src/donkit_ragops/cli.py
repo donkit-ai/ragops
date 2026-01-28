@@ -120,12 +120,11 @@ def main(
       • rag-evaluation        - RAG pipeline evaluation
 
     REPL COMMANDS:
-      :help, :h, :?           - Show available commands
-      :quit, :q, exit         - Exit the agent
-      :clear                  - Clear conversation history
-      :provider               - Select LLM provider
-      :model                  - Select LLM model
-      /                       - Open command palette (autocomplete)
+      /help                   - Show available commands
+      /exit                   - Exit the agent
+      /clear                  - Clear conversation and screen
+      /provider               - Select LLM provider
+      /model                  - Select LLM model
       @/path                  - Attach files (enterprise mode only)
 
     EXAMPLES:
@@ -183,6 +182,7 @@ def _run_enterprise_mode() -> None:
         tool_read_file,
     )
     from donkit_ragops.agent.prompts import get_prompt
+    from donkit_ragops.config import set_enterprise_mode
     from donkit_ragops.enterprise.auth import get_token
     from donkit_ragops.enterprise.config import load_enterprise_settings
     from donkit_ragops.enterprise.message_persister import MessagePersister
@@ -190,6 +190,9 @@ def _run_enterprise_mode() -> None:
     from donkit_ragops.repl.base import ReplContext
     from donkit_ragops.repl.enterprise_repl import EnterpriseREPL
     from donkit_ragops.schemas.agent_schemas import AgentSettings
+
+    # Set global enterprise mode flag
+    set_enterprise_mode(True)
 
     ui = get_ui()
 
@@ -258,7 +261,7 @@ def _run_enterprise_mode() -> None:
     context.agent = agent
 
     # Create message persister (project_id will be set during REPL init)
-    # Can be disabled via DONKIT_ENTERPRISE_PERSIST_MESSAGES=false
+    # Can be disabled via RAGOPS_DONKIT_PERSIST_MESSAGES=false
     message_persister = None
     if enterprise_settings.persist_messages:
         message_persister = MessagePersister(api_client=api_client, project_id="")

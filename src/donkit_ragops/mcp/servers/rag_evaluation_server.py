@@ -38,7 +38,7 @@ if _log_level == "DEBUG":
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     LOG_FILE = LOG_DIR / "evaluation.log"
     logger.add(LOG_FILE, rotation="10 MB", retention="7 days", level="DEBUG")
-    logger.info(f"Logging to {LOG_FILE}")
+    logger.debug(f"Logging to {LOG_FILE}")
 
 
 class BatchEvaluationArgs(BaseModel):
@@ -309,7 +309,7 @@ async def call_evaluation_service(
 
 async def rerun_evaluation_from_input_csv(
     *,
-    evaluation_url: str = "http://34.58.196.231/evaluate",
+    evaluation_url: str = "",
     evaluation_input_csv_path: str | Path = "./evaluation_input.csv",
     evaluation_output_csv_path: str | Path | None = "./evaluation_output.csv",
 ) -> str:
@@ -544,7 +544,7 @@ async def evaluate_batch(args: BatchEvaluationArgs) -> str:
     logger.debug(f"max_questions param: {args.max_questions}")
     if args.max_questions is not None and args.max_questions > 0:
         rows = rows[: args.max_questions]
-        logger.info(f"Limited to {len(rows)} questions (max_questions={args.max_questions})")
+        logger.debug(f"Limited to {len(rows)} questions (max_questions={args.max_questions})")
     else:
         logger.debug(f"Processing all {len(rows)} questions (no limit set)")
 

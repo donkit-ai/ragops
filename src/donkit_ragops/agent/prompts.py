@@ -162,6 +162,7 @@ WORKFLOW (DOCUMENT-FIRST APPROACH):
 
 1. Ask ONLY 1 thing at start:
    • "Provide data" (path to files/folder - user will give you, DON'T ask how)
+   {FILE_ATTACH_INSTRUCTION}
 
 2. create_project → IMMEDIATELY create_checklist(name=checklist_<project_id>) — CRITICAL
 
@@ -291,16 +292,15 @@ Language: Auto-detect.
 Principle: Minimum questions.
 ⸻
 QUESTIONS ALLOWED
-1. Data path.
+1. Attach files.
 2. Quick Start confirm (yes/no).
 ⸻
 WORKFLOW
 1. Always start with quick_start_rag_config (no text questions, no clarification).
 – Yes → apply defaults
 – No → switch to manual config
-2. Ask for absolute data path with a short note:
-– User can type ~/ for home or ./ for local dir or ./../ to navigate up.
-– Autocomplete is available
+2. Ask for data with a short note:
+{FILE_ATTACH_INSTRUCTION}
 3. create_project (auto-generate project_id unless user provides one) → create_checklist.
 4. process_documents.
 ⸻
@@ -386,8 +386,8 @@ IMPORTANT LANGUAGE RULES:
 You MUST follow this sequence of steps:
 
 1.  **Gather documents**: Ask the user to provide documents relevant to their RAG use case.
-    In the CLI application, the user should use the `@` sign followed by the folder path to share documents with you.
-    For example, `@/path/to/documents`. It won't be in the user prompt though, attached_files will be provided separately. Once you have them, call the `agent_create_corpus` tool to save them as a corpus of source files.
+    {FILE_ATTACH_INSTRUCTION}
+    Once you have them, call the `agent_create_corpus` tool to save them as a corpus of source files.
 
 2.  **Figure out a RAG use case**: What goal the user is trying to achieve?
     Once you have enough information, call the `agent_update_rag_use_case` tool to set the use case for the project.
@@ -396,6 +396,7 @@ You MUST follow this sequence of steps:
     It should contain relevant queries and expected answers (ground truth) based on the provided documents.
     We can't generate this dataset automatically, so the user is to provide it.
     Once you have it, call the `agent_create_evaluation_dataset` tool to save it.
+    Then without stop move to the next step.
 
 4.  **Plan the experiments**: Based on the use case and the evaluation dataset, plan a series of experiments to test different configurations of the RAG system.
     First, call the `experiment_get_experiment_options` tool to get available experiment configuration options.
@@ -424,18 +425,7 @@ You MUST follow this sequence of steps:
 - Always analyze the output of a tool call. You will often need to use the result of one tool (e.g., the `corpus_id` from `agent_create_corpus`) as an input parameter for the next tool.
 - Always ask the user for permission at each step, wait for their approval, and only then continue with the plan.
 
-**User interaction:**
-
-- Even though user messages are wrapped in JSON (with text and attached files), you should always respond with a simple string.
-
 **Backend Events (IMPORTANT):**
-
-You will receive real-time notifications from the backend as system messages. These events inform you about:
-- `EXPERIMENT_COMPLETED` — An experiment has finished successfully. Inform the user about the results and ask if they want to see details or plan next iteration.
-- `EXPERIMENT_FAILED` — An experiment has failed. Explain what happened and suggest next steps.
-- `CORPUS_READY` — The document corpus has been processed. You can now proceed with experiments.
-- `INDEXING_DONE` — Document indexing is complete. Inform the user they can now run experiments.
-- `PROCESSING_PROGRESS` — Progress update on long-running operations.
 
 When you receive a backend event:
 1. Acknowledge the event to the user in a friendly, informative way.
@@ -470,9 +460,36 @@ prompts = {
     "enterprise": ENTERPRISE_SYSTEM_PROMPT,
 }
 
+# File attachment instructions for different interfaces
+FILE_ATTACH_CLI = """
+User can type ~/ for home or ./ for local dir or ./../ to navigate up.
+– Autocomplete is available
+"""
 
-def get_prompt(provider: str, debug: bool = False) -> str:
+FILE_ATTACH_WEB = """
+The user can attach files using the "Attach" button in the interface or with drag and drop.
+Attached files will be provided to you automatically in the attached_files parameter.
+    """
+
+
+def get_prompt(provider: str, debug: bool = False, interface: str = "cli") -> str:
+    """Get system prompt for a provider.
+
+    Args:
+        provider: LLM provider name (vertex, openai, donkit, enterprise, etc.)
+        debug: Whether to add debug instructions
+        interface: Interface type ("cli" or "web") - affects file attachment instructions
+
+    Returns:
+        System prompt string
+    """
     prompt = prompts.get(provider, prompts["vertex"])
+
+    # Replace file attachment instruction based on interface
+    if "{FILE_ATTACH_INSTRUCTION}" in prompt:
+        file_instruction = FILE_ATTACH_WEB if interface == "web" else FILE_ATTACH_CLI
+        prompt = prompt.replace("{FILE_ATTACH_INSTRUCTION}", file_instruction)
+
     if debug:
         prompt = f"{prompt}\n\n{DEBUG_INSTRUCTIONS}"
     return prompt

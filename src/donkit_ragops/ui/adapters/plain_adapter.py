@@ -183,7 +183,16 @@ class PlainUI(UI):
             content = "\n".join("".join(text for _, text in line) for line in content)
         if title:
             print(f"=== {title} ===")
-        print(content)
+
+        # Convert content to plain text
+        if isinstance(content, str):
+            print(content)
+        else:
+            # List of StyledText lines - ignore styles
+            for styled_line in content:
+                line_text = "".join(text for _, text in styled_line)
+                print(line_text)
+
         if title:
             print("=" * (len(title) + 8))
 

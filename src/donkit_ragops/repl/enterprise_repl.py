@@ -68,6 +68,10 @@ class EnterpriseREPL(BaseREPL):
         self.enterprise_settings = enterprise_settings
         self.project_id: str | None = None
         self._command_registry: CommandRegistry = create_default_registry()
+        # Register enterprise-specific commands
+        self._command_registry.register_enterprise_commands()
+        # Temporary storage for loaded messages (added after system prompt)
+        self._loaded_messages: list[Message] = []
 
         # Set UI adapter
         set_ui_adapter(UIAdapter.RICH)
@@ -88,11 +92,50 @@ class EnterpriseREPL(BaseREPL):
                 user_id = user_info.id
                 self.context.system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
 
-                # Create project
-                project = await self.api_client.create_project()
-                self.project_id = str(project.id)
+                # Connect to most recent project, or create first project if none exist
+                recent_projects = await self.api_client.get_recent_projects(limit=1)
+                if recent_projects:
+                    # Use most recent project
+                    self.project_id = str(recent_projects[0].get("id"))
+                    ui.print(f"Connected to project: {self.project_id}", StyleName.SUCCESS)
+
+                    # Load project messages
+                    project_messages = await self._load_project_messages(self.project_id)
+                    for msg in project_messages:
+                        role = msg.get("role", "")
+                        content = msg.get("content", "")
+                        # Skip system messages (will be added below)
+                        if role == "system":
+                            continue
+                        # Skip backend events
+                        if (
+                            role == "user"
+                            and content
+                            and (
+                                content.startswith("[SYSTEM INSTRUCTION:")
+                                or content.startswith("[PIPELINE:")
+                                or content.startswith("[BACKEND_EVENT:")
+                                or content.startswith("[EXPERIMENT_ITERATION_COMPLETED]")
+                            )
+                        ):
+                            continue
+                        # Collect user and assistant messages (will be added after system prompt)
+                        if role in ("user", "assistant"):
+                            self._loaded_messages.append(Message(role=role, content=content))
+
+                    if self._loaded_messages:
+                        ui.print(
+                            f"Loaded {len(self._loaded_messages)} messages from history",
+                            StyleName.DIM,
+                        )
+                else:
+                    # No projects exist - create first one
+                    project = await self.api_client.create_project()
+                    self.project_id = str(project.id)
+                    ui.print(f"Created new project: {self.project_id}", StyleName.SUCCESS)
+
+                # Add project ID to system prompt
                 self.context.system_prompt += f"\nProject ID: {self.project_id}"
-                ui.print(f"Project: {self.project_id}", StyleName.SUCCESS)
         except Exception as e:
             ui.print_error(f"Error initializing: {e}")
             self.stop()
@@ -133,6 +176,43 @@ class EnterpriseREPL(BaseREPL):
         if self.context.system_prompt:
             self.context.history.append(Message(role="system", content=self.context.system_prompt))
 
+        # Add loaded messages from project history (after system prompt)
+        if self._loaded_messages:
+            ui.newline()
+            ui.print("─" * 80, StyleName.DIM)
+            ui.print("Loaded conversation history:", StyleName.INFO)
+            ui.print("─" * 80, StyleName.DIM)
+            ui.newline()
+
+            for msg in self._loaded_messages:
+                # Add to history
+                self.context.history.append(msg)
+
+                # Add to visual transcript and print with visual separation
+                if msg.role == "user":
+                    if self.context.render_helper:
+                        self.context.render_helper.append_user_line(msg.content)
+                    # Print user message with better styling
+                    ts = format_timestamp()
+                    ui.print(f"{ts}{texts.USER_PREFIX}", StyleName.USER_PREFIX, end=" ")
+                    ui.print(msg.content, StyleName.DIM)
+                    ui.newline()
+                elif msg.role == "assistant":
+                    if self.context.render_helper:
+                        rendered = render_markdown_to_rich(msg.content)
+                        self.context.render_helper.append_agent_message(rendered)
+                    # Print agent message with better styling
+                    ts = format_timestamp()
+                    ui.print(f"{ts}{texts.AGENT_PREFIX}", StyleName.SUCCESS, end=" ")
+                    ui.print(msg.content, StyleName.DIM)
+                    ui.newline()
+
+            ui.newline()
+            ui.print("─" * 80, StyleName.DIM)
+            ui.newline()
+
+            self._loaded_messages.clear()
+
         # Start event listener with callbacks
         if self.event_listener:
             self.event_listener.on_event = self._on_backend_event
@@ -154,8 +234,8 @@ class EnterpriseREPL(BaseREPL):
         self.context.history.append(event_msg)
 
         # Persist the event message (if persistence is enabled)
-        if self.message_persister:
-            await self.message_persister.persist_message(role="user", content=event.message)
+        # if self.message_persister:
+        #     await self.message_persister.persist_message(role="user", content=event.message)
 
         # Let LLM respond to the event
         await self._handle_event_response(event)
@@ -273,12 +353,15 @@ class EnterpriseREPL(BaseREPL):
         Returns:
             False to exit, True to continue
         """
-        # Check for commands
+        # Check for commands first
+        # is_command() now properly distinguishes between slash commands (/help, /exit)
+        # and absolute file paths (/Users/..., /home/...) by checking registered commands
         if self._command_registry.is_command(user_input) or user_input in {"quit", "exit"}:
             return await self._handle_command(user_input)
 
         # Check for file path - handle file upload
         # Skip if input is too long to be a valid file path (max 255 chars per component)
+        # This protects against OSError when pasting large JSON or other text
         if not user_input.startswith(":") and len(user_input) < 4096:
             try:
                 file_path = Path(user_input.strip())
@@ -294,11 +377,25 @@ class EnterpriseREPL(BaseREPL):
 
     async def _handle_command(self, user_input: str) -> bool:
         """Handle a registered command."""
+        from donkit_ragops.repl.commands import (
+            NewProjectCommand,
+            ProjectsCommand,
+        )
+
         cmd = self._command_registry.get_command(user_input)
         if cmd is None:
             self.context.ui.print(f"Unknown command: {user_input}", StyleName.WARNING)
             return True
 
+        # Handle enterprise-specific commands
+        if isinstance(cmd, ProjectsCommand):
+            await self._list_projects()
+            return True
+        elif isinstance(cmd, NewProjectCommand):
+            await self._create_new_project()
+            return True
+
+        # Handle default commands
         result = await cmd.execute(self.context)
 
         # Print styled messages using UI abstraction
@@ -390,31 +487,31 @@ class EnterpriseREPL(BaseREPL):
         if file_analysis:
             upload_message += f"\n\nFile analysis: {file_analysis}"
 
-        # Add S3 paths context
-        upload_message += f"\n\nFile locations: {s3_paths}"
+        # Add S3 paths context (one path per line for consistency with web UI)
+        upload_message += f"\n\nFile locations:\n{chr(10).join(s3_paths)}"
 
         ui.newline()
-        # ui.print(f"You: {upload_message[:100]}...", StyleName.INFO)
-        ui.newline()
 
-        # Handle this as a regular message to agent
-        await self.handle_message(upload_message)
+        # Handle this as a silent message to agent (don't show in UI or persist)
+        await self.handle_message(upload_message, silent=True)
         return True
 
-    async def handle_message(self, message: str) -> None:
+    async def handle_message(self, message: str, silent: bool = False) -> None:
         """Handle a chat message.
 
         Args:
             message: User's chat message
+            silent: If True, don't show in UI or persist to history (for internal messages)
         """
-        if self.context.render_helper:
-            self.context.render_helper.append_user_line(message)
+        if not silent:
+            if self.context.render_helper:
+                self.context.render_helper.append_user_line(message)
 
         # Add to history
         self.context.history.append(Message(role="user", content=message))
 
-        # Persist user message (if persistence is enabled)
-        if self.message_persister:
+        # Persist user message (if persistence is enabled and not silent)
+        if self.message_persister and not silent:
             await self.message_persister.persist_user_message(message)
 
         # Stream or non-stream response
@@ -630,3 +727,293 @@ class EnterpriseREPL(BaseREPL):
             self.context.render_helper.append_agent_message(rendered)
         self.context.ui.print(f"{rendered}", style=StyleName.HIGHLIGHTED)
         self.context.ui.newline()
+
+    async def _list_projects(self) -> None:
+        """List recent projects and allow interactive selection."""
+        ui = get_ui()
+        ui.newline()
+
+        try:
+            async with self.api_client:
+                # Get recent projects
+                projects = await self.api_client.get_recent_projects(limit=20)
+
+                if not projects:
+                    ui.print("No projects found. Use /new-project to create one.", StyleName.INFO)
+                    ui.newline()
+                    return
+
+                # Filter out current project and prepare choices
+                other_projects = []
+                current_project_info = None
+
+                for project in projects:
+                    project_id = str(project.get("id", ""))
+                    if project_id == self.project_id:
+                        current_project_info = project
+                    else:
+                        other_projects.append(project)
+
+                # Show current project info
+                if current_project_info:
+                    ui.print("Current Project:", StyleName.HIGHLIGHTED)
+                    ui.print("-" * 80, StyleName.DIM)
+                    project_id = str(current_project_info.get("id", ""))
+                    rag_use_case = current_project_info.get("rag_use_case", "")
+                    message_count = current_project_info.get("message_count", 0)
+                    updated_at = current_project_info.get("updated_at", "")
+
+                    ui.print(f"  ID: {project_id}", StyleName.SUCCESS)
+                    if rag_use_case:
+                        ui.print(f"  Use case: {rag_use_case}", StyleName.INFO)
+                    ui.print(f"  Messages: {message_count}", StyleName.DIM)
+                    if updated_at:
+                        ui.print(f"  Updated: {updated_at[:19]}", StyleName.DIM)
+                    ui.print("-" * 80, StyleName.DIM)
+                    ui.newline()
+
+                # Prepare choices for interactive selection
+                if not other_projects:
+                    ui.print(
+                        "No other projects available. Use /new-project to create one.",
+                        StyleName.INFO,
+                    )
+                    ui.newline()
+                    return
+
+                ui.print("Switch to another project:", StyleName.HIGHLIGHTED)
+                ui.newline()
+
+                # Create choice labels with project info
+                choices = []
+                project_map = {}  # choice label -> project_id
+
+                for project in other_projects:
+                    project_id = str(project.get("id", ""))
+                    rag_use_case = project.get("rag_use_case", "")
+                    message_count = project.get("message_count", 0)
+                    updated_at = (
+                        project.get("updated_at", "")[:19] if project.get("updated_at") else ""
+                    )
+
+                    # Create informative choice label
+                    pid_short = project_id[:8]
+                    if rag_use_case:
+                        choice_label = (
+                            f"{pid_short}... | {rag_use_case} | {message_count} msgs | {updated_at}"
+                        )
+                    else:
+                        choice_label = f"{pid_short}... | {message_count} msgs | {updated_at}"
+
+                    choices.append(choice_label)
+                    project_map[choice_label] = project_id
+
+                # Show interactive selection
+                selected_choice = ui.select(
+                    choices=choices,
+                    title="Select project (↑/↓ to navigate, Enter to select, Esc to cancel)",
+                )
+
+                if selected_choice is None:
+                    ui.print("Cancelled.", StyleName.DIM)
+                    ui.newline()
+                    return
+
+                # Get selected project ID
+                selected_project_id = project_map.get(selected_choice)
+                if not selected_project_id:
+                    ui.print_error("Invalid selection.")
+                    ui.newline()
+                    return
+
+                # Switch to selected project
+                await self._switch_to_project(selected_project_id)
+
+        except Exception as e:
+            logger.error(f"Failed to list projects: {e}", exc_info=True)
+            ui.print_error(f"Failed to list projects: {e}")
+
+        ui.newline()
+
+    async def _create_new_project(self) -> None:
+        """Create a new project and switch to it."""
+        ui = get_ui()
+        ui.newline()
+
+        try:
+            async with self.api_client:
+                ui.print("Creating new project...", StyleName.INFO)
+
+                # Create new project
+                project = await self.api_client.create_project()
+                new_project_id = str(project.id)
+
+                ui.print(f"Created project: {new_project_id}", StyleName.SUCCESS)
+
+                # Switch to the new project
+                await self._switch_to_project(new_project_id)
+
+        except Exception as e:
+            logger.error(f"Failed to create new project: {e}", exc_info=True)
+            ui.print_error(f"Failed to create new project: {e}")
+
+        ui.newline()
+
+    async def _switch_to_project(self, project_id: str) -> None:
+        """Switch to a specific project with history loading.
+
+        Args:
+            project_id: Project ID to switch to
+        """
+        from donkit.llm import Message
+
+        from donkit_ragops.agent.prompts import get_prompt
+
+        ui = get_ui()
+
+        try:
+            async with self.api_client:
+                # Verify project exists
+                try:
+                    await self.api_client.get_project(project_id)
+                except Exception as e:
+                    ui.print_error(f"Project not found: {project_id}")
+                    logger.error(f"Failed to get project {project_id}: {e}")
+                    return
+
+                ui.print(f"Switching to project {project_id}...", StyleName.INFO)
+
+                # Update project ID
+                self.project_id = project_id
+                self.context.project_id = project_id
+
+                # Get user info for updated system prompt
+                user_name = "User"
+                user_id = ""
+                try:
+                    user_info = await self.api_client.get_me()
+                    user_name = user_info.first_name or "User"
+                    user_id = user_info.id
+                except Exception as e:
+                    logger.warning(f"Failed to get user info: {e}")
+
+                # Generate new system prompt with updated project ID
+                new_system_prompt = get_prompt("enterprise", interface="repl")
+                new_system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
+                new_system_prompt += f"\nProject ID: {project_id}"
+
+                # Update system prompt in context
+                self.context.system_prompt = new_system_prompt
+
+                # Clear message history and add updated system prompt
+                self.context.history.clear()
+                self.context.history.append(Message(role="system", content=new_system_prompt))
+
+                # Load project messages
+                project_messages = await self._load_project_messages(project_id)
+
+                # Add messages to history (skip system messages and backend events)
+                loaded_count = 0
+                for msg in project_messages:
+                    role = msg.get("role", "")
+                    content = msg.get("content", "")
+
+                    # Skip system messages (already added above)
+                    if role == "system":
+                        continue
+
+                    # Skip backend events (temporary notifications)
+                    if (
+                        role == "user"
+                        and content
+                        and (
+                            content.startswith("[SYSTEM INSTRUCTION:")
+                            or content.startswith("[PIPELINE:")
+                            or content.startswith("[BACKEND_EVENT:")
+                            or content.startswith("[EXPERIMENT_ITERATION_COMPLETED]")
+                        )
+                    ):
+                        continue
+
+                    # Add user and assistant messages to history and transcript
+                    if role in ("user", "assistant"):
+                        self.context.history.append(Message(role=role, content=content))
+                        loaded_count += 1
+
+                        # Add to visual transcript
+                        if role == "user":
+                            if self.context.render_helper:
+                                self.context.render_helper.append_user_line(content)
+                        elif role == "assistant":
+                            if self.context.render_helper:
+                                rendered = render_markdown_to_rich(content)
+                                self.context.render_helper.append_agent_message(rendered)
+
+                # Update message persister if enabled
+                if self.message_persister:
+                    self.message_persister.project_id = project_id
+
+                # Update event listener
+                if self.event_listener:
+                    self.event_listener.project_id = project_id
+                    # Restart event listener with new project
+                    await self.event_listener.stop()
+                    await self.event_listener.start()
+
+                # Clear transcript (visual display)
+                self.context.transcript.clear()
+
+                ui.print(
+                    f"Switched to project {project_id} ({loaded_count} messages loaded)",
+                    StyleName.SUCCESS,
+                )
+
+                # Print loaded history if any
+                if loaded_count > 0:
+                    ui.newline()
+                    ui.print("─" * 80, StyleName.DIM)
+                    ui.print("Conversation history:", StyleName.INFO)
+                    ui.print("─" * 80, StyleName.DIM)
+                    ui.newline()
+
+                    # Print all loaded messages from transcript with visual separation
+                    for msg in self.context.history[1:]:  # Skip system message
+                        if msg.role == "user":
+                            ts = format_timestamp()
+                            ui.print(f"{ts}{texts.USER_PREFIX}", StyleName.USER_PREFIX, end=" ")
+                            ui.print(msg.content, StyleName.DIM)
+                            ui.newline()
+                        elif msg.role == "assistant":
+                            ts = format_timestamp()
+                            ui.print(f"{ts}{texts.AGENT_PREFIX}", StyleName.SUCCESS, end=" ")
+                            ui.print(msg.content, StyleName.DIM)
+                            ui.newline()
+
+                    ui.newline()
+                    ui.print("─" * 80, StyleName.DIM)
+                    ui.newline()
+
+        except Exception as e:
+            logger.error(f"Failed to switch to project {project_id}: {e}", exc_info=True)
+            ui.print_error(f"Failed to switch to project: {e}")
+
+    async def _load_project_messages(self, project_id: str) -> list[dict]:
+        """Load message history for a project.
+
+        Args:
+            project_id: Project ID
+
+        Returns:
+            List of message dicts
+        """
+        try:
+            async with self.api_client:
+                messages = await self.api_client.get_project_messages(
+                    project_id=project_id,
+                    limit=1000,
+                )
+                logger.debug(f"Loaded {len(messages)} messages from project {project_id}")
+                return messages
+        except Exception as e:
+            logger.warning(f"Failed to load project messages: {e}")
+            return []

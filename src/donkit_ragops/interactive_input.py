@@ -15,9 +15,19 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style as PromptStyle
 
+from donkit_ragops.checklist_manager import checklist_status_provider
 from donkit_ragops.command_palette import CommandRegistry
 from donkit_ragops.ui import get_ui
 from donkit_ragops.ui.styles import StyleName, styled_text
+
+
+def _get_checklist_rprompt() -> list[tuple[str, str]]:
+    """Generate rprompt tokens for checklist status.
+
+    Returns:
+        List of (style, text) tuples for prompt_toolkit rprompt
+    """
+    return checklist_status_provider.get_toolbar_tokens()
 
 
 class CommandCompleter(Completer):
@@ -102,11 +112,16 @@ class CommandCompleter(Completer):
 class InteractiveInputBox:
     """Handles interactive input using prompt_toolkit for better cross-platform support."""
 
-    # Track last printed status to avoid duplicates
-    _last_status_hash: int = 0
-
     def __init__(self):
+        from donkit_ragops.config import is_enterprise_mode
+
         self.command_registry = CommandRegistry()
+
+        # Register mode-specific commands
+        if is_enterprise_mode():
+            self.command_registry.register_enterprise_mode_commands()
+        else:
+            self.command_registry.register_local_mode_commands()
 
         # Create completer for commands
         completer = CommandCompleter(self.command_registry)
@@ -126,8 +141,11 @@ class InteractiveInputBox:
                 # Apply the completion
                 buffer.apply_completion(completion)
 
+                # If it's a slash command (e.g. /help, /clear), submit immediately
+                if text.startswith("/") and not text.endswith("/"):
+                    buffer.validate_and_handle()
                 # If it looks like a directory (ends with path separator), restart completion
-                if text.endswith("/") or text.endswith("\\"):
+                elif text.endswith("/") or text.endswith("\\"):
                     buffer.start_completion()
             else:
                 # No completion selected, submit the buffer
@@ -181,6 +199,13 @@ class InteractiveInputBox:
                 "completion-menu.completion.current": "bg:#444444 #ffffff bold",
                 "completion-menu.meta.completion": "bg:#232323 #aaaaaa",
                 "completion-menu.meta.completion.current": "bg:#444444 #aaaaaa",
+                # Checklist rprompt styling
+                "checklist.separator": "#555555",
+                "checklist.done": "bold #00aa00",  # Green for completed
+                "checklist.active": "bold #ffaa00",  # Yellow/orange for in_progress
+                "checklist.pending": "#888888",  # Gray for pending
+                "checklist.description": "#ffffff",
+                "checklist.progress": "#888888",
             }
         )
 
@@ -200,58 +225,9 @@ class InteractiveInputBox:
             if not sys.stdin.isatty():
                 raise ImportError("Not running in a terminal")
 
-            # Print visual input box with checklist status
-            # Lazy import to avoid circular dependencies
-            from donkit_ragops.checklist_manager import checklist_status_provider
-
-            # Get terminal width for box
-            # try:
-            #     terminal_width = os.get_terminal_size().columns
-            # except OSError:
-            #     terminal_width = 80
-
-            # box_width = min(terminal_width - 1, 100)
-
-            # Build input box using UI abstraction
-            ui = get_ui()
-            status = checklist_status_provider.status
-
-            # Top border with optional status
-            # top_line = "╭" + "─" * (box_width - 2) + "╮"
-            # ui.print_styled(styled_text((StyleName.DIM, top_line)))
-
-            # Status line if checklist is active
-            if status.total > 0:
-                # Update hash tracking
-                status_tuple = (status.icon, status.description, status.completed, status.total)
-                current_hash = hash(status_tuple)
-                if current_hash != InteractiveInputBox._last_status_hash:
-                    InteractiveInputBox._last_status_hash = current_hash
-
-                # Determine icon style based on status
-                if status.icon == "✓":
-                    icon_style = StyleName.SUCCESS
-                elif status.icon == "⚡":
-                    icon_style = StyleName.WARNING
-                else:
-                    icon_style = StyleName.DIM
-
-                progress = f"({status.completed}/{status.total})"
-                ui.print_styled(
-                    styled_text(
-                        (StyleName.DIM, "│ "),
-                        (icon_style, status.icon),
-                        (None, f" {status.description} "),
-                        (StyleName.DIM, progress),
-                    )
-                )
-
-            # # Bottom border connects to prompt
-            # ui.print("╰", StyleName.DIM, end="")
-
-            # Use prompt_toolkit for input with styled prompt
+            # Use prompt_toolkit for input with styled prompt and checklist in rprompt
             result = await self.session.prompt_async(
-                [("class:prompt", "❯ ")],
+                [("class:prompt", "❯ ")], rprompt=_get_checklist_rprompt
             )
 
             # Check if result is a path and expand it

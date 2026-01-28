@@ -78,3 +78,18 @@ def load_settings() -> Settings:
             load_dotenv(_path, override=True)
 
     return Settings()
+
+
+# Global state for tracking application mode
+_IS_ENTERPRISE_MODE = False
+
+
+def set_enterprise_mode(enabled: bool = True) -> None:
+    """Set enterprise mode flag globally."""
+    global _IS_ENTERPRISE_MODE
+    _IS_ENTERPRISE_MODE = enabled
+
+
+def is_enterprise_mode() -> bool:
+    """Check if application is running in enterprise mode."""
+    return _IS_ENTERPRISE_MODE

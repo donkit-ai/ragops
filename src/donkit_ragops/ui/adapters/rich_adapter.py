@@ -296,10 +296,28 @@ class RichUI(UI):
     ) -> None:
         """Print content in a bordered panel."""
         rich_border = RICH_STYLES.get(border_style, "cyan") if border_style else "cyan"
-        if isinstance(content, list):
-            content = Group(*[self._styled_text_to_rich_text(line) for line in content])
+
+        # Convert content to Rich renderable
+        if isinstance(content, str):
+            renderable = content
+        else:
+            # List of StyledText lines
+            lines = []
+            for styled_line in content:
+                line = Text()
+                for style, text in styled_line:
+                    if style is None:
+                        line.append(text)
+                    else:
+                        rich_style = RICH_STYLES.get(style, "")
+                        line.append(text, style=rich_style)
+                lines.append(line)
+
+            # Join lines into a single Text object
+            renderable = Text("\n").join(lines)
+
         panel = Panel(
-            content,
+            renderable,
             title=f"[bold]{title}[/bold]" if title else None,
             border_style=rich_border,
         )

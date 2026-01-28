@@ -121,9 +121,9 @@ class LLMAgent:
         """
         for client in self.mcp_clients:
             try:
-                logger.info(f"[MCP] Loading tools from {client.identifier}...")
+                logger.debug(f"[MCP] Loading tools from {client.identifier}...")
                 discovered = await client.alist_tools()
-                logger.info(f"[MCP] Discovered {len(discovered)} tools from {client.identifier}")
+                logger.debug(f"[MCP] Discovered {len(discovered)} tools from {client.identifier}")
                 total_size = 0
                 registered_count = 0
                 for t in discovered:
@@ -144,7 +144,7 @@ class LLMAgent:
                         logger.debug(f"[MCP] Registered tool: {tool_name} (size={tool_size} bytes)")
                     except Exception:
                         logger.debug(f"[MCP] Registered tool: {tool_name}")
-                logger.info(f"[MCP] Tools from {client.identifier}: total_size={total_size} bytes")
+                logger.debug(f"[MCP] Tools from {client.identifier}: total_size={total_size} bytes")
                 if not register_tools:
                     logger.warning("[MCP] Tools fetched but NOT registered (debug mode)")
                 elif max_tools > 0:
@@ -157,7 +157,7 @@ class LLMAgent:
                     exc_info=True,
                 )
                 pass
-        logger.info(f"[MCP] Total MCP tools registered: {len(self.mcp_tools)}")
+        logger.debug(f"[MCP] Total MCP tools registered: {len(self.mcp_tools)}")
 
     def _tool_specs(self) -> list[Tool]:
         local_specs = [t.to_tool_spec() for t in self.local_tools]
@@ -588,7 +588,10 @@ class LLMAgent:
 
             if local_tool:
                 logger.debug(f"Executing local tool {tc.function.name} with args: {args}")
-                result = local_tool.handler(args)
+                if local_tool.is_async:
+                    result = await local_tool.handler(args)
+                else:
+                    result = local_tool.handler(args)
                 logger.debug(f"Local tool {tc.function.name} result: {str(result)[:200]}...")
             elif mcp_tool_info:
                 logger.debug(f"Executing MCP tool {tc.function.name} with args: {args}")

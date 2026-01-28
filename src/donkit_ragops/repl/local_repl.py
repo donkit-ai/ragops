@@ -43,9 +43,12 @@ class LocalREPL(BaseREPL):
 
     def _setup_command_handlers(self) -> None:
         """Set up additional command handlers for local mode."""
-        # Provider and model commands are handled separately
-        # as they need access to local-specific state
-        pass
+        # Import here to avoid circular imports
+        from donkit_ragops.repl.commands import ModelCommand, ProviderCommand
+
+        # Register provider and model commands
+        self._command_registry.register(ProviderCommand())
+        self._command_registry.register(ModelCommand())
 
     async def initialize(self) -> None:
         """Initialize REPL resources."""
@@ -123,18 +126,9 @@ class LocalREPL(BaseREPL):
         Returns:
             False to exit, True to continue
         """
-        # Check for commands
+        # Check for slash commands or exit keywords
         if self._command_registry.is_command(user_input) or user_input in {"quit", "exit"}:
             return await self._handle_command(user_input)
-
-        # Handle special commands not in registry
-        if user_input == ":provider":
-            await self._handle_provider_command()
-            return True
-
-        if user_input == ":model":
-            await self._handle_model_command()
-            return True
 
         # Regular message
         await self.handle_message(user_input)
@@ -145,6 +139,17 @@ class LocalREPL(BaseREPL):
         cmd = self._command_registry.get_command(user_input)
         if cmd is None:
             self.context.ui.print(f"Unknown command: {user_input}", StyleName.WARNING)
+            return True
+
+        # Special handling for provider and model commands
+        from donkit_ragops.repl.commands import ModelCommand, ProviderCommand
+
+        if isinstance(cmd, ProviderCommand):
+            await self._handle_provider_command()
+            return True
+
+        if isinstance(cmd, ModelCommand):
+            await self._handle_model_command()
             return True
 
         result = await cmd.execute(self.context)
@@ -167,7 +172,7 @@ class LocalREPL(BaseREPL):
         return True
 
     async def _handle_provider_command(self) -> None:
-        """Handle :provider command."""
+        """Handle /provider command."""
         # Import here to avoid circular imports
         from donkit_ragops.cli_helpers import (
             format_model_choices,
@@ -190,7 +195,7 @@ class LocalREPL(BaseREPL):
             agent_settings=self.context.agent_settings,
             prov=self.context.provider,
             agent=self.context.agent,
-            tools=self.context.agent.tools if self.context.agent else [],
+            tools=self.context.agent.local_tools if self.context.agent else [],
             mcp_clients=self.context.mcp_clients,
         )
 
@@ -242,7 +247,7 @@ class LocalREPL(BaseREPL):
                     selected = interactive_select(choices, title=title)
                     if selected and selected != texts.MODEL_SELECT_SKIP:
                         new_model = selected.split(" [")[0].strip()
-                        success, messages = validate_model_choice(
+                        success, messages = await validate_model_choice(
                             result.prov, result.provider, new_model, self.context.agent_settings
                         )
                         self.context.transcript.extend(messages)
@@ -261,7 +266,7 @@ class LocalREPL(BaseREPL):
             self.context.render_helper.render_current_screen()
 
     async def _handle_model_command(self) -> None:
-        """Handle :model command."""
+        """Handle /model command."""
         from donkit_ragops.cli_helpers import (
             format_model_choices,
             get_available_models,
@@ -275,6 +280,14 @@ class LocalREPL(BaseREPL):
 
         settings = load_settings()
         current_provider = self.context.provider_name or settings.llm_provider or "openai"
+
+        # Check if current provider is donkit (cloud)
+        if current_provider == "donkit":
+            self.context.transcript.append(texts.MODEL_NOT_AVAILABLE_FOR_DONKIT)
+            if self.context.render_helper:
+                self.context.render_helper.render_current_screen()
+            return
+
         current_model = (
             self.context.agent_settings.model if self.context.agent_settings else None
         ) or self.context.model
@@ -307,7 +320,7 @@ class LocalREPL(BaseREPL):
             return
 
         new_model = selected.split(" [")[0].strip()
-        success, messages = validate_model_choice(
+        success, messages = await validate_model_choice(
             self.context.provider, current_provider, new_model, self.context.agent_settings
         )
         self.context.transcript.extend(messages)
@@ -524,5 +537,5 @@ class LocalREPL(BaseREPL):
     def print_welcome(self) -> None:
         """Print welcome message. Can be overridden by subclasses."""
         self.context.ui.print("\nType your message and press Enter to start...", StyleName.DIM)
-        self.context.ui.print("\nCommands: :help, :q, :clear, :provider, :model", StyleName.DIM)
+        self.context.ui.print("\nCommands: /help, /clear, /provider, /model, /exit", StyleName.DIM)
         self.context.ui.newline()

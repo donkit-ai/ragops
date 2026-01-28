@@ -50,7 +50,7 @@ class Command:
     name: str  # e.g., "/help"
     description: str  # e.g., "Show help message"
     category: str  # e.g., "Navigation"
-    template: str  # Text to insert, e.g., ":help"
+    template: str  # Text to insert, e.g., "/help"
 
 
 class CommandRegistry:
@@ -68,15 +68,15 @@ class CommandRegistry:
                 name="/help",
                 description="Show help message",
                 category="Navigation",
-                template=":help",
+                template="/help",
             )
         )
         self.register(
             Command(
                 name="/clear",
-                description="Clear conversation transcript",
+                description="Clear conversation and screen",
                 category="Navigation",
-                template=":clear",
+                template="/clear",
             )
         )
         self.register(
@@ -84,17 +84,22 @@ class CommandRegistry:
                 name="/exit",
                 description="Exit the agent",
                 category="Navigation",
-                template=":quit",
+                template="/exit",
             )
         )
 
-        # Agent Control
+    def register(self, command: Command) -> None:
+        """Register a command."""
+        self.commands.append(command)
+
+    def register_local_mode_commands(self) -> None:
+        """Register commands only available in local mode (not enterprise)."""
         self.register(
             Command(
                 name="/provider",
                 description="Select LLM provider",
                 category="Agent Control",
-                template=":provider",
+                template="/provider",
             )
         )
         self.register(
@@ -102,57 +107,28 @@ class CommandRegistry:
                 name="/model",
                 description="Select LLM model",
                 category="Agent Control",
-                template=":model",
+                template="/model",
             )
         )
 
-        # Project Management
+    def register_enterprise_mode_commands(self) -> None:
+        """Register commands only available in enterprise mode."""
         self.register(
             Command(
                 name="/projects",
-                description="List all projects",
+                description="List and switch projects",
                 category="Project Management",
-                template="List all projects",
+                template="/projects",
             )
         )
         self.register(
             Command(
-                name="/create-project",
-                description="Create new RAG project",
+                name="/new-project",
+                description="Create a new project",
                 category="Project Management",
-                template="Create a new RAG project",
+                template="/new-project",
             )
         )
-
-        # System
-        self.register(
-            Command(
-                name="/status",
-                description="Show system status",
-                category="System",
-                template="Show system status",
-            )
-        )
-        self.register(
-            Command(
-                name="/checklist",
-                description="Show current checklist",
-                category="System",
-                template="Show current checklist",
-            )
-        )
-        self.register(
-            Command(
-                name="/tools",
-                description="List available tools",
-                category="System",
-                template="List available tools",
-            )
-        )
-
-    def register(self, command: Command) -> None:
-        """Register a command."""
-        self.commands.append(command)
 
     def filter(self, query: str) -> list[Command]:
         """Filter commands by query string (matches name or description)."""

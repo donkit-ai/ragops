@@ -819,6 +819,13 @@ class TestEnterpriseREPL:
         mock_project.id = "test-project-123"
         client.create_project = AsyncMock(return_value=mock_project)
 
+        # Mock get_recent_projects - return empty list by default
+        # Tests can override this to return projects
+        client.get_recent_projects = AsyncMock(return_value=[])
+
+        # Mock get_project_messages - return empty list by default
+        client.get_project_messages = AsyncMock(return_value=[])
+
         return client
 
     @pytest.fixture
@@ -926,17 +933,17 @@ class TestEnterpriseSettings:
         from donkit_ragops.enterprise.config import EnterpriseSettings
 
         # Save and clear env var to test default
-        original = os.environ.get("DONKIT_ENTERPRISE_PERSIST_MESSAGES")
+        original = os.environ.get("RAGOPS_DONKIT_PERSIST_MESSAGES")
         try:
-            if "DONKIT_ENTERPRISE_PERSIST_MESSAGES" in os.environ:
-                del os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"]
+            if "RAGOPS_DONKIT_PERSIST_MESSAGES" in os.environ:
+                del os.environ["RAGOPS_DONKIT_PERSIST_MESSAGES"]
 
             settings = EnterpriseSettings()
             assert settings.persist_messages is True
         finally:
             # Restore original value
             if original is not None:
-                os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"] = original
+                os.environ["RAGOPS_DONKIT_PERSIST_MESSAGES"] = original
 
     def test_persist_messages_from_env(self) -> None:
         """Test that persist_messages can be set via environment."""
@@ -945,22 +952,22 @@ class TestEnterpriseSettings:
         from donkit_ragops.enterprise.config import EnterpriseSettings
 
         # Save original value
-        original = os.environ.get("DONKIT_ENTERPRISE_PERSIST_MESSAGES")
+        original = os.environ.get("RAGOPS_DONKIT_PERSIST_MESSAGES")
 
         try:
-            os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"] = "true"
+            os.environ["RAGOPS_DONKIT_PERSIST_MESSAGES"] = "true"
             settings = EnterpriseSettings()
             assert settings.persist_messages is True
 
-            os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"] = "false"
+            os.environ["RAGOPS_DONKIT_PERSIST_MESSAGES"] = "false"
             settings = EnterpriseSettings()
             assert settings.persist_messages is False
         finally:
             # Restore original value
             if original is None:
-                os.environ.pop("DONKIT_ENTERPRISE_PERSIST_MESSAGES", None)
+                os.environ.pop("RAGOPS_DONKIT_PERSIST_MESSAGES", None)
             else:
-                os.environ["DONKIT_ENTERPRISE_PERSIST_MESSAGES"] = original
+                os.environ["RAGOPS_DONKIT_PERSIST_MESSAGES"] = original
 
     def test_default_api_url(self) -> None:
         """Test default API URL."""
@@ -976,4 +983,4 @@ class TestEnterpriseSettings:
 
         # Fixture clears env vars automatically
         settings = EnterpriseSettings()
-        assert settings.mcp_url == "https://api.donkit.ai/mcp"
+        assert settings.mcp_url == "https://api.donkit.ai/mcp/"

@@ -28,11 +28,13 @@ class AgentTool:
         description: str,
         parameters: dict[str, Any],
         handler: Callable[[dict[str, Any]], str],
+        is_async: bool = False,
     ) -> None:
         self.name = name
         self.description = description
         self.parameters = parameters
         self.handler = handler
+        self.is_async = is_async
 
     def to_tool_spec(self) -> Tool:
         return Tool(

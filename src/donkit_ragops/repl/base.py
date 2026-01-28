@@ -141,5 +141,5 @@ class BaseREPL(ABC):
     def print_welcome(self) -> None:
         """Print welcome message. Can be overridden by subclasses."""
         self.context.ui.print("\nType your message and press Enter to start...", StyleName.DIM)
-        self.context.ui.print("\nCommands: :help, :q, :clear", StyleName.DIM)
+        self.context.ui.print("\nCommands: /help, /clear, /exit", StyleName.DIM)
         self.context.ui.newline()
