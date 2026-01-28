@@ -19,6 +19,8 @@ from donkit_ragops.ui.protocol import UI
 from donkit_ragops.ui.styles import StyleName
 
 if TYPE_CHECKING:
+    from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
+
     from donkit_ragops.agent.agent import LLMAgent
     from donkit_ragops.display import ScreenRenderer
     from donkit_ragops.repl_helpers import MCPEventHandler, ReplRenderHelper
@@ -64,6 +66,9 @@ class ReplContext:
 
     # Project ID for enterprise mode (auto-injected into MCP tool calls)
     project_id: str | None = None
+
+    # API client for enterprise mode
+    api_client: RagopsAPIGatewayClient | None = None
 
 
 class BaseREPL(ABC):

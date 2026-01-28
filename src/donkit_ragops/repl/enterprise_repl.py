@@ -156,10 +156,18 @@ class EnterpriseREPL(BaseREPL):
         """Handle backend event from WebSocket.
 
         Sends event to LLM so it can notify the user with a contextual message.
+        Some events (like Airbyte) are shown as simple notifications without LLM.
 
         Args:
             event: Backend event
         """
+        from donkit_ragops.enterprise.event_listener import EventType
+
+        # Handle Airbyte events as simple notifications (no LLM, no history)
+        if event.type == EventType.AIRBYTE_DOCUMENT_ADDED:
+            self._show_airbyte_notification(event)
+            return
+
         from donkit.llm import Message
 
         # Add event as user message (backend notification with embedded system instruction)
@@ -172,6 +180,16 @@ class EnterpriseREPL(BaseREPL):
 
         # Let LLM respond to the event
         await self._handle_event_response(event)
+
+    def _show_airbyte_notification(self, event: BackendEvent) -> None:
+        """Show simple Airbyte notification without LLM involvement.
+
+        Args:
+            event: Airbyte event
+        """
+        ui = get_ui()
+        sink_name = event.data.get("sink_name", "Airbyte")
+        ui.print(f"New document received from {sink_name}!", StyleName.SUCCESS, end="\n")
 
     async def _handle_event_response(self, event: BackendEvent) -> None:
         """Generate LLM response for backend event.
