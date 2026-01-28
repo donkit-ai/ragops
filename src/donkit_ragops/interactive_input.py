@@ -117,8 +117,10 @@ class InteractiveInputBox:
 
         self.command_registry = CommandRegistry()
 
-        # Register local mode commands only if not in enterprise mode
-        if not is_enterprise_mode():
+        # Register mode-specific commands
+        if is_enterprise_mode():
+            self.command_registry.register_enterprise_mode_commands()
+        else:
             self.command_registry.register_local_mode_commands()
 
         # Create completer for commands

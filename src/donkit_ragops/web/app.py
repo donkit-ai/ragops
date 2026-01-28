@@ -5,6 +5,9 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import threading
+import time
+import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -143,8 +146,49 @@ def _check_static_available() -> bool:
     return static_dir.exists() and (static_dir / "index.html").exists()
 
 
-def _run_dev_mode(config: WebConfig) -> None:
-    """Run in development mode with both Vite and FastAPI."""
+def _get_browser_url(host: str, port: int) -> str:
+    """Get the URL to open in browser.
+
+    Converts 0.0.0.0 to localhost for browser compatibility.
+
+    Args:
+        host: Server host
+        port: Server port
+
+    Returns:
+        URL suitable for opening in browser
+    """
+    browser_host = "localhost" if host == "0.0.0.0" else host
+    return f"http://{browser_host}:{port}"
+
+
+def _open_browser(url: str, delay: float = 1.5) -> None:
+    """Open browser after a delay to ensure server is ready.
+
+    Args:
+        url: URL to open
+        delay: Delay in seconds before opening browser
+    """
+
+    def _open():
+        time.sleep(delay)
+        try:
+            webbrowser.open(url)
+            logger.debug(f"Opened browser at {url}")
+        except Exception as e:
+            logger.warning(f"Failed to open browser: {e}")
+
+    thread = threading.Thread(target=_open, daemon=True)
+    thread.start()
+
+
+def _run_dev_mode(config: WebConfig, no_browser: bool = False) -> None:
+    """Run in development mode with both Vite and FastAPI.
+
+    Args:
+        config: Web configuration
+        no_browser: Do not automatically open browser
+    """
     import os
 
     os.environ["RAGOPS_WEB_DEV_MODE"] = "1"
@@ -165,9 +209,14 @@ def _run_dev_mode(config: WebConfig) -> None:
         subprocess.run(["npm", "install"], cwd=frontend_dir, check=True)
 
     logger.debug("Starting dev servers...")
-    print(f"\n  Backend:  http://{config.host}:{config.port}")
+    backend_url = _get_browser_url(config.host, config.port)
+    print(f"\n  Backend:  {backend_url}")
     print("  Frontend: http://localhost:5173")
     print("\n  Press Ctrl+C to stop\n")
+
+    # Open browser for dev mode (Vite dev server)
+    if not no_browser:
+        _open_browser("http://localhost:5173")
 
     # Start both servers using subprocess
     vite_process = subprocess.Popen(
@@ -193,17 +242,20 @@ def _run_dev_mode(config: WebConfig) -> None:
         vite_process.wait()
 
 
-def main(dev: bool = False) -> None:
+def main(dev: bool = False, no_browser: bool = False) -> None:
     """Entry point for the web server.
 
     Args:
         dev: Run in development mode with hot reload for both frontend and backend.
+        no_browser: Do not automatically open browser on startup.
     """
     import uvicorn
 
     # Parse CLI args
     if "--dev" in sys.argv or "-d" in sys.argv:
         dev = True
+    if "--no-browser" in sys.argv:
+        no_browser = True
 
     # Configure logging
     setup_logging()
@@ -220,11 +272,15 @@ def main(dev: bool = False) -> None:
  / _, _/ ___ / /_/ / /_/ / /_/ (__  )    | |/ |/ /  __/ /_/ /
 /_/ |_/_/  |_\\____/\\____/ .___/____/     |__/|__/\\___/_.___/
                        /_/
+
+  Options:
+    --dev         Run in development mode with hot reload
+    --no-browser  Do not automatically open browser
 """
     )
 
     if dev:
-        _run_dev_mode(config)
+        _run_dev_mode(config, no_browser=no_browser)
         return
 
     # Production mode - check frontend is available
@@ -236,8 +292,14 @@ def main(dev: bool = False) -> None:
     # Create app
     app = create_app(config)
 
-    print(f"Starting server on http://{config.host}:{config.port}")
+    server_url = f"http://{config.host}:{config.port}"
+    print(f"Starting server on {server_url}")
     print("Press Ctrl+C to stop\n")
+
+    # Open browser automatically (unless disabled)
+    if not no_browser:
+        browser_url = _get_browser_url(config.host, config.port)
+        _open_browser(browser_url)
 
     # Run server
     uvicorn.run(

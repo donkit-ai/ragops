@@ -6,12 +6,16 @@ Uses ABC for command interface.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from abc import ABC
+from abc import abstractmethod
+from dataclasses import dataclass
+from dataclasses import field
 from typing import TYPE_CHECKING
 
 from donkit_ragops import texts
-from donkit_ragops.ui.styles import StyledText, StyleName, styled_text
+from donkit_ragops.ui.styles import StyledText
+from donkit_ragops.ui.styles import StyleName
+from donkit_ragops.ui.styles import styled_text
 
 if TYPE_CHECKING:
     from donkit_ragops.repl.base import ReplContext
@@ -198,6 +202,46 @@ class ModelCommand(ReplCommand):
         return CommandResult(should_continue=True)
 
 
+class ProjectsCommand(ReplCommand):
+    """List projects."""
+
+    @property
+    def name(self) -> str:
+        return "projects"
+
+    @property
+    def aliases(self) -> list[str]:
+        return ["p"]
+
+    @property
+    def description(self) -> str:
+        return "List projects"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that project listing should be handled by EnterpriseREPL
+        return CommandResult(should_continue=True)
+
+
+class NewProjectCommand(ReplCommand):
+    """Create a new project."""
+
+    @property
+    def name(self) -> str:
+        return "new-project"
+
+    @property
+    def aliases(self) -> list[str]:
+        return ["new", "np"]
+
+    @property
+    def description(self) -> str:
+        return "Create a new project"
+
+    async def execute(self, context: ReplContext) -> CommandResult:
+        # Signal that project creation should be handled by EnterpriseREPL
+        return CommandResult(should_continue=True)
+
+
 class CommandRegistry:
     """Registry for REPL commands.
 
@@ -221,6 +265,14 @@ class CommandRegistry:
         self.register(HelpCommand())
         self.register(ClearCommand())
         self.register(QuitCommand())
+
+    def register_enterprise_commands(self) -> None:
+        """Register enterprise-specific commands."""
+        from donkit_ragops.repl.command.airbyte import AirbyteCommand
+
+        self.register(ProjectsCommand())
+        self.register(NewProjectCommand())
+        self.register(AirbyteCommand())
 
     def get_command(self, input_str: str) -> ReplCommand | None:
         """Find command matching input.

@@ -819,6 +819,13 @@ class TestEnterpriseREPL:
         mock_project.id = "test-project-123"
         client.create_project = AsyncMock(return_value=mock_project)
 
+        # Mock get_recent_projects - return empty list by default
+        # Tests can override this to return projects
+        client.get_recent_projects = AsyncMock(return_value=[])
+
+        # Mock get_project_messages - return empty list by default
+        client.get_project_messages = AsyncMock(return_value=[])
+
         return client
 
     @pytest.fixture
@@ -976,4 +983,4 @@ class TestEnterpriseSettings:
 
         # Fixture clears env vars automatically
         settings = EnterpriseSettings()
-        assert settings.mcp_url == "https://api.donkit.ai/mcp"
+        assert settings.mcp_url == "https://api.donkit.ai/mcp/"
