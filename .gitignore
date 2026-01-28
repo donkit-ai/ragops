@@ -48,3 +48,8 @@ projects/
 docs/
 /poetry.lock
 .claude/
+RoCa (7).pdf
+evaluation_dataset.csv
+SIGIR_draft_graphRAG_eval (8).pdf
+uploads/
+run_indexer.py
