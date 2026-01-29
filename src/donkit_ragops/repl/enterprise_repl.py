@@ -9,36 +9,30 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from donkit.llm import Message
-from donkit.llm import ModelCapability
+from donkit.llm import Message, ModelCapability
 from loguru import logger
 
 from donkit_ragops import texts
 from donkit_ragops.display import ScreenRenderer
 from donkit_ragops.history_manager import compress_history_if_needed
-from donkit_ragops.prints import RAGOPS_LOGO_ART
-from donkit_ragops.prints import RAGOPS_LOGO_TEXT
-from donkit_ragops.repl.base import BaseREPL
-from donkit_ragops.repl.base import ReplContext
-from donkit_ragops.repl.commands import CommandRegistry
-from donkit_ragops.repl.commands import create_default_registry
-from donkit_ragops.repl_helpers import MCPEventHandler
-from donkit_ragops.repl_helpers import build_stream_render_helper
-from donkit_ragops.repl_helpers import format_timestamp
-from donkit_ragops.repl_helpers import render_markdown_to_rich
-from donkit_ragops.ui import UIAdapter
-from donkit_ragops.ui import get_ui
-from donkit_ragops.ui import set_ui_adapter
+from donkit_ragops.prints import RAGOPS_LOGO_ART, RAGOPS_LOGO_TEXT
+from donkit_ragops.repl.base import BaseREPL, ReplContext
+from donkit_ragops.repl.commands import CommandRegistry, create_default_registry
+from donkit_ragops.repl_helpers import (
+    MCPEventHandler,
+    build_stream_render_helper,
+    format_timestamp,
+    render_markdown_to_rich,
+)
+from donkit_ragops.ui import UIAdapter, get_ui, set_ui_adapter
 from donkit_ragops.ui.styles import StyleName
 
 if TYPE_CHECKING:
     from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
 
-    from donkit_ragops.enterprise.event_listener import BackendEvent
-    from donkit_ragops.enterprise.event_listener import EventListener
+    from donkit_ragops.enterprise.event_listener import BackendEvent, EventListener
     from donkit_ragops.enterprise.message_persister import MessagePersister
 
 
@@ -270,8 +264,7 @@ class EnterpriseREPL(BaseREPL):
         Args:
             event: Backend event to respond to
         """
-        from donkit.llm import Message
-        from donkit.llm import ModelCapability
+        from donkit.llm import Message, ModelCapability
 
         ui = get_ui()
 

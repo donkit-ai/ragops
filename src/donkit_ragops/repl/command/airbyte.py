@@ -1,10 +1,8 @@
 from uuid import UUID
 
 from donkit_ragops.repl.base import ReplContext
-from donkit_ragops.repl.commands import CommandResult
-from donkit_ragops.repl.commands import ReplCommand
-from donkit_ragops.ui.styles import StyleName
-from donkit_ragops.ui.styles import styled_text
+from donkit_ragops.repl.commands import CommandResult, ReplCommand
+from donkit_ragops.ui.styles import StyleName, styled_text
 
 
 class AirbyteCommand(ReplCommand):
@@ -27,7 +25,7 @@ class AirbyteCommand(ReplCommand):
             return CommandResult(
                 styled_messages=[
                     styled_text(
-                        (StyleName.ERROR, "Airbyte integration is only available in enterprise mode.")
+                        (StyleName.ERROR, "Airbyte integration is only available in server mode.")
                     )  # fmt: skip
                 ]
             )
@@ -52,9 +50,7 @@ class AirbyteCommand(ReplCommand):
                 styled_messages=[
                     styled_text((StyleName.SUCCESS, "Airbyte sink created!")),
                     styled_text((StyleName.INFO, f"Webhook URL: {response.webhook_url}")),
-                    styled_text(
-                        (StyleName.DIM, "Configure this URL in your Airbyte connection.")
-                    ),
+                    styled_text((StyleName.DIM, "Configure this URL in your Airbyte connection.")),
                 ]
             )
         except Exception as e:
