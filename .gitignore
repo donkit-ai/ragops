@@ -40,11 +40,11 @@ src/donkit_ragops/web/static/
 
 ragops_checklists/
 donkit-ragops/
-vertex_service_account.json
-image_cache.json
+local_data/
 projects/
 !src/**/Projects/
 !frontend/**/Projects/
 docs/
 /poetry.lock
 .claude/
+uploads/

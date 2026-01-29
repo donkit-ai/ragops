@@ -11,6 +11,8 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from donkit_ragops.web.session.manager import SessionManager
 
+from donkit.ragops_api_gateway_client.errors import RagopsAPIGatewayResponseError
+
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
 
@@ -122,6 +124,10 @@ async def create_session(
     except ValueError as e:
         # Missing API token or other validation error
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except RagopsAPIGatewayResponseError as e:
+        # API Gateway error (e.g. invalid token)
+        status_code = e.status_code if hasattr(e, "status_code") else 401
+        raise HTTPException(status_code=status_code, detail=str(e)) from e
     except Exception as e:
         if _is_dev_mode():
             raise  # Re-raise original exception with full traceback in dev mode
