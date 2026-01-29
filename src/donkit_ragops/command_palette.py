@@ -129,6 +129,14 @@ class CommandRegistry:
                 template="/new-project",
             )
         )
+        self.register(
+            Command(
+                name="/airbyte",
+                description="Connect to Airbyte",
+                category="Integration",
+                template="/airbyte",
+            )
+        )
 
     def filter(self, query: str) -> list[Command]:
         """Filter commands by query string (matches name or description)."""

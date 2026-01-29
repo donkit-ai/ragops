@@ -200,7 +200,7 @@ def get_compose_command() -> list[str]:
             return ["docker", "compose"]
     except Exception:
         pass
-    
+
     return ["docker-compose"]
 
 
