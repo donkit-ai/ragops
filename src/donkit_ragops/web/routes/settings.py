@@ -224,7 +224,7 @@ async def save_provider_config(request: ProvidersSaveRequest) -> ProvidersSaveRe
 
     # For Donkit, set base URL
     if request.provider == "donkit":
-        config_to_save["RAGOPS_DONKIT_BASE_URL"] = "https://api.donkit.ai"
+        config_to_save["RAGOPS_DONKIT_BASE_URL"] = "https://api.dev.donkit.ai"
 
     try:
         # Check write permissions

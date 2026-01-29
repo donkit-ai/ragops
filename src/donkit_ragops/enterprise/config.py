@@ -19,7 +19,7 @@ class EnterpriseSettings(BaseSettings):
     # API Gateway URL (REST API)
     # Maps to RAGOPS_DONKIT_BASE_URL environment variable
     donkit_base_url: str = Field(
-        default="https://api.donkit.ai",
+        default="https://api.dev.donkit.ai",
         description="Donkit API Gateway URL",
     )
 
