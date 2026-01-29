@@ -10,7 +10,7 @@ import sys
 import time
 from typing import Any
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -253,8 +253,7 @@ class RichUI(UI):
         styled = self._apply_style(message, style)
         self._console.print(styled, end=end)
 
-    def print_styled(self, styled_text: StyledText) -> None:
-        """Print styled text segments."""
+    def _styled_text_to_rich_text(self, styled_text: StyledText) -> Text:
         text = Text()
         for style, content in styled_text:
             if style is None:
@@ -262,7 +261,11 @@ class RichUI(UI):
             else:
                 rich_style = RICH_STYLES.get(style, "")
                 text.append(content, style=rich_style)
-        self._console.print(text)
+        return text
+
+    def print_styled(self, styled_text: StyledText) -> None:
+        """Print styled text segments."""
+        self._console.print(self._styled_text_to_rich_text(styled_text))
 
     def print_error(self, message: str) -> None:
         """Print an error message."""

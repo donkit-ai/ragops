@@ -9,9 +9,12 @@ Shared Models:
     - GenerationModelType: Enum of supported generation model providers
     - SplitType: Enum of text splitting methods for chunking
     - RetrieverType: Enum of supported vector database types
+    - GraphDbType: Enum of supported graph database types
+    - RetrievalMode: Enum of retrieval strategies
     - Embedder: Embedder configuration
     - ChunkingConfig: Document chunking configuration
     - RetrieverOptions: Retriever configuration options
+    - GraphOptions: Graph retrieval configuration options
     - RagConfig: Unified RAG configuration (base schema)
 """
 
@@ -85,6 +88,20 @@ class RetrieverType(StrEnum):
     # MILVUS = auto()
     QDRANT = auto()
     # CHROMA = auto()
+
+
+class GraphDbType(StrEnum):
+    """Supported graph database types."""
+
+    NEO4J = auto()
+
+
+class RetrievalMode(StrEnum):
+    """Retrieval strategy to use."""
+
+    VECTOR = auto()
+    GRAPH = auto()
+    HYBRID = auto()
 
 
 # ============================================================================
@@ -205,6 +222,27 @@ class RetrieverOptions(BaseModel):
     )
 
 
+class GraphOptions(BaseModel):
+    """Graph retrieval configuration options."""
+
+    index_name: str = Field(
+        default="chunk_content",
+        description="Neo4j fulltext index name for chunk content.",
+    )
+    node_label: str = Field(
+        default="Chunk",
+        description="Neo4j label used for chunk nodes.",
+    )
+    edge_type: str = Field(
+        default="NEXT",
+        description="Neo4j relationship type to connect adjacent chunks.",
+    )
+    max_hops: int = Field(
+        default=1,
+        description="Max hops to expand from matched nodes during graph retrieval.",
+    )
+
+
 class RagConfig(BaseModel):
     """
     Unified RAG configuration schema.
@@ -234,7 +272,31 @@ class RagConfig(BaseModel):
         default=None,
         description="Generation model name. must be model of selected generation model type",
     )
-    database_uri: str = Field(description="Vector database URI inside DOCKER")
+    database_uri: str = Field(
+        default="http://qdrant:6333",
+        description="Vector database URI inside DOCKER",
+    )
+    retrieval_mode: RetrievalMode = Field(
+        default=RetrievalMode.VECTOR,
+        description="Retrieval strategy: vector, graph, or hybrid.",
+    )
+    graph_db_type: GraphDbType = Field(
+        default=GraphDbType.NEO4J,
+        description="Graph database type for graph retrieval.",
+    )
+    graph_database_uri: str = Field(
+        default="bolt://neo4j:7687",
+        description="Graph database URI inside DOCKER (Neo4j bolt).",
+    )
+    graph_user: str = Field(
+        default="neo4j",
+        description="Graph database username.",
+    )
+    graph_password: str | None = Field(
+        default=None,
+        description="Graph database password. If unset, uses NEO4J_PASSWORD env.",
+    )
+    graph_options: GraphOptions = Field(default_factory=GraphOptions)
 
     @model_validator(mode="after")
     def validate_database_uri(self) -> "RagConfig":

@@ -27,6 +27,10 @@ Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
 ## Main Capabilities
 * **Interactive REPL** — Start an interactive session with readline history and autocompletion
 * **Web UI** — Browser-based interface at http://localhost:8067 (`donkit-ragops-web`, auto-opens browser)
+* **Checklist-driven workflow** — The agent creates project checklists, asks for approval before each step, and tracks progress
+* **Session-scoped checklists** — Only current session checklists appear in the UI
+* **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, chunking, reading, vector loading)
+* **Graph retrieval mode (Neo4j)** — Graph and hybrid retrieval with automatic graph build from chunks via MCP tools
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
 * **Integrated MCP servers** — Built-in support for full RAG build pipeline (planning, reading, chunking, vector loading, querying, evaluation)
 * **Checklist-driven workflow** — Each RAG project is structured as a checklist — with clear stages, approvals, and progress tracking
@@ -177,6 +181,7 @@ The agent will automatically:
 - ✅ Process and chunk your documents
 - ✅ Start Qdrant vector database (via Docker)
 - ✅ Load data into the vector store
+- ✅ Build a Neo4j chunk graph when using graph or hybrid retrieval
 - ✅ Deploy RAG query service
 
 ### What gets created
@@ -279,6 +284,9 @@ donkit-ragops status                    # Show mode and auth status
 #### Logging
 - `RAGOPS_LOG_LEVEL` — Logging level (default: INFO)
 - `RAGOPS_MCP_COMMANDS` — Comma-separated list of MCP commands
+
+#### Graph / Neo4j
+- `NEO4J_PASSWORD` — Password for Neo4j (used by graph build/query tools and Docker Compose)
 
 ## Agent Workflow
 
@@ -418,17 +426,28 @@ Manages Docker Compose infrastructure.
 - `compose_status` — Check service status
 - `compose_logs` — View service logs
 
-### `ragops-rag-query`
+### Graph MCP servers (builder + query)
 
-Executes RAG queries against deployed services.
+Graph tools are available via the unified MCP server (`donkit-ragops-mcp`) with the
+`graph-builder_*` and `graph-query_*` prefixes. There are no standalone CLI entrypoints
+named `ragops-graph-builder` or `ragops-graph-query`.
+
+If you need to run them directly, use Python module entrypoints:
+
+```bash
+python -m donkit_ragops.mcp.servers.graph_builder_server
+python -m donkit_ragops.mcp.servers.graph_query_server
+```
 
 **Tools:**
-- `search_documents` — Search for relevant documents in vector database
-- `get_rag_prompt` — Get formatted RAG prompt with retrieved context
+- `graph_build` — Load chunk JSON files into Neo4j and link adjacent chunks
+- `graph_search` — Fulltext search with neighbor expansion
+- `graph_overview` — Lightweight graph inspection
+- `graph_health` — Connectivity check
 
-### `rag-evaluation`
+### `ragops-checklist`
 
-Evaluates RAG pipeline performance with batch processing.
+Manages project checklists and progress tracking.
 
 **Tools:**
 - `evaluate_batch` — Run batch evaluation from CSV/JSON, compute Precision/Recall/Accuracy
@@ -457,7 +476,8 @@ donkit-ragops-mcp
 All tools are available with prefixes:
 - `chunker_*` — Document chunking
 - `compose_*` — Docker Compose orchestration
-- `evaluation_*` — RAG evaluation
+- `graph-builder_*` — Graph build tools
+- `graph-query_*` — Graph query tools
 - `planner_*` — RAG configuration planning
 - `query_*` — RAG query execution
 - `reader_*` — Document reading/parsing
@@ -501,6 +521,34 @@ Each project gets its own:
 - Docker Compose setup
 - Vector store collection
 - Configuration
+
+### Graph Mode (Neo4j)
+
+Set the retrieval mode to `graph` (graph only) or `hybrid` (graph + vector). The agent will ensure Neo4j is running and build the chunk graph from `processed/chunked` automatically via the graph-builder MCP tool.
+
+How it works:
+1. Neo4j starts via Docker Compose when graph or hybrid retrieval is selected.
+2. After chunking, the agent runs `graph_build` to load chunk nodes into Neo4j and link adjacent chunks.
+3. Queries use `graph_search`: Neo4j fulltext search finds matching chunks, then expands to nearby chunks for context.
+4. In `hybrid` mode, vector retrieval also runs alongside graph retrieval.
+
+```json
+{
+  "retrieval_mode": "graph",
+  "graph_database_uri": "bolt://neo4j:7687",
+  "graph_user": "neo4j",
+  "graph_password": "<neo4j-password>",
+  "graph_options": {
+    "index_name": "chunk_content",
+    "node_label": "Chunk",
+    "edge_type": "NEXT",
+    "max_hops": 1
+  }
+}
+```
+
+`NEO4J_PASSWORD` is auto-populated in the project `.env` during compose initialization; override it there if you need a custom password, or pass it in your config as shown above.
+Use `bolt://localhost:7687` when running graph tools outside Docker.
 
 ## Development
 
@@ -692,6 +740,17 @@ services:
       - CONFIG=<base64-encoded-config>
 ```
 
+### Neo4j (Graph Database)
+
+```yaml
+services:
+  neo4j:
+    image: neo4j:5
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+```
+
 ## Architecture
 
 ```
@@ -717,6 +776,7 @@ services:
                             │ Docker Compose   │
                             ├──────────────────┤
                             │ • Qdrant         │
+                            │ • Neo4j          │
                             │ • RAG Service    │
                             └──────────────────┘
 ```

@@ -43,6 +43,10 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="ERROR")
+    auto_start_services: bool = Field(
+        default=True,
+        description="Auto-start required Docker services (vector DB/Neo4j) when running the agent.",
+    )
 
     # pydantic-settings v2 configuration
     model_config = SettingsConfigDict(env_prefix="RAGOPS_", case_sensitive=False)

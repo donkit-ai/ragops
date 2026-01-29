@@ -47,6 +47,7 @@ uvicorn = {extras = ["standard"], version = "^0.34"}
 websockets = "^15.0"
 python-multipart = "^0.0.20"
 aiofiles = "^25.1"
+neo4j = "^5.24.0"
 
 
 [tool.poetry.scripts]

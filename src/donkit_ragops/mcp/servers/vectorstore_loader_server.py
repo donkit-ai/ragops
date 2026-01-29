@@ -10,6 +10,9 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="importlib
 warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
+import socket
+from urllib.parse import urlparse
+from urllib.request import urlopen
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
@@ -129,6 +132,15 @@ class VectorstoreLoadArgs(BaseModel):
         )
     )
     params: VectorstoreParams
+
+
+class VectorstoreHealthArgs(BaseModel):
+    backend: Literal["qdrant", "chroma", "milvus"] = Field(default="qdrant")
+    database_uri: str = Field(
+        default="http://localhost:6333",
+        description="Vectorstore database URI to check from the current runtime.",
+    )
+    timeout_seconds: float = Field(default=2.5, description="Connection timeout in seconds")
 
 
 server = FastMCP(
@@ -317,6 +329,62 @@ async def vectorstore_load(
             summary_lines.append(f"  • {filename}: {error}")
 
     return "\n".join(summary_lines)
+
+
+@server.tool(
+    name="vectorstore_health",
+    description=(
+        "Check vectorstore connectivity. For qdrant, queries /collections; "
+        "for other backends, performs a TCP connect check."
+    ),
+)
+async def vectorstore_health(args: VectorstoreHealthArgs) -> str:
+    timeout = max(0.1, float(args.timeout_seconds))
+    uri = args.database_uri.rstrip("/")
+    parsed = urlparse(uri if "://" in uri else f"http://{uri}")
+    host = parsed.hostname or "localhost"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    result: dict[str, object] = {
+        "backend": args.backend,
+        "database_uri": args.database_uri,
+        "ok": False,
+    }
+
+    if args.backend == "qdrant":
+        url = f"{parsed.scheme}://{host}:{port}/collections"
+        try:
+            with urlopen(url, timeout=timeout) as resp:
+                status = getattr(resp, "status", 200)
+                body = resp.read().decode("utf-8")
+            collections = []
+            try:
+                payload = json.loads(body)
+                for item in payload.get("result", {}).get("collections", []):
+                    name = item.get("name")
+                    if name:
+                        collections.append(name)
+            except json.JSONDecodeError:
+                collections = []
+            result.update(
+                {
+                    "ok": 200 <= int(status) < 300,
+                    "http_status": status,
+                    "collections": collections,
+                }
+            )
+        except Exception as e:
+            result.update({"error": str(e)})
+    else:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                result["ok"] = True
+                result["host"] = host
+                result["port"] = port
+        except Exception as e:
+            result.update({"error": str(e), "host": host, "port": port})
+
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 def main() -> None:
