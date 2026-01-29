@@ -264,8 +264,11 @@ class CommandRegistry:
 
     def register_enterprise_commands(self) -> None:
         """Register enterprise-specific commands."""
+        from donkit_ragops.repl.command.airbyte import AirbyteCommand
+
         self.register(ProjectsCommand())
         self.register(NewProjectCommand())
+        self.register(AirbyteCommand())
 
     def get_command(self, input_str: str) -> ReplCommand | None:
         """Find command matching input.

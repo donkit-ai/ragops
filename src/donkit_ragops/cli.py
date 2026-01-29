@@ -249,6 +249,7 @@ def _run_enterprise_mode() -> None:
         agent=None,  # Will be set below
         agent_settings=agent_settings,
         system_prompt=system_prompt,
+        api_client=api_client,
     )
 
     # Create LLMAgent with project_id_provider from context

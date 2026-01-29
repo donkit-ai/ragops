@@ -31,6 +31,8 @@ class EventType(StrEnum):
     INDEXING_COMPLETED = auto()
     RAG_COMPLETED = auto()
     EXPERIMENT_ITERATION_COMPLETED = auto()
+    # Airbyte events
+    AIRBYTE_DOCUMENT_ADDED = auto()
     UNKNOWN = auto()
 
 
@@ -76,6 +78,7 @@ class BackendEvent:
                 "corpus_ready": EventType.CORPUS_READY,
                 "indexing_done": EventType.INDEXING_DONE,
                 "processing_progress": EventType.PROCESSING_PROGRESS,
+                "airbyte_document_added": EventType.AIRBYTE_DOCUMENT_ADDED,
             }
             event_type = event_type_map.get(event_type_str, EventType.UNKNOWN)
 
@@ -295,6 +298,18 @@ class BackendEvent:
                 f"1. View detailed results for all configurations\n"
                 f"2. Compare metrics across configurations\n"
                 f"3. Run another experiment iteration with different parameters"
+            )
+
+        if event_type == EventType.AIRBYTE_DOCUMENT_ADDED:
+            sink_name = data.get("sink_name", "Unknown")
+            stream = data.get("stream", "unknown")
+            document_id = data.get("document_id", "")
+            return (
+                f"{system_instruction}"
+                f"[AIRBYTE_DOCUMENT_ADDED] "
+                f"New document added from Airbyte sink '{sink_name}' (stream: {stream}). "
+                f"Document ID: {document_id}. "
+                f"Briefly inform the user that a new document has been received from Airbyte."
             )
 
         return f"{system_instruction}[BACKEND_EVENT: UNKNOWN] Received event with data: {data}"
