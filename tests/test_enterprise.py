@@ -975,7 +975,7 @@ class TestEnterpriseSettings:
 
         # Fixture clears env vars automatically
         settings = EnterpriseSettings()
-        assert settings.api_url == "https://api.donkit.ai"
+        assert settings.api_url == "https://api.dev.donkit.ai"
 
     def test_mcp_url_property(self) -> None:
         """Test MCP URL property combines api_url and mcp_path."""
@@ -983,4 +983,4 @@ class TestEnterpriseSettings:
 
         # Fixture clears env vars automatically
         settings = EnterpriseSettings()
-        assert settings.mcp_url == "https://api.donkit.ai/mcp/"
+        assert settings.mcp_url == "https://api.dev.donkit.ai/mcp/"

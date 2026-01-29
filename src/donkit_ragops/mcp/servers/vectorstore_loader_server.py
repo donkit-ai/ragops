@@ -65,7 +65,7 @@ def create_embedder(embedder_type: str) -> Embeddings:
 
     def __check_donkit():
         api_key = os.getenv("RAGOPS_DONKIT_API_KEY", "qwerty")
-        base_url = os.getenv("RAGOPS_DONKIT_BASE_URL", "https://api.donkit.ai")
+        base_url = os.getenv("RAGOPS_DONKIT_BASE_URL", "https://api.dev.donkit.ai")
         return api_key, base_url
 
     if embedder_type == "openai":

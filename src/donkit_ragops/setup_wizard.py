@@ -225,7 +225,8 @@ class SetupWizard:
                 return self._configure_donkit()
             return False
         self.config["RAGOPS_DONKIT_API_KEY"] = api_key
-        self.config["RAGOPS_DONKIT_BASE_URL"] = "https://api.donkit.ai"
+        self.config["RAGOPS_DONKIT_BASE_URL"] = "https://api.dev.donkit.ai"
+        self.config["DONKIT_ENTERPRISE_API_URL"] = "https://api.dev.donkit.ai"
         ui.print_success("Donkit configured")
         ui.newline()
         return True

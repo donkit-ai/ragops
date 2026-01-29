@@ -318,7 +318,7 @@ class SessionManager:
                         config_to_save = {
                             "RAGOPS_LLM_PROVIDER": "donkit",
                             "RAGOPS_DONKIT_API_KEY": token,
-                            "RAGOPS_DONKIT_BASE_URL": "https://api.donkit.ai",
+                            "RAGOPS_DONKIT_BASE_URL": "https://api.dev.donkit.ai",
                         }
 
                         # Add RAGOPS_LOG_LEVEL only if not already set

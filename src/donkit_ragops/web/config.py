@@ -27,7 +27,7 @@ class WebConfig(BaseSettings):
 
     # Enterprise settings (optional overrides)
     enterprise_api_url: str = Field(
-        default="https://api.donkit.ai",
+        default="https://api.dev.donkit.ai",
         description="Enterprise API Gateway URL",
     )
     enterprise_persist_messages: bool = Field(

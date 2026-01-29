@@ -284,7 +284,7 @@ def generate_env_file(
     # Donkit
     lines.append("# Donkit")
     lines.append(f"DONKIT_API_KEY={donkit_api_key or ''}")
-    lines.append(f"DONKIT_BASE_URL={donkit_base_url or 'https://api.donkit.ai'}")
+    lines.append(f"DONKIT_BASE_URL={donkit_base_url or 'https://api.dev.donkit.ai'}")
 
     # Vertex AI
     lines.append("# Vertex AI (Google Cloud)")

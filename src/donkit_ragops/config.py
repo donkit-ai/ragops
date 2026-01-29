@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     azure_openai_embeddings_deployment: str | None = Field(default=None)
     # Donkit
     donkit_api_key: str | None = Field(default=None)
-    donkit_base_url: str = Field(default="http://localhost:8080")  # https://api.donkit.ai
+    donkit_base_url: str = Field(default="https://api.dev.donkit.ai")
     # Other providers
     anthropic_api_key: str | None = Field(default=None)
     ollama_base_url: str = Field(default="http://localhost:11434")
