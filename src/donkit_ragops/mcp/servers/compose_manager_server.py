@@ -117,6 +117,20 @@ def check_docker_installed() -> tuple[bool, str]:
 
 def check_docker_compose_installed() -> tuple[bool, str]:
     """Check if docker-compose is installed."""
+    # Try 'docker compose' (new syntax) first
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return True, result.stdout.strip()
+    except Exception:
+        pass
+
+    # Fallback to 'docker-compose' (legacy)
     try:
         result = subprocess.run(
             ["docker-compose", "--version"],
@@ -128,18 +142,6 @@ def check_docker_compose_installed() -> tuple[bool, str]:
             return True, result.stdout.strip()
         return False, "docker-compose command failed"
     except FileNotFoundError:
-        # Try 'docker compose' (new syntax)
-        try:
-            result = subprocess.run(
-                ["docker", "compose", "version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if result.returncode == 0:
-                return True, result.stdout.strip()
-        except Exception:
-            pass
         return False, "docker-compose is not installed"
     except Exception as e:
         return False, f"Error checking docker-compose: {str(e)}"
@@ -197,15 +199,17 @@ def get_compose_command() -> list[str]:
     """Get the appropriate docker-compose command."""
     # Try new syntax first
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["docker", "compose", "version"],
             capture_output=True,
             timeout=5,
-            check=True,
         )
-        return ["docker", "compose"]
+        if result.returncode == 0:
+            return ["docker", "compose"]
     except Exception:
-        return ["docker-compose"]
+        pass
+    
+    return ["docker-compose"]
 
 
 def _ensure_neo4j_password(project_path: Path) -> str:

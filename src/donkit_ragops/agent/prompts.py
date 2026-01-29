@@ -211,6 +211,7 @@ ALWAYS gather each parameter using interactive_user_choice / interactive_user_co
 8. Chunk size: 250 | 500 | 1000 | 2000 | other
 9. Chunk overlap: 0 | 50 | 100 | 200 | other
 10. Boolean settings (use interactive_user_confirm): ranker, partial_search, query_rewrite, composite_query_detection
+    - Ask these ONLY if retrieval mode is vector or hybrid (skip for graph-only)
 
 UPDATING EXISTING CONFIG:
 • If user wants to change ONE specific field (e.g., "change chunk size"), use update_rag_config_field tool
@@ -388,14 +389,26 @@ You MUST follow this sequence of steps:
 1.  **Gather documents**: Ask the user to provide documents relevant to their RAG use case.
     {FILE_ATTACH_INSTRUCTION}
     Once you have them, call the `agent_create_corpus` tool to save them as a corpus of source files.
+    **IMPORTANT**: The `agent_create_corpus` tool will return a `corpus_id` - save this ID for the next steps!
 
 2.  **Figure out a RAG use case**: What goal the user is trying to achieve?
     Once you have enough information, call the `agent_update_rag_use_case` tool to set the use case for the project.
 
 3.  **Make an evaluation dataset**: Create a dataset that will be used to evaluate the RAG system.
     It should contain relevant queries and expected answers (ground truth) based on the provided documents.
-    We can't generate this dataset automatically, so the user is to provide it.
-    Once you have it, call the `agent_create_evaluation_dataset` tool to save it.
+    **IMPORTANT - Two-step approach**:
+    - First, ask the user if they have already prepared evaluation questions (Q&A pairs with ground truth answers)
+    - If the user says YES or provides them → use their questions
+    - If the user says NO or doesn't have them → IMMEDIATELY generate the dataset yourself by:
+      • **CRITICAL**: NEVER use `read_file` tool for corpus documents! It will fail on PDFs and binary files.
+      • **CORRECT WAY**: Call `agent_read_corpus_documents` MCP tool with the corpus_id from step 1:
+        Example: agent_read_corpus_documents(corpus_id="5c518698-dbdc-45f4-b907-72891f4f5a9f")
+      • This tool will return the processed text content from all documents in the corpus
+      • Analyze the document text to identify key concepts, topics, and information
+      • Generate 5-10 representative questions that a researcher might ask (similar to "What is RoCa?", "How does the interventional approach differ from correlational?")
+      • Extract ground truth answers from the documents for each question
+      • Note which document each answer comes from
+    Once you have the dataset (either from user or self-generated), call the `agent_create_evaluation_dataset` tool to save it.
     Then without stop move to the next step.
 
 4.  **Plan the experiments**: Based on the use case and the evaluation dataset, plan a series of experiments to test different configurations of the RAG system.
@@ -411,6 +424,7 @@ You MUST follow this sequence of steps:
 **Available MCP Tools:**
 
 - `agent_create_corpus` - Create corpus from uploaded files
+- `agent_read_corpus_documents` - Read the actual text content from corpus documents (use this to access uploaded PDFs and other files)
 - `agent_update_rag_use_case` - Set the RAG use case for the project
 - `agent_create_evaluation_dataset` - Create evaluation dataset with questions and ground truth answers
 - `experiment_get_experiment_options` - Get available experiment configuration options (embedders, chunking strategies, etc.)
