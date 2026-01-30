@@ -97,7 +97,7 @@ class EnterpriseREPL(BaseREPL):
                 if recent_projects:
                     # Use most recent project
                     self.project_id = str(recent_projects[0].get("id"))
-                    ui.print(f"Connected to project: {self.project_id}", StyleName.SUCCESS)
+                    ui.print(f"Connected to project: {self.project_id}\n", StyleName.SUCCESS)
 
                     # Load project messages
                     project_messages = await self._load_project_messages(self.project_id)
@@ -125,7 +125,7 @@ class EnterpriseREPL(BaseREPL):
 
                     if self._loaded_messages:
                         ui.print(
-                            f"Loaded {len(self._loaded_messages)} messages from history",
+                            f"Loaded {len(self._loaded_messages)} messages from history\n",
                             StyleName.DIM,
                         )
                 else:
@@ -860,13 +860,13 @@ class EnterpriseREPL(BaseREPL):
 
         try:
             async with self.api_client:
-                ui.print("Creating new project...", StyleName.INFO)
+                ui.print("Creating new project...\n", StyleName.INFO)
 
                 # Create new project
                 project = await self.api_client.create_project()
                 new_project_id = str(project.id)
 
-                ui.print(f"Created project: {new_project_id}", StyleName.SUCCESS)
+                ui.print(f"Created project: {new_project_id}\n", StyleName.SUCCESS)
 
                 # Switch to the new project
                 await self._switch_to_project(new_project_id)
@@ -895,11 +895,11 @@ class EnterpriseREPL(BaseREPL):
                 try:
                     await self.api_client.get_project(project_id)
                 except Exception as e:
-                    ui.print_error(f"Project not found: {project_id}")
-                    logger.error(f"Failed to get project {project_id}: {e}")
+                    ui.print_error(f"Project not found: {project_id}\n")
+                    logger.error(f"Failed to get project {project_id}: {e}\n")
                     return
 
-                ui.print(f"Switching to project {project_id}...", StyleName.INFO)
+                ui.print(f"Switching to project {project_id}...\n\n", StyleName.INFO)
 
                 # Update project ID
                 self.project_id = project_id
@@ -913,10 +913,10 @@ class EnterpriseREPL(BaseREPL):
                     user_name = user_info.first_name or "User"
                     user_id = user_info.id
                 except Exception as e:
-                    logger.warning(f"Failed to get user info: {e}")
+                    logger.warning(f"Failed to get user info: {e}\n")
 
                 # Generate new system prompt with updated project ID
-                new_system_prompt = get_prompt("enterprise", interface="repl")
+                new_system_prompt = get_prompt(mode="enterprise", interface="repl")
                 new_system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
                 new_system_prompt += f"\nProject ID: {project_id}"
 
@@ -982,7 +982,7 @@ class EnterpriseREPL(BaseREPL):
                 self.context.transcript.clear()
 
                 ui.print(
-                    f"Switched to project {project_id} ({loaded_count} messages loaded)",
+                    f"Switched to project {project_id} ({loaded_count} messages loaded)\n\n",
                     StyleName.SUCCESS,
                 )
 
@@ -1012,8 +1012,8 @@ class EnterpriseREPL(BaseREPL):
                     ui.newline()
 
         except Exception as e:
-            logger.error(f"Failed to switch to project {project_id}: {e}", exc_info=True)
-            ui.print_error(f"Failed to switch to project: {e}")
+            logger.error(f"Failed to switch to project {project_id}: {e}\n", exc_info=True)
+            ui.print_error(f"Failed to switch to project: {e}\n")
 
     async def _load_project_messages(self, project_id: str) -> list[dict]:
         """Load message history for a project.

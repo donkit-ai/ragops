@@ -118,8 +118,8 @@ class SessionManager:
         files_dir = Path(self.config.upload_dir) / session_id
         files_dir.mkdir(parents=True, exist_ok=True)
 
-        # Generate system prompt for web interface
-        system_prompt = get_prompt(provider_name, interface="web")
+        # Generate system prompt for web interface (local mode)
+        system_prompt = get_prompt(mode="local", interface="web")
 
         # Create session
         session = WebSession(
@@ -424,7 +424,7 @@ class SessionManager:
         )
 
         # Generate enterprise system prompt for web interface
-        system_prompt = get_prompt("enterprise", interface="web")
+        system_prompt = get_prompt(mode="enterprise", interface="web")
         # Add user and project context to prompt
         system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
         if project_id:
@@ -551,7 +551,7 @@ class SessionManager:
                     logger.warning(f"Failed to get user info for new project: {e}")
 
                 # Generate new system prompt with updated project ID
-                new_system_prompt = get_prompt("enterprise", interface="web")
+                new_system_prompt = get_prompt(mode="enterprise", interface="web")
                 new_system_prompt += f"\nUser name: {user_name}\nUser ID: {user_id}"
                 new_system_prompt += f"\nProject ID: {new_project_id}"
 

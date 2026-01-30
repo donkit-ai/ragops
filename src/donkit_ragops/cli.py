@@ -32,6 +32,7 @@ from donkit_ragops.schemas.agent_schemas import AgentSettings
 from donkit_ragops.setup_wizard import run_setup_if_needed
 from donkit_ragops.ui import get_ui
 from donkit_ragops.ui.styles import StyleName, styled_text
+from donkit_ragops.version_checker import check_for_updates, print_update_notification
 
 app = typer.Typer(
     pretty_exceptions_enable=False,
@@ -50,6 +51,17 @@ DEFAULT_MODELS = {
     "anthropic": "claude-3-5-sonnet-20241022",
     "mock": "gpt-4o-mini",
 }
+
+
+def _check_and_notify_updates() -> None:
+    """Check for available updates and notify user if newer version exists."""
+    try:
+        version_info = check_for_updates(__version__)
+        if version_info:
+            print_update_notification(version_info)
+    except Exception:
+        # Silently ignore any errors during version check
+        pass
 
 
 def version_callback(value: bool) -> None:
@@ -139,6 +151,10 @@ def main(
         setup_logging(load_settings())
     except Exception:
         pass
+
+    # Check for updates (async, non-blocking)
+    if ctx.invoked_subcommand is None:
+        _check_and_notify_updates()
 
     if ctx.invoked_subcommand is None:
         ui = get_ui()
@@ -237,7 +253,7 @@ def _run_enterprise_mode() -> None:
     agent_settings = AgentSettings(llm_provider=provider, model=None)
 
     # Get system prompt for enterprise mode
-    system_prompt = get_prompt("enterprise", debug=False)
+    system_prompt = get_prompt(mode="enterprise", debug=False)
 
     # Create context first (project_id will be set during REPL init)
     context = ReplContext(
@@ -346,8 +362,8 @@ def _run_local_mode(
     # Create agent settings
     agent_settings = AgentSettings(llm_provider=prov, model=model)
 
-    # Get system prompt
-    system_prompt = system or get_prompt(provider, debug=settings.log_level == "DEBUG")
+    # Get system prompt (local mode - provider doesn't affect prompt anymore)
+    system_prompt = system or get_prompt(mode="local", debug=settings.log_level == "DEBUG")
 
     # Print startup header
     print_startup_header(provider=provider or "initializing", model=model)
@@ -525,3 +541,92 @@ def status() -> None:
             )
         )
         ui.print("Run 'donkit-ragops login' to authenticate", StyleName.DIM)
+
+
+@app.command()
+def upgrade(
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation prompt",
+    ),
+) -> None:
+    """Upgrade donkit-ragops to the latest version.
+
+    Automatically detects installation method (pip, pipx, poetry) and
+    runs the appropriate upgrade command.
+    """
+    from donkit_ragops.upgrade import (
+        detect_install_method,
+        format_upgrade_instructions,
+        run_upgrade,
+    )
+    from donkit_ragops.version_checker import check_for_updates
+
+    ui = get_ui()
+
+    # Check current and latest versions
+    ui.print("Checking for updates...", StyleName.DIM)
+    version_info = check_for_updates(__version__, use_cache=False)
+
+    if version_info is None:
+        ui.print_error("Failed to check for updates. Please try again later.")
+        raise typer.Exit(code=1)
+
+    if not version_info.is_outdated:
+        ui.print_success(f"Already on the latest version: {version_info.current}")
+        raise typer.Exit()
+
+    # Show available update
+    ui.print("")
+    ui.print_styled(
+        styled_text(
+            (StyleName.INFO, "New version available: "),
+            (StyleName.SUCCESS, version_info.latest),
+            (StyleName.DIM, f" (current: {version_info.current})"),
+        )
+    )
+
+    # Detect installation method
+    method = detect_install_method()
+    ui.print_styled(
+        styled_text(
+            (StyleName.DIM, "Detected installation method: "),
+            (StyleName.INFO, method.value),
+        )
+    )
+
+    # Confirm upgrade
+    if not yes:
+        ui.print("")
+        confirm = typer.confirm("Proceed with upgrade?")
+        if not confirm:
+            ui.print("Upgrade cancelled.")
+            raise typer.Exit()
+
+    # Run upgrade
+    ui.print("")
+    ui.print(f"Upgrading donkit-ragops to {version_info.latest}...", StyleName.INFO)
+
+    with ui.create_spinner("Upgrading"):
+        success, output = run_upgrade(method)
+
+    if success:
+        ui.print_success(f"Successfully upgraded to {version_info.latest}")
+        ui.print("")
+        ui.print_styled(
+            styled_text(
+                (StyleName.DIM, "Please restart the CLI to use the new version."),
+            )
+        )
+    else:
+        ui.print_error(f"Upgrade failed: {output}")
+        ui.print("")
+        ui.print("Try upgrading manually:", StyleName.WARNING)
+        ui.print_styled(
+            styled_text(
+                (StyleName.INFO, "  " + format_upgrade_instructions(method)),
+            )
+        )
+        raise typer.Exit(code=1)
