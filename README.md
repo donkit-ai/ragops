@@ -242,11 +242,17 @@ Inside the interactive session, use these commands:
 # Health check
 donkit-ragops ping
 
+# Auto-upgrade to latest version
+donkit-ragops upgrade       # Check and upgrade (interactive)
+donkit-ragops upgrade -y    # Upgrade without confirmation
+
 # Saas/Enterprise mode authentication
 donkit-ragops login --token YOUR_TOKEN  # Login to Donkit cloud
 donkit-ragops logout                    # Remove stored token
 donkit-ragops status                    # Show mode and auth status
 ```
+
+> **Note:** The `upgrade` command automatically detects your installation method (pip, pipx, or poetry) and runs the appropriate upgrade command.
 
 ### Environment Variables
 
