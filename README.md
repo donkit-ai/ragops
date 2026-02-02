@@ -32,7 +32,7 @@ Built by [Donkit AI](https://donkit.ai/?utm_source=github) — Automated Context
 * **Checklist-driven workflow** — Each RAG project is structured as a checklist — with clear stages, approvals, and progress tracking
 * **Session-scoped checklists** — Only current session checklists appear in the UI
 * **SaaS mode** — Connect to Donkit cloud for experiments
-* **Enterprise mode** — deploy to VPC or on-premises with no vendor lock-in (reach out to us via https://donkit.ai) 
+* **Enterprise mode** — deploy to VPC or on-premises with no vendor lock-in (reach out to us via [https://donkit.ai](https://donkit.ai/?utm_source=github)) 
 
 ## Quick Install
 
