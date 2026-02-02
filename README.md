@@ -9,7 +9,7 @@
 A smart, LLM-powered CLI agent that automates the entire lifecycle of Retrieval-Augmented Generation (RAG) pipelines — from creation and experimentation to deployment.
 Forget spending months tweaking chunking strategies, embeddings, and vector DBs by hand. Just describe what you need, and let the agent run 100+ parallel experiments to discover what actually works for your data — fast, accurate, and infra-agnostic.
 
-Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
+Built by [Donkit AI](https://donkit.ai/?utm_source=github) — Automated Context Engineering.
 
 ## Who is this for?
 
@@ -32,7 +32,7 @@ Built by [Donkit AI](https://donkit.ai) — Automated Context Engineering.
 * **Checklist-driven workflow** — Each RAG project is structured as a checklist — with clear stages, approvals, and progress tracking
 * **Session-scoped checklists** — Only current session checklists appear in the UI
 * **SaaS mode** — Connect to Donkit cloud for experiments
-* **Enterprise mode** — deploy to VPC or on-premises with no vendor lock-in (reach out to us via https://donkit.ai) 
+* **Enterprise mode** — deploy to VPC or on-premises with no vendor lock-in (reach out to us via [https://donkit.ai](https://donkit.ai/?utm_source=github)) 
 
 ## Quick Install
 
@@ -800,4 +800,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Built with ❤️ by [Donkit AI](https://donkit.ai)
+Built with ❤️ by [Donkit AI](https://donkit.ai/?utm_source=github)
