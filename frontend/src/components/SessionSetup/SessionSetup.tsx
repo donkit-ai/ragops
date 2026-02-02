@@ -223,7 +223,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <div className="flex-1" />
               <div className="pt-4 text-xs">
                 <a
-                  href="https://donkit.ai"
+                  href="https://donkit.ai/?utm_source=app"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2 py-1 bg-dark-bg text-dark-text-muted rounded hover:text-dark-text-primary transition-colors"
