@@ -159,9 +159,7 @@ class TestMCPHttpClientToolListing:
         with patch("donkit_ragops.mcp.http_client.Client") as mock_client_class:
             client = MCPHttpClient(url="https://api.example.com/mcp", token="token")
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_aenter.side_effect = ConnectionError("Failed")
 
                 with pytest.raises(ConnectionError):
@@ -174,9 +172,7 @@ class TestMCPHttpClientToolListing:
         with patch("donkit_ragops.mcp.http_client.Client") as mock_client_class:
             client = MCPHttpClient(url="https://api.example.com/mcp", token="token")
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_aenter.side_effect = asyncio.CancelledError()
 
                 with pytest.raises(asyncio.CancelledError):
@@ -221,9 +217,7 @@ class TestMCPHttpClientToolCalling:
             mock_result = MagicMock()
             mock_result.content = [mock_content]
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_client_instance = AsyncMock()
                 mock_client_instance.call_tool = AsyncMock(return_value=mock_result)
                 mock_aenter.return_value = mock_client_instance
@@ -248,9 +242,7 @@ class TestMCPHttpClientToolCalling:
             mock_result.content = None
             mock_result.data = {"key": "value"}
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_client_instance = AsyncMock()
                 mock_client_instance.call_tool = AsyncMock(return_value=mock_result)
                 mock_aenter.return_value = mock_client_instance
@@ -272,9 +264,7 @@ class TestMCPHttpClientToolCalling:
             mock_result = MagicMock()
             mock_result.content = [mock_content]
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_client_instance = AsyncMock()
                 mock_client_instance.call_tool = AsyncMock(return_value=mock_result)
                 mock_aenter.return_value = mock_client_instance
@@ -290,9 +280,7 @@ class TestMCPHttpClientToolCalling:
         with patch("donkit_ragops.mcp.http_client.Client") as mock_client_class:
             client = MCPHttpClient(url="https://api.example.com/mcp", token="token")
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_aenter.side_effect = asyncio.CancelledError()
 
                 with pytest.raises(asyncio.CancelledError):
@@ -305,9 +293,7 @@ class TestMCPHttpClientToolCalling:
         with patch("donkit_ragops.mcp.http_client.Client") as mock_client_class:
             client = MCPHttpClient(url="https://api.example.com/mcp", token="token")
 
-            with patch.object(
-                client.client, "__aenter__", new_callable=AsyncMock
-            ) as mock_aenter:
+            with patch.object(client.client, "__aenter__", new_callable=AsyncMock) as mock_aenter:
                 mock_aenter.side_effect = KeyboardInterrupt()
 
                 with pytest.raises(KeyboardInterrupt):
@@ -559,6 +545,48 @@ class TestBackendEvent:
 
         assert event.type == EventType.PROCESSING_PROGRESS
         assert "50/100" in event.message
+
+    def test_parse_dataset_generation_completed_success(self) -> None:
+        """Test parsing dataset generation completed event (success)."""
+        raw = {
+            "type": "pipeline_status",
+            "data": {
+                "stage": "dataset_generation_completed",
+                "project_id": "proj-123",
+                "details": {
+                    "evaluation_dataset_id": "dataset-456",
+                    "corpus_id": "corpus-789",
+                },
+            },
+        }
+
+        event = BackendEvent.from_ws_message(raw)
+
+        assert event.type == EventType.DATASET_GENERATION_COMPLETED
+        assert "dataset-456" in event.message
+        assert "corpus-789" in event.message
+        assert "completed successfully" in event.message.lower()
+
+    def test_parse_dataset_generation_completed_failure(self) -> None:
+        """Test parsing dataset generation completed event (failure)."""
+        raw = {
+            "type": "pipeline_status",
+            "data": {
+                "stage": "dataset_generation_completed",
+                "project_id": "proj-123",
+                "details": {
+                    "corpus_id": "corpus-789",
+                    "error": "Failed to generate questions",
+                },
+            },
+        }
+
+        event = BackendEvent.from_ws_message(raw)
+
+        assert event.type == EventType.DATASET_GENERATION_COMPLETED
+        assert "failed" in event.message.lower()
+        assert "Failed to generate questions" in event.message
+        assert "corpus-789" in event.message
 
     def test_parse_unknown_event(self) -> None:
         """Test parsing unknown event type."""
@@ -915,7 +943,6 @@ class TestEnterpriseREPL:
         await repl.cleanup()
 
         mock_event_listener.stop.assert_called_once()
-
 
 
 # ============================================================================

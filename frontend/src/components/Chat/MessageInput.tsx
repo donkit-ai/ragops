@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react';
-import { Send, StopCircle, Loader2, Paperclip, X, File } from 'lucide-react';
+import { Send, StopCircle, Loader2, Paperclip, X, File, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MessageInputProps {
   onSend: (message: string) => void;
@@ -30,6 +30,7 @@ export default function MessageInput({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFilesExpanded, setIsFilesExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +40,13 @@ export default function MessageInput({
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [input]);
+
+  // Reset uploaded files when session changes
+  useEffect(() => {
+    setUploadedFiles([]);
+    setError(null);
+    setIsFilesExpanded(false);
+  }, [sessionId]);
 
   const handleSubmit = () => {
     if (input.trim() && !isStreaming && !disabled) {
@@ -182,17 +190,40 @@ export default function MessageInput({
     <div className="px-6 py-4 bg-dark-bg">
       {/* Uploaded files list */}
       {uploadedFiles.length > 0 && (
-        <div className="mb-3 max-w-4xl mx-auto space-y-2">
-          {uploadedFiles.map((file) => (
-            <div
-              key={file.path}
-              className="flex items-center gap-2 bg-dark-surface border border-dark-border rounded-lg px-3 py-2 text-sm"
+        <div className="mb-3 max-w-4xl mx-auto">
+          {uploadedFiles.length > 2 && (
+            <button
+              onClick={() => setIsFilesExpanded(!isFilesExpanded)}
+              className="flex items-center gap-2 text-sm text-dark-text-secondary hover:text-dark-text-primary transition-colors mb-2"
             >
-              <File className="w-4 h-4 text-dark-text-muted flex-shrink-0" />
-              <span className="flex-1 truncate text-dark-text-primary">{file.name}</span>
-              <span className="text-dark-text-muted text-xs">{formatFileSize(file.size)}</span>
-            </div>
-          ))}
+              {isFilesExpanded ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  <span>Hide files ({uploadedFiles.length})</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  <span>Show all files ({uploadedFiles.length})</span>
+                </>
+              )}
+            </button>
+          )}
+          <div className="space-y-2">
+            {(uploadedFiles.length <= 2 || isFilesExpanded
+              ? uploadedFiles
+              : uploadedFiles.slice(0, 2)
+            ).map((file) => (
+              <div
+                key={file.path}
+                className="flex items-center gap-2 bg-dark-surface border border-dark-border rounded-lg px-3 py-2 text-sm"
+              >
+                <File className="w-4 h-4 text-dark-text-muted flex-shrink-0" />
+                <span className="flex-1 truncate text-dark-text-primary">{file.name}</span>
+                <span className="text-dark-text-muted text-xs">{formatFileSize(file.size)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

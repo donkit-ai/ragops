@@ -10,6 +10,7 @@ import asyncio
 import json
 import shlex
 import time
+from pathlib import Path
 
 import typer
 from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
@@ -83,11 +84,6 @@ def main(
         is_eager=True,
         help="Show version and exit",
     ),
-    setup: bool = typer.Option(
-        False,
-        "--setup",
-        help="Run setup wizard to configure the agent",
-    ),
     local: bool = typer.Option(
         False,
         "--local",
@@ -142,7 +138,7 @@ def main(
     EXAMPLES:
       donkit-ragops                              # Start in local mode
       donkit-ragops --enterprise                 # Start in enterprise mode
-      donkit-ragops --setup                      # Run setup wizard
+      donkit-ragops setup                        # Run setup wizard
       donkit-ragops --provider openai -m gpt-4o  # Override provider & model
       donkit-ragops status                       # Check mode & auth status
     """
@@ -163,12 +159,9 @@ def main(
             ui.print_error("Cannot use --local and --enterprise together")
             raise typer.Exit(code=1)
 
-        # Run setup wizard if needed
-        if not run_setup_if_needed(force=setup):
+        # Run setup wizard if needed (auto-detect only, not forced)
+        if not run_setup_if_needed(force=False):
             raise typer.Exit(code=1)
-
-        if setup:
-            raise typer.Exit()
 
         # Detect mode
         try:
@@ -410,77 +403,12 @@ def ping() -> None:
 
 
 @app.command()
-def login(
-    token: str = typer.Option(
-        ...,
-        "--token",
-        "-t",
-        prompt="Enter your API token",
-        hide_input=True,
-        help="Your Donkit API token",
-    ),
-) -> None:
-    """Login to Donkit cloud (enterprise mode)."""
-    from donkit_ragops.enterprise.auth import save_token
-    from donkit_ragops.enterprise.config import load_enterprise_settings
-
-    ui = get_ui()
-
-    settings = load_enterprise_settings()
-
-    ui.print("Validating token...", StyleName.DIM)
-    try:
-        client = RagopsAPIGatewayClient(
-            base_url=settings.api_url,
-            api_token=token,
-        )
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-
-            async def validate():
-                async with client:
-                    await client.list_projects()
-
-            loop.run_until_complete(validate())
-        finally:
-            loop.close()
-
-        ui.print_success("Token validated successfully.")
-    except Exception as e:
-        ui.print_error(f"Token validation failed: {e}")
-        ui.print_warning("Please check your token and try again.")
-        raise typer.Exit(code=1)
-
-    save_token(token)
-    ui.print_success("Token saved successfully.")
-    ui.print(f"API URL: {settings.api_url}", StyleName.DIM)
-    ui.print("\nYou can now use enterprise mode:")
-    ui.print_styled(styled_text((None, "  "), (StyleName.INFO, "donkit-ragops --enterprise")))
-
-
-@app.command()
-def logout() -> None:
-    """Logout from Donkit cloud (remove stored token)."""
-    from donkit_ragops.enterprise.auth import delete_token, has_token
-
-    ui = get_ui()
-    if has_token():
-        delete_token()
-        ui.print_success("Token removed successfully.")
-    else:
-        ui.print("No token found.", StyleName.DIM)
-
-
-@app.command()
 def status() -> None:
     """Show current mode and authentication status."""
     from donkit_ragops.enterprise.auth import has_token
-    from donkit_ragops.enterprise.config import load_enterprise_settings
 
     ui = get_ui()
     mode = detect_mode()
-    enterprise_settings = load_enterprise_settings()
 
     ui.print_styled(styled_text((StyleName.BOLD, "Mode: "), (None, mode.value)))
     ui.print_styled(styled_text((StyleName.BOLD, "Version: "), (None, __version__)))
@@ -521,18 +449,6 @@ def status() -> None:
                 (StyleName.SUCCESS, "authenticated"),
             )
         )
-        ui.print_styled(
-            styled_text(
-                (StyleName.BOLD, "API URL: "),
-                (None, enterprise_settings.api_url),
-            )
-        )
-        ui.print_styled(
-            styled_text(
-                (StyleName.BOLD, "MCP URL: "),
-                (None, enterprise_settings.mcp_url),
-            )
-        )
     else:
         ui.print_styled(
             styled_text(
@@ -541,6 +457,88 @@ def status() -> None:
             )
         )
         ui.print("Run 'donkit-ragops login' to authenticate", StyleName.DIM)
+
+
+@app.command()
+def setup() -> None:
+    """Run setup wizard to configure the agent.
+
+    Choose between Local mode (Docker-based) or SaaS mode (Donkit cloud).
+    Local mode configuration includes LLM provider selection and credentials.
+    """
+    from donkit_ragops.interactive_input import interactive_select
+    from donkit_ragops.setup_wizard import SaaSSetupWizard, SetupWizard
+
+    ui = get_ui()
+    ui.clear()
+
+    # Step 0: Choose mode
+    ui.print_styled(
+        styled_text(
+            (StyleName.BOLD, "Setup Wizard"),
+        )
+    )
+    ui.newline()
+    ui.print_styled(
+        styled_text(
+            (StyleName.BOLD, "Step 1: "),
+            (None, "Choose deployment mode"),
+        )
+    )
+    ui.newline()
+
+    mode_choices = [
+        "Local - Build RAG pipelines locally using Docker (free, self-hosted)",
+        "SaaS - Use Donkit cloud infrastructure (managed service)",
+    ]
+
+    selected_mode = interactive_select(
+        choices=mode_choices,
+        title="Select deployment mode",
+    )
+
+    if selected_mode is None:
+        ui.print_error("Setup cancelled")
+        raise typer.Exit(code=1)
+
+    ui.newline()
+
+    if selected_mode == mode_choices[0]:  # Local mode
+        ui.print_styled(
+            styled_text(
+                (None, "Selected: "),
+                (StyleName.SUCCESS, "Local mode"),
+            )
+        )
+        ui.newline()
+
+        # Run existing local setup wizard
+        env_path = Path.cwd() / ".env"
+        wizard = SetupWizard(env_path)
+        success = wizard.run()
+
+        if success:
+            wizard.show_success()
+        else:
+            ui.print_error("Setup failed or cancelled")
+            raise typer.Exit(code=1)
+
+    else:  # SaaS mode
+        ui.print_styled(
+            styled_text(
+                (None, "Selected: "),
+                (StyleName.SUCCESS, "SaaS mode"),
+            )
+        )
+        ui.newline()
+
+        # Run SaaS setup wizard
+        wizard = SaaSSetupWizard()
+        success = wizard.run()
+
+        if not success:
+            ui.print_error("Setup failed or cancelled")
+            raise typer.Exit(code=1)
 
 
 @app.command()
@@ -567,11 +565,11 @@ def upgrade(
     ui = get_ui()
 
     # Check current and latest versions
-    ui.print("Checking for updates...", StyleName.DIM)
+    ui.print("Checking for updates...\n", StyleName.DIM)
     version_info = check_for_updates(__version__, use_cache=False)
 
     if version_info is None:
-        ui.print_error("Failed to check for updates. Please try again later.")
+        ui.print_error("Failed to check for updates. Please try again later.\n")
         raise typer.Exit(code=1)
 
     if not version_info.is_outdated:
