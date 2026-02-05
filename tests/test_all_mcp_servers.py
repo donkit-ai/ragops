@@ -66,6 +66,7 @@ EXPECTED_TOOLS = {
     },
     "vectorstore": {
         "vectorstore_load",
+        "delete_from_vectorstore",
     },
 }
 

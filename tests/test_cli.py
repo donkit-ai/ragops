@@ -52,23 +52,56 @@ def test_cli_ping_help() -> None:
 # ============================================================================
 
 
-@patch("donkit_ragops.cli.run_setup_if_needed")
-def test_cli_setup_flag(mock_setup: MagicMock) -> None:
-    """Test --setup flag invokes setup wizard."""
-    mock_setup.return_value = True
+@patch("donkit_ragops.interactive_input.interactive_select")
+@patch("donkit_ragops.setup_wizard.SetupWizard")
+def test_cli_setup_command_local_mode(mock_wizard_class: MagicMock, mock_select: MagicMock) -> None:
+    """Test setup command with local mode selection."""
+    # Mock user selecting local mode
+    mock_select.return_value = "Local - Build RAG pipelines locally using Docker (free, self-hosted)"
 
-    result = runner.invoke(app, ["--setup"], input="")
+    # Mock wizard instance
+    mock_wizard = MagicMock()
+    mock_wizard.run.return_value = True
+    mock_wizard_class.return_value = mock_wizard
 
-    # Should have called setup
-    mock_setup.assert_called_once_with(force=True)
+    result = runner.invoke(app, ["setup"])
+
+    # Should have called interactive_select
+    mock_select.assert_called_once()
+    # Should have created wizard and run it
+    mock_wizard_class.assert_called_once()
+    mock_wizard.run.assert_called_once()
+    mock_wizard.show_success.assert_called_once()
 
 
-@patch("donkit_ragops.cli.run_setup_if_needed")
-def test_cli_setup_returns_false(mock_setup: MagicMock) -> None:
-    """Test setup wizard failure."""
-    mock_setup.return_value = False
+@patch("donkit_ragops.setup_wizard.SaaSSetupWizard")
+@patch("donkit_ragops.interactive_input.interactive_select")
+def test_cli_setup_command_saas_mode(mock_select: MagicMock, mock_saas_wizard_class: MagicMock) -> None:
+    """Test setup command with SaaS mode selection."""
+    # Mock user selecting SaaS mode
+    mock_select.return_value = "SaaS - Use Donkit cloud infrastructure (managed service)"
 
-    result = runner.invoke(app, ["--setup"])
+    # Mock SaaS wizard
+    mock_saas_wizard = MagicMock()
+    mock_saas_wizard.run.return_value = True
+    mock_saas_wizard_class.return_value = mock_saas_wizard
+
+    result = runner.invoke(app, ["setup"])
+
+    # Should have called interactive_select
+    mock_select.assert_called_once()
+    # Should have created and run SaaS wizard
+    mock_saas_wizard_class.assert_called_once()
+    mock_saas_wizard.run.assert_called_once()
+
+
+@patch("donkit_ragops.interactive_input.interactive_select")
+def test_cli_setup_command_cancelled(mock_select: MagicMock) -> None:
+    """Test setup command when user cancels."""
+    # Mock user cancelling selection
+    mock_select.return_value = None
+
+    result = runner.invoke(app, ["setup"])
 
     # Should exit with error code
     assert result.exit_code == 1

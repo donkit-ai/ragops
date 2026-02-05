@@ -28,8 +28,23 @@ function App() {
     // Don't reload the same project
     if (session?.project_id === projectId) return;
 
+    const oldSessionId = session?.id;
+
     setSetupError(null);
     try {
+      // Delete old session before creating new one
+      // This ensures we don't have multiple sessions in memory with different project_id
+      if (oldSessionId) {
+        try {
+          await fetch(`/api/v1/sessions/${oldSessionId}`, {
+            method: 'DELETE',
+          });
+        } catch (deleteError) {
+          console.warn('Failed to delete old session:', deleteError);
+          // Continue anyway - creating new session is more important
+        }
+      }
+
       // Create new session connected to the selected project
       // This ensures clean state, proper WebSocket reconnection,
       // and updated system prompt with correct user info and project ID
@@ -47,10 +62,12 @@ function App() {
   const handleNewProject = async () => {
     if (!session) return;
 
+    const oldSessionId = session.id;
+
     setSetupError(null);
     try {
       // Create a new project via the existing session
-      const response = await fetch(`/api/v1/sessions/${session.id}/new-project`, {
+      const response = await fetch(`/api/v1/sessions/${oldSessionId}/new-project`, {
         method: 'POST',
       });
 
@@ -61,6 +78,17 @@ function App() {
 
       const data = await response.json();
       console.log('Created new project:', data.project_id);
+
+      // Delete old session before creating new one
+      // This ensures we don't have multiple sessions in memory with different project_id
+      try {
+        await fetch(`/api/v1/sessions/${oldSessionId}`, {
+          method: 'DELETE',
+        });
+      } catch (deleteError) {
+        console.warn('Failed to delete old session:', deleteError);
+        // Continue anyway - creating new session is more important
+      }
 
       // Create a new session connected to the new project
       // This ensures clean state and proper WebSocket reconnection

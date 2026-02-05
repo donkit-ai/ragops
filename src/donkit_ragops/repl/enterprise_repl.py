@@ -337,7 +337,6 @@ class EnterpriseREPL(BaseREPL):
 
         while self._running:
             try:
-                # Run text_input in a separate thread to avoid blocking event loop
                 user_input = await self.context.ui.text_input()
             except KeyboardInterrupt:
                 self.context.ui.print_warning("Input cancelled. Type :quit/exit/:q to exit")

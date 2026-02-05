@@ -319,6 +319,86 @@ async def vectorstore_load(
     return "\n".join(summary_lines)
 
 
+class VectorstoreDeleteArgs(BaseModel):
+    filename: str | None = Field(
+        default=None, description="Filename to delete from vectorstore (e.g., 'document.pdf')"
+    )
+    document_id: str | None = Field(
+        default=None, description="Document ID to delete from vectorstore (alternative to filename)"
+    )
+    params: VectorstoreParams
+
+
+@server.tool(
+    name="delete_from_vectorstore",
+    description=(
+        "Delete documents from vectorstore by filename or document_id. "
+        "Provide either 'filename' (e.g., 'document.pdf') OR 'document_id', not both. "
+        "Returns success status and number of deleted documents."
+    ),
+)
+async def delete_from_vectorstore(
+    args: VectorstoreDeleteArgs,
+    ctx: Context,
+) -> str:
+    params = args.params
+    filename = args.filename
+    document_id = args.document_id
+
+    if not filename and not document_id:
+        return "Error: must provide either 'filename' or 'document_id'"
+
+    if filename and document_id:
+        return "Error: provide only one of 'filename' or 'document_id', not both"
+
+    if "localhost" not in params.database_uri:
+        return (
+            "Error: database URI arg must be outside "
+            "docker like 'localhost' or '127.0.0.1' or '0.0.0.0'"
+        )
+
+    try:
+        embeddings = create_embedder(params.embedder_type)
+        loader = create_vectorstore_loader(
+            db_type=params.backend,
+            embeddings=embeddings,
+            collection_name=params.collection_name,
+            database_uri=params.database_uri,
+        )
+        logger.debug(f"Vectorstore loader created: {loader}")
+    except ValueError as e:
+        return f"Error initializing vectorstore: {e}"
+    except Exception as e:
+        return f"Unexpected error during initialization: {e}"
+
+    try:
+        success = loader.delete_document_from_vectorstore(
+            document_id=document_id, filename=filename
+        )
+
+        collection_name = params.collection_name
+        backend = params.backend
+
+        if success:
+            identifier = filename if filename else document_id
+            return (
+                f"✓ Successfully deleted document from collection "
+                f"'{collection_name}' ({backend}):\n"
+                f"  • Identifier: {identifier}"
+            )
+        else:
+            identifier = filename if filename else document_id
+            return (
+                f"✗ Failed to delete document from collection '{collection_name}' ({backend}):\n"
+                f"  • Identifier: {identifier}\n"
+                f"  • Document might not exist in the collection"
+            )
+
+    except Exception as e:
+        logger.error(f"Error deleting document: {e}")
+        return f"Error deleting document: {str(e)}"
+
+
 def main() -> None:
     server.run(
         transport="stdio",

@@ -244,6 +244,7 @@ finish() {
     echo ""
     echo "Commands available:"
     echo "  donkit-ragops       - Start CLI agent"
+    echo "  donkit-ragops setup - Run setup wizard"
     echo "  donkit-ragops-web   - Start Web UI (http://localhost:8067)"
     echo ""
     echo "Get started:"
