@@ -31,6 +31,7 @@ class EventType(StrEnum):
     INDEXING_COMPLETED = auto()
     RAG_COMPLETED = auto()
     EXPERIMENT_ITERATION_COMPLETED = auto()
+    DATASET_GENERATION_COMPLETED = auto()
     # Airbyte events
     AIRBYTE_DOCUMENT_ADDED = auto()
     UNKNOWN = auto()
@@ -68,6 +69,7 @@ class BackendEvent:
                 "indexing_completed": EventType.INDEXING_COMPLETED,
                 "rag_completed": EventType.RAG_COMPLETED,
                 "experiment_iteration_completed": EventType.EXPERIMENT_ITERATION_COMPLETED,
+                "dataset_generation_completed": EventType.DATASET_GENERATION_COMPLETED,
             }
             event_type = stage_map.get(stage, EventType.UNKNOWN)
         else:
@@ -176,7 +178,8 @@ class BackendEvent:
                 f"[PIPELINE: READING_COMPLETED] "
                 f"Document reading completed for experiment iteration {exp_iter_id}. "
                 f"Reading strategy: {reading_strategy}. "
-                f"Please inform the user that documents have been read and chunking is next."
+                f"Please inform the user that documents have been read and "
+                f"dataset generation or chunking is next."
             )
 
         if event_type == EventType.CHUNKING_COMPLETED:
@@ -298,6 +301,34 @@ class BackendEvent:
                 f"1. View detailed results for all configurations\n"
                 f"2. Compare metrics across configurations\n"
                 f"3. Run another experiment iteration with different parameters"
+            )
+
+        if event_type == EventType.DATASET_GENERATION_COMPLETED:
+            details = data.get("details", {})
+            evaluation_dataset_id = details.get("evaluation_dataset_id", "")
+            corpus_id = details.get("corpus_id", "")
+            error = details.get("error")
+
+            # Handle error case
+            if error:
+                return (
+                    f"{system_instruction}"
+                    f"[PIPELINE: DATASET_GENERATION_FAILED] "
+                    f"Evaluation dataset generation failed. Error: {error}. "
+                    f"Corpus ID: {corpus_id}. "
+                    f"Please inform the user about the failure and suggest checking the corpus "
+                    f"or retrying the generation."
+                )
+
+            # Success case
+            return (
+                f"{system_instruction}"
+                f"[PIPELINE: DATASET_GENERATION_COMPLETED] "
+                f"Evaluation dataset generation completed successfully! "
+                f"Dataset ID: {evaluation_dataset_id}. "
+                f"Corpus ID: {corpus_id}. "
+                # f"Please inform the user that the dataset is ready and they can now "
+                # f"review it or proceed with running experiments."
             )
 
         if event_type == EventType.AIRBYTE_DOCUMENT_ADDED:

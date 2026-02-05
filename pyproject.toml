@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "donkit-ragops"
-version = "0.5.4"
-description = "Smart LLM-powered CLI agent for automated RAG pipeline creation, experimentation, and deployment"
+version = "0.5.3"
+description = "CLI agent for building RAG pipelines"
 authors = ["Donkit AI <opensource@donkit.ai>"]
 license = "MIT"
 readme = "README.md"

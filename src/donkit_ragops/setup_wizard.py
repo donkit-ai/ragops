@@ -592,7 +592,7 @@ class SetupWizard:
             )
             ui.print(f"  mkdir -p {home_dir}")
             ui.print(f"  cd {home_dir}")
-            ui.print("  donkit-ragops-ce --setup")
+            ui.print("  donkit-ragops setup")
             ui.newline()
             return False
 
@@ -737,15 +737,543 @@ def run_setup_if_needed(force: bool = False) -> bool:
             ui.print_warning("No configuration found. Running setup wizard...")
             ui.newline()
 
-        wizard = SetupWizard(env_path)
-        success = wizard.run()
+        # Show mode selection (Local vs SaaS)
+        ui.clear()
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Setup Wizard"),
+            )
+        )
+        ui.newline()
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 1: "),
+                (None, "Choose deployment mode"),
+            )
+        )
+        ui.newline()
 
-        if success:
-            wizard.show_success()
-            ui.newline()
-            return True
-        else:
-            ui.print_error("Setup failed or cancelled. Cannot start agent.")
+        mode_choices = [
+            "Local - Build RAG pipelines locally using Docker (free, self-hosted)",
+            "SaaS - Use Donkit cloud infrastructure (managed service)",
+        ]
+
+        selected_mode = interactive_select(
+            choices=mode_choices,
+            title="Select deployment mode",
+        )
+
+        if selected_mode is None:
+            ui.print_error("Setup cancelled")
             return False
 
+        ui.newline()
+
+        # Run appropriate wizard based on selection
+        if selected_mode == mode_choices[0]:  # Local mode
+            ui.print_styled(
+                styled_text(
+                    (None, "Selected: "),
+                    (StyleName.SUCCESS, "Local mode"),
+                )
+            )
+            ui.newline()
+
+            wizard = SetupWizard(env_path)
+            success = wizard.run()
+
+            if success:
+                wizard.show_success()
+                ui.newline()
+                return True
+            else:
+                ui.print_error("Setup failed or cancelled. Cannot start agent.")
+                return False
+
+        else:  # SaaS mode
+            ui.print_styled(
+                styled_text(
+                    (None, "Selected: "),
+                    (StyleName.SUCCESS, "SaaS mode"),
+                )
+            )
+            ui.newline()
+
+            saas_wizard = SaaSSetupWizard()
+            success = saas_wizard.run()
+
+            if not success:
+                ui.print_error("Setup failed or cancelled. Cannot start agent.")
+                return False
+
+            return True
+
     return True
+
+
+class SaaSSetupWizard:
+    """Interactive setup wizard for SaaS mode (Donkit cloud)."""
+
+    def __init__(self):
+        pass
+
+    def run(self) -> bool:
+        """Run the SaaS setup wizard. Returns True if setup completed successfully."""
+        ui = get_ui()
+
+        # Show welcome
+        self._show_welcome()
+
+        # Step 1: Login or Logout or Integrations
+        action = self._choose_action()
+        if not action:
+            return False
+
+        if action == "login":
+            return self._handle_login()
+        elif action == "logout":
+            return self._handle_logout()
+        elif action == "integrations":
+            return self._handle_integrations()
+        else:
+            ui.print_error("Unknown action")
+            return False
+
+    def _show_welcome(self) -> None:
+        """Show welcome message for SaaS setup."""
+        ui = get_ui()
+
+        welcome_lines = [
+            styled_text(
+                (None, "Welcome to "),
+                (StyleName.INFO, "Donkit SaaS"),
+                (None, " Setup!"),
+            ),
+            styled_text((None, "")),
+            styled_text((StyleName.DIM, "Donkit SaaS provides managed RAG infrastructure:")),
+            styled_text((StyleName.SUCCESS, "  • No Docker required")),
+            styled_text((StyleName.SUCCESS, "  • Pre-configured LLM providers")),
+            styled_text((StyleName.SUCCESS, "  • Automatic scaling")),
+            styled_text((StyleName.SUCCESS, "  • Team collaboration")),
+            styled_text((None, "")),
+            styled_text(
+                (StyleName.DIM, "Get your API token at: "),
+                (StyleName.INFO, "https://donkit.ai/api"),
+            ),
+        ]
+
+        ui.print_panel(welcome_lines, title="SaaS Setup", border_style=StyleName.INFO)
+        ui.newline()
+
+    def _choose_action(self) -> str | None:
+        """Let user choose login or logout."""
+        from donkit_ragops.enterprise.auth import has_token
+
+        ui = get_ui()
+
+        if has_token():
+            ui.print_styled(
+                styled_text(
+                    (StyleName.SUCCESS, "✓ "),
+                    (None, "You are already authenticated"),
+                )
+            )
+            ui.newline()
+
+            choices = [
+                "Manage Integrations - Configure API keys (OpenRouter, etc.)",
+                "Re-login - Replace current token with a new one",
+                "Logout - Remove stored credentials",
+                "Cancel - Exit setup",
+            ]
+        else:
+            ui.print_styled(
+                styled_text(
+                    (StyleName.WARNING, "✗ "),
+                    (None, "You are not authenticated"),
+                )
+            )
+            ui.newline()
+
+            choices = [
+                "Login - Authenticate with Donkit cloud",
+                "Cancel - Exit setup",
+            ]
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 1: "),
+                (None, "Choose action"),
+            )
+        )
+        ui.newline()
+
+        selected = interactive_select(
+            choices=choices,
+            title="What would you like to do?",
+        )
+
+        if selected is None or "Cancel" in selected:
+            ui.print_error("Setup cancelled")
+            return None
+
+        if "Login" in selected or "Re-login" in selected:
+            return "login"
+        elif "Logout" in selected:
+            return "logout"
+        elif "Manage Integrations" in selected:
+            return "integrations"
+
+        return None
+
+    def _handle_login(self) -> bool:
+        """Handle login flow."""
+        import asyncio
+
+        from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
+
+        from donkit_ragops.enterprise.auth import save_token
+        from donkit_ragops.enterprise.config import load_enterprise_settings
+
+        ui = get_ui()
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 2: "),
+                (None, "Enter your API token"),
+            )
+        )
+        ui.newline()
+
+        # Prompt for token
+        token = Prompt.ask("Enter Donkit API token", password=True)
+
+        if not token:
+            ui.print_error("Token is required")
+            retry = Confirm.ask("Try again?", default=True)
+            if retry:
+                return self._handle_login()
+            return False
+
+        # Validate token
+        ui.newline()
+        ui.print("Validating token...\n", StyleName.DIM)
+
+        try:
+            settings = load_enterprise_settings()
+            client = RagopsAPIGatewayClient(
+                base_url=settings.api_url,
+                api_token=token,
+            )
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+
+                async def validate():
+                    async with client:
+                        await client.list_projects()
+
+                loop.run_until_complete(validate())
+            finally:
+                loop.close()
+
+            ui.print_success("Token validated successfully!")
+        except Exception as e:
+            ui.print_error(f"Token validation failed: {e}")
+            ui.print_warning("Please check your token and try again.")
+            ui.newline()
+            retry = Confirm.ask("Try again?", default=True)
+            if retry:
+                return self._handle_login()
+            return False
+
+        # Save token
+        save_token(token)
+        ui.print_success("Token saved successfully.")
+        ui.newline()
+
+        # Show success
+        self.show_success()
+        return True
+
+    def _handle_logout(self) -> bool:
+        """Handle logout flow."""
+        from donkit_ragops.enterprise.auth import delete_token, has_token
+
+        ui = get_ui()
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 2: "),
+                (None, "Confirm logout"),
+            )
+        )
+        ui.newline()
+
+        if not has_token():
+            ui.print("No credentials found to remove.", StyleName.DIM)
+            ui.newline()
+            return True
+
+        confirm = Confirm.ask(
+            "This will remove your stored credentials. Continue?",
+            default=False,
+        )
+
+        if not confirm:
+            ui.print("Logout cancelled.")
+            return False
+
+        # Delete token from keyring and .env
+        delete_token()
+        ui.print_success("Credentials removed successfully.")
+        ui.newline()
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.DIM, "You can login again anytime with: "),
+                (StyleName.INFO, "donkit-ragops setup"),
+            )
+        )
+        ui.newline()
+
+        return True
+
+    def _handle_integrations(self) -> bool:
+        """Handle integrations management flow."""
+        import asyncio
+
+        from donkit.ragops_api_gateway_client.client import RagopsAPIGatewayClient
+
+        from donkit_ragops.enterprise.auth import get_token
+        from donkit_ragops.enterprise.config import load_enterprise_settings
+
+        ui = get_ui()
+
+        # Get token
+        token = get_token()
+        if not token:
+            ui.print_error("You must be logged in to manage integrations.")
+            ui.print("Run 'donkit-ragops setup' and select 'Login' first.", StyleName.DIM)
+            return False
+
+        # Create API client
+        settings = load_enterprise_settings()
+        client = RagopsAPIGatewayClient(
+            base_url=settings.api_url,
+            api_token=token,
+        )
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 2: "),
+                (None, "Manage Integrations"),
+            )
+        )
+        ui.newline()
+
+        # List existing integrations
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+
+            async def get_integrations():
+                async with client:
+                    return await client.list_integrations()
+
+            integrations = loop.run_until_complete(get_integrations())
+
+            # Show current integrations
+            if integrations:
+                ui.print("Current integrations:", StyleName.SUCCESS)
+                for integration in integrations:
+                    status = "✓ Enabled" if integration.enabled else "✗ Disabled"
+                    ui.print(
+                        f"  • {integration.integration_type}: {status}",
+                        StyleName.SUCCESS if integration.enabled else StyleName.DIM,
+                    )
+                ui.newline()
+            else:
+                ui.print("No integrations configured yet.", StyleName.DIM)
+                ui.newline()
+
+            # Check if OpenRouter exists
+            openrouter_integration = next(
+                (i for i in integrations if i.integration_type == "openrouter"), None
+            )
+
+            # Choose action
+            if openrouter_integration:
+                choices = [
+                    "Update OpenRouter API key",
+                    "Delete OpenRouter integration",
+                    "Cancel - Go back",
+                ]
+            else:
+                choices = [
+                    "Add OpenRouter API key",
+                    "Cancel - Go back",
+                ]
+
+            selected = interactive_select(
+                choices=choices,
+                title="What would you like to do?",
+            )
+
+            if selected is None or "Cancel" in selected:
+                ui.print("Cancelled.")
+                return True
+
+            # Handle actions
+            if "Add OpenRouter" in selected or "Update OpenRouter" in selected:
+                return self._add_or_update_openrouter(client, openrouter_integration)
+            elif "Delete OpenRouter" in selected:
+                return self._delete_integration(client, openrouter_integration.id)
+
+        except Exception as e:
+            ui.print_error(f"Failed to manage integrations: {e}")
+            return False
+        finally:
+            loop.close()
+
+        return True
+
+    def _add_or_update_openrouter(self, client, existing_integration=None) -> bool:
+        """Add or update OpenRouter integration."""
+        import asyncio
+
+        from donkit.ragops_api_gateway_client.schemas import (
+            UserIntegrationCreate,
+            UserIntegrationUpdate,
+        )
+
+        ui = get_ui()
+
+        action = "Update" if existing_integration else "Add"
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 3: "),
+                (None, f"{action} OpenRouter API key"),
+            )
+        )
+        ui.newline()
+
+        ui.print("Get your API key at: https://openrouter.ai/keys", StyleName.DIM)
+        ui.newline()
+
+        # Prompt for API key
+        api_key = Prompt.ask("Enter OpenRouter API key", password=True)
+
+        if not api_key:
+            ui.print_error("API key is required")
+            retry = Confirm.ask("Try again?", default=True)
+            if retry:
+                return self._add_or_update_openrouter(client, existing_integration)
+            return False
+
+        # Save integration
+        ui.newline()
+        ui.print(f"{action}ing integration...", StyleName.DIM)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            if existing_integration:
+                # Update existing
+                async def update():
+                    async with client:
+                        update_data = UserIntegrationUpdate(token=api_key)
+                        return await client.update_integration(existing_integration.id, update_data)
+
+                loop.run_until_complete(update())
+                ui.print_success("OpenRouter integration updated successfully!")
+            else:
+                # Create new
+                async def create():
+                    async with client:
+                        create_data = UserIntegrationCreate(
+                            integration_type="openrouter",
+                            token=api_key,
+                        )
+                        return await client.create_integration(create_data)
+
+                loop.run_until_complete(create())
+                ui.print_success("OpenRouter integration added successfully!")
+
+            ui.newline()
+            ui.print(
+                "You can now use OpenRouter models in enterprise mode.",
+                StyleName.SUCCESS,
+            )
+            ui.newline()
+            return True
+
+        except Exception as e:
+            ui.print_error(f"Failed to {action.lower()} integration: {e}")
+            return False
+        finally:
+            loop.close()
+
+    def _delete_integration(self, client, integration_id) -> bool:
+        """Delete an integration."""
+        import asyncio
+
+        ui = get_ui()
+
+        ui.print_styled(
+            styled_text(
+                (StyleName.BOLD, "Step 3: "),
+                (None, "Delete integration"),
+            )
+        )
+        ui.newline()
+
+        confirm = Confirm.ask(
+            "This will permanently delete the integration. Continue?",
+            default=False,
+        )
+
+        if not confirm:
+            ui.print("Deletion cancelled.")
+            return False
+
+        ui.newline()
+        ui.print("Deleting integration...", StyleName.DIM)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+
+            async def delete():
+                async with client:
+                    await client.delete_integration(integration_id)
+
+            loop.run_until_complete(delete())
+            ui.print_success("Integration deleted successfully!")
+            ui.newline()
+            return True
+
+        except Exception as e:
+            ui.print_error(f"Failed to delete integration: {e}")
+            return False
+        finally:
+            loop.close()
+
+    def show_success(self) -> None:
+        """Show success message after login."""
+        ui = get_ui()
+
+        success_lines = [
+            styled_text((StyleName.SUCCESS, "Setup completed successfully!")),
+            styled_text((None, "")),
+            styled_text((None, "You can now use enterprise mode:")),
+            styled_text((StyleName.INFO, "  donkit-ragops --enterprise")),
+            styled_text((None, "")),
+            styled_text(
+                (StyleName.DIM, "Or manage credentials with: "),
+                (StyleName.INFO, "donkit-ragops setup"),
+            ),
+        ]
+
+        ui.print_panel(success_lines, title="Ready", border_style=StyleName.SUCCESS)

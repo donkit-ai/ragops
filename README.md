@@ -11,6 +11,59 @@ Forget spending months tweaking chunking strategies, embeddings, and vector DBs 
 
 Built by [Donkit AI](https://donkit.ai/?utm_source=github) — Automated Context Engineering.
 
+## 📚 Table of Contents
+
+- [👥 Who is this for?](#who-is-this-for)
+- [✨ Key Features](#key-features)
+- [🎯 Main Capabilities](#main-capabilities)
+- [⚡ Quick Install](#quick-install)
+- [📦 Installation (Alternative Methods)](#installation-alternative-methods)
+  - [Option A: Using pipx (Recommended)](#option-a-using-pipx-recommended)
+  - [Option B: Using pip](#option-b-using-pip)
+  - [Option C: Using Poetry (for development)](#option-c-using-poetry-for-development)
+- [🚀 Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Step 1: Install the package](#step-1-install-the-package)
+  - [Step 2: Run the agent (first time)](#step-2-run-the-agent-first-time)
+  - [Step 3: Start using the agent (local mode)](#step-3-start-using-the-agent-local-mode)
+  - [Interactive Mode (REPL)](#interactive-mode-repl)
+  - [Command-line Options](#command-line-options)
+- [🔄 Agent Workflow](#agent-workflow)
+- [🌐 Web UI](#web-ui)
+- [☁️ SaaS Mode](#saas-mode)
+- [🏢 Enterprise Mode](#enterprise-mode)
+- [📊 Modes of work comparison](#modes-of-work-comparison)
+- [🔌 MCP Servers](#mcp-servers)
+  - [ragops-rag-planner](#ragops-rag-planner)
+  - [ragops-read-engine](#ragops-read-engine)
+  - [ragops-chunker](#ragops-chunker)
+  - [ragops-vectorstore-loader](#ragops-vectorstore-loader)
+  - [ragops-compose-manager](#ragops-compose-manager)
+  - [ragops-rag-query](#ragops-rag-query)
+  - [rag-evaluation](#rag-evaluation)
+  - [donkit-ragops-mcp](#donkit-ragops-mcp)
+- [💡 Examples](#examples)
+  - [Basic RAG Pipeline](#basic-rag-pipeline)
+  - [Custom Configuration](#custom-configuration)
+  - [Multiple Projects](#multiple-projects)
+- [🛠️ Development](#development)
+  - [Prerequisites](#prerequisites-1)
+  - [Running the CLI Locally](#running-the-cli-locally)
+  - [Running Tests](#running-tests)
+  - [Code Quality](#code-quality)
+  - [Version Management](#version-management)
+  - [Adding a New MCP Server](#adding-a-new-mcp-server)
+  - [Adding a New LLM Provider](#adding-a-new-llm-provider)
+- [🐳 Docker Compose Services](#docker-compose-services)
+  - [Qdrant (Vector Database)](#qdrant-vector-database)
+  - [Chroma (Vector Database)](#chroma-vector-database)
+  - [Milvus (Vector Database)](#milvus-vector-database)
+  - [RAG Service](#rag-service)
+- [🏗️ Architecture](#architecture)
+- [🔧 Troubleshooting](#troubleshooting)
+- [📄 License](#license)
+- [🔗 Related Projects](#related-projects)
+
 ## Who is this for?
 
 - **AI Engineers** building assistants and agents
@@ -135,43 +188,33 @@ On first run, an **interactive setup wizard** will guide you through configurati
 
 **That's it!** No manual `.env` creation needed - the wizard handles everything.
 
-### Alternative: Manual configuration
+### Reconfiguration
 
-If you prefer to configure manually or reconfigure later:
-
-```bash
-# Run setup wizard again
-donkit-ragops --setup
-```
-
-Or create a `.env` file manually in your working directory:
+To reconfigure or change settings later:
 
 ```bash
-# Vertex AI (Google Cloud)
-RAGOPS_LLM_PROVIDER=vertex
-RAGOPS_VERTEX_CREDENTIALS=/path/to/service-account-key.json
-
-# OpenAI
-RAGOPS_LLM_PROVIDER=openai
-RAGOPS_OPENAI_API_KEY=sk-...
-RAGOPS_LLM_MODEL=gpt-4o-mini # Specify the OpenAI model to use
-# RAGOPS_OPENAI_BASE_URL=https://api.openai.com/v1
-
-# Anthropic Claude
-RAGOPS_LLM_PROVIDER=anthropic
-RAGOPS_ANTHROPIC_API_KEY=sk-ant-...
-
-# Ollama (local)
-RAGOPS_LLM_PROVIDER=ollama
-RAGOPS_OLLAMA_BASE_URL=http://localhost:11434
+# Run setup wizard to change configuration
+donkit-ragops setup
 ```
 
-### Step 3: Start using the agent
+The setup wizard allows you to:
+
+**Local Mode:**
+- Choose LLM provider (Vertex AI, OpenAI, Anthropic, Ollama, OpenRouter, Donkit)
+- Configure API keys and credentials
+- Set optional parameters (models, base URLs, etc.)
+
+**SaaS Mode:**
+- Login/logout with Donkit cloud
+- Manage integrations (OpenRouter API keys, etc.)
+- Configure cloud-based LLM providers
+
+### Step 3: Start using the agent (local mode)
 
 Tell the agent what you want to build:
 
 ```
-you> Create a RAG pipeline for my documents in /Users/myname/Documents/work_docs
+> Create a RAG pipeline for my documents in /Users/myname/Documents/work_docs
 ```
 
 The agent will automatically:
@@ -196,12 +239,6 @@ The agent will automatically:
         └── rag_config.json       # RAG configuration
 ```
 
-## Usage
-
-> **Note:** The command `ragops-agent` is also available as an alias for backward compatibility.
-> 
-> The agent starts in interactive REPL mode by default. Use subcommands like `ping` for specific actions.
-
 ### Interactive Mode (REPL)
 
 ```bash
@@ -212,9 +249,9 @@ donkit-ragops
 donkit-ragops -p vertexai
 
 # With custom model
-donkit-ragops -p openai -m gpt-4
+donkit-ragops -p openai -m gpt-5.2
 
-# Start in SaaS/enterprise mode (requires login first)
+# Start in SaaS/enterprise mode
 donkit-ragops --enterprise
 ```
 
@@ -234,25 +271,24 @@ Inside the interactive session, use these commands:
 - `-m, --model` — Specify model name
 - `-s, --system` — Custom system prompt
 - `--local` — Force local mode (default)
-- `--saas` — Force SaaS mode (requires login)
-- `--enterprise` — Force enterprise mode (requires login)
-- `--setup` — Run setup wizard to reconfigure
+- `--enterprise` — Force enterprise mode (requires setup with `donkit-ragops setup`)
 - `--show-checklist/--no-checklist` — Toggle checklist panel (default: shown)
 
-### Subcommands
+### Commands
 
 ```bash
+# Setup wizard - configure Local or SaaS mode
+donkit-ragops setup
+
 # Health check
 donkit-ragops ping
+
+# Show current mode and authentication status
+donkit-ragops status
 
 # Auto-upgrade to latest version
 donkit-ragops upgrade       # Check and upgrade (interactive)
 donkit-ragops upgrade -y    # Upgrade without confirmation
-
-# Saas/Enterprise mode authentication
-donkit-ragops login --token YOUR_TOKEN  # Login to Donkit cloud
-donkit-ragops logout                    # Remove stored token
-donkit-ragops status                    # Show mode and auth status
 ```
 
 > **Note:** The `upgrade` command automatically detects your installation method (pip, pipx, or poetry) and runs the appropriate upgrade command.
@@ -282,12 +318,8 @@ donkit-ragops status                    # Show mode and auth status
 - `RAGOPS_VERTEX_PROJECT` — Google Cloud project ID (optional, extracted from credentials if not set)
 - `RAGOPS_VERTEX_LOCATION` — Vertex AI location (default: us-central1)
 
-#### Anthropic
-- `RAGOPS_ANTHROPIC_API_KEY` — Anthropic API key
-
 #### Logging
-- `RAGOPS_LOG_LEVEL` — Logging level (default: INFO)
-- `RAGOPS_MCP_COMMANDS` — Comma-separated list of MCP commands
+- `RAGOPS_LOG_LEVEL` — Logging level (default: ERROR)
 
 ## Agent Workflow
 
@@ -304,6 +336,8 @@ The agent follows a structured workflow:
    - Marks item as `completed`
 5. **Deployment** — Sets up Docker Compose infrastructure
 6. **Data Loading** — Loads documents into vector store
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Web UI
 
@@ -330,23 +364,35 @@ The browser will automatically open at http://localhost:8067. The Web UI provide
 
 ## SaaS Mode
 
-SaaS mode is a fully managed SaaS platform. All backend infrastructure — databases, vector stores, RAG services, and experiment runners — is hosted by Donkit. You get the same CLI interface, but with powerful cloud features.
+SaaS mode is a fully managed cloud platform. All backend infrastructure — databases, vector stores, RAG services, and experiment runners — is hosted by Donkit. You get the same CLI interface, but with powerful cloud features.
 
 ### Setup
 
 ```bash
-# 1. Login with your API token
-donkit-ragops login --token YOUR_API_TOKEN
+# 1. Run setup wizard and choose SaaS mode
+donkit-ragops setup
+
+# The wizard will guide you through:
+# - Login with your API token
+# - Configure integrations (OpenRouter, etc.)
+# - Manage credentials
 
 # 2. Start in SaaS mode
-donkit-ragops --saas
+donkit-ragops --enterprise
 
 # 3. Check status
 donkit-ragops status
-
-# 4. Logout when done
-donkit-ragops logout
 ```
+
+### Managing SaaS Configuration
+
+Use `donkit-ragops setup` to:
+- **Login/Logout** — Authenticate with Donkit cloud
+- **Manage Integrations** — Add/update/remove API keys for:
+  - OpenRouter (access 100+ models)
+  - More providers coming soon
+
+Your credentials are stored securely in system keyring and `.env` file.
 
 ### What's Included
 
@@ -368,9 +414,11 @@ Enterprise mode runs fully inside your infrastructure — no data ever leaves yo
 - **Automated experiments** — Execute 100+ RAG variations locally to identify the best-performing pipeline
 - **Experiment tracking** — Monitor and compare pipeline variants (chunking, retrieval, reranking) within your environment
 - **Evaluation pipelines** — Run secure, on-prem evaluation with precision, recall, and answer relevancy metrics
-- **Local file attachments** — Add documents from using `@/path/to/file` in chat or or connect your data sources via APIs
+- **Local file attachments** — Add documents from using `@/path/to/file` in chat or connect your data sources via APIs
 - **Session-based state** — Preserve project and conversation history within your private deployment
 - **MCP over IPC** — All orchestration runs inside your infrastructure; no external HTTP calls required
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Modes of work comparison
 
@@ -384,7 +432,7 @@ Enterprise mode runs fully inside your infrastructure — no data ever leaves yo
 
 ## MCP Servers
 
-RAGOps Agent CE includes built-in MCP servers:
+RAGOps Agent includes built-in MCP servers:
 
 ### `ragops-rag-planner`
 
@@ -410,11 +458,11 @@ Chunks documents for vector storage.
 
 ### `ragops-vectorstore-loader`
 
-Loads chunks into vector databases.
+Loads chunks into vector databases and manages documents.
 
 **Tools:**
-- `vectorstore_load` — Load documents into Qdrant, Chroma, or Milvus
-- `delete_from_vectorstore` — Remove documents from vector store
+- `vectorstore_load` — Load documents into Qdrant, Chroma, or Milvus (supports incremental loading)
+- `delete_from_vectorstore` — Remove documents from vector store by filename or document_id
 
 ### `ragops-compose-manager`
 
@@ -472,7 +520,9 @@ All tools are available with prefixes:
 - `reader_*` — Document reading/parsing
 - `vectorstore_*` — Vector store operations
 
-> **Note:** Checklist management is now handled by built-in agent tools, not MCP.
+> **Note:** Checklist management is handled by built-in agent tools, not MCP.
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Examples
 
@@ -483,13 +533,13 @@ donkit-ragops
 ```
 
 ```
-you> Create a RAG pipeline for customer support docs in ./docs folder
+> Create a RAG pipeline for customer support docs in ../docs folder
 ```
 
 The agent will:
 1. Create project structure
 2. Plan RAG configuration
-3. Chunk documents from `./docs`
+3. Chunk documents from `../docs`
 4. Set up Qdrant + RAG service
 5. Load data into vector store
 
@@ -500,7 +550,7 @@ donkit-ragops -p vertexai -m gemini-2.5-pro
 ```
 
 ```
-you> Build RAG for legal documents with 1000 token chunks and reranking
+> Build RAG for legal documents with 1000 token chunks and reranking
 ```
 
 ### Multiple Projects
@@ -510,6 +560,8 @@ Each project gets its own:
 - Docker Compose setup
 - Vector store collection
 - Configuration
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Development
 
@@ -536,7 +588,7 @@ poetry shell
 ### Project Structure
 
 ```
-ragops-agent-cli/
+ragops-agent/
 ├── src/donkit_ragops/
 │   ├── agent/              # LLM agent core and local tools
 │   │   ├── agent.py        # Main LLMAgent class
@@ -695,9 +747,11 @@ RAGOPS_LOG_LEVEL=DEBUG poetry run donkit-ragops
 RAGOPS_LOG_LEVEL=DEBUG poetry run donkit-ragops-mcp
 ```
 
+[⬆️ Back to top](#-table-of-contents)
+
 ## Docker Compose Services
 
-The agent can deploy these services:
+The agent can deploy these services using profiles:
 
 ### Qdrant (Vector Database)
 
@@ -705,9 +759,55 @@ The agent can deploy these services:
 services:
   qdrant:
     image: qdrant/qdrant:latest
+    container_name: qdrant
+    profiles: [qdrant, full-stack]
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+```
+
+### Chroma (Vector Database)
+
+```yaml
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma
+    profiles: [chroma]
+    ports:
+      - "8015:8000"
+    volumes:
+      - chroma_data:/chroma/data
+```
+
+### Milvus (Vector Database)
+
+Requires etcd and MinIO:
+
+```yaml
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: milvus-etcd
+    profiles: [milvus]
+
+  minio:
+    image: minio/minio:latest
+    container_name: milvus-minio
+    profiles: [milvus]
+
+  milvus:
+    image: milvusdb/milvus:v2.3.21
+    container_name: milvus-standalone
+    profiles: [milvus]
+    ports:
+      - "19530:19530"  # Milvus API
+      - "9091:9091"    # Metrics
+    depends_on:
+      - etcd
+      - minio
 ```
 
 ### RAG Service
@@ -715,13 +815,23 @@ services:
 ```yaml
 services:
   rag-service:
-    image: donkit/rag-service:latest
+    image: donkitai/rag-service:latest
+    container_name: rag-service
+    profiles: [rag-service, full-stack]
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URI=http://qdrant:6333
-      - CONFIG=<base64-encoded-config>
+    env_file:
+      - .env
 ```
+
+**Profiles:**
+- `qdrant` - Qdrant vector database only
+- `chroma` - Chroma vector database only
+- `milvus` - Milvus vector database with dependencies
+- `rag-service` - RAG service only
+- `full-stack` - Qdrant + RAG service
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Architecture
 
@@ -744,13 +854,22 @@ services:
              └── Ollama                 │
                                         │
                                         ▼
-                            ┌──────────────────┐
-                            │ Docker Compose   │
-                            ├──────────────────┤
-                            │ • Qdrant         │
-                            │ • RAG Service    │
-                            └──────────────────┘
+                            ┌─────────────────────────┐
+                            │   Docker Compose        │
+                            ├─────────────────────────┤
+                            │ Vector Databases:       │
+                            │  • Qdrant (6333, 6334)  │
+                            │  • Chroma (8015)        │
+                            │  • Milvus (19530, 9091) │
+                            │    + etcd               │
+                            │    + MinIO              │
+                            │                         │
+                            │ RAG Service:            │
+                            │  • rag-service (8000)   │
+                            └─────────────────────────┘
 ```
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## Troubleshooting
 
@@ -811,6 +930,8 @@ gcloud auth application-default print-access-token
 # OpenAI
 echo $RAGOPS_OPENAI_API_KEY
 ```
+
+[⬆️ Back to top](#-table-of-contents)
 
 ## License
 
