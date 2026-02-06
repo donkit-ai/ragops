@@ -380,81 +380,64 @@ class LLMAgent:
             saw_finish_reason = False
             saw_tool_calls = False
             chunk_count = 0
-            try:
-                async for chunk in self.provider.generate_stream(request):  # noqa
-                    chunk_count += 1
-                    if chunk.finish_reason is not None:
-                        saw_finish_reason = True
-                    # Yield text chunks as they arrive
-                    if chunk.content:
-                        streamed_content += chunk.content
-                        yield StreamEvent(type=EventType.CONTENT, content=chunk.content)
-
-                    # Handle tool calls immediately when they arrive
-                    if chunk.tool_calls and self.provider.supports_capability(
-                        ModelCapability.TOOL_CALLING
-                    ):
-                        saw_tool_calls = True
-                        # Append synthetic assistant turn
-                        self._append_synthetic_assistant_turn(messages, chunk.tool_calls)
-
-                        # Execute each tool and yield events
-                        for tc in chunk.tool_calls:
-                            args = self._parse_tool_args(tc)
-
-                            # Yield tool call start event
-                            yield StreamEvent(
-                                type=EventType.TOOL_CALL_START,
-                                tool_name=tc.function.name,
-                                tool_args=args,
+            async for chunk in self.provider.generate_stream(request):  # noqa
+                chunk_count += 1
+                if chunk.finish_reason is not None:
+                    saw_finish_reason = True
+                # Yield text chunks as they arrive
+                if chunk.content:
+                    streamed_content += chunk.content
+                    yield StreamEvent(type=EventType.CONTENT, content=chunk.content)
+                # Handle tool calls immediately when they arrive
+                if chunk.tool_calls and self.provider.supports_capability(
+                    ModelCapability.TOOL_CALLING
+                ):
+                    saw_tool_calls = True
+                    # Append synthetic assistant turn
+                    self._append_synthetic_assistant_turn(messages, chunk.tool_calls)
+                    # Execute each tool and yield events
+                    for tc in chunk.tool_calls:
+                        args = self._parse_tool_args(tc)
+                        # Yield tool call start event
+                        yield StreamEvent(
+                            type=EventType.TOOL_CALL_START,
+                            tool_name=tc.function.name,
+                            tool_args=args,
+                        )
+                        try:
+                            # Execute tool
+                            result_str = await self._aexecute_tool_call(tc, args)
+                            # Add the tool result to messages
+                            messages.append(
+                                Message(
+                                    role="tool",
+                                    name=tc.function.name,
+                                    tool_call_id=tc.id,
+                                    content=result_str,
+                                )
                             )
-
-                            try:
-                                # Execute tool
-                                result_str = await self._aexecute_tool_call(tc, args)
-                                # Add the tool result to messages
-                                messages.append(
-                                    Message(
-                                        role="tool",
-                                        name=tc.function.name,
-                                        tool_call_id=tc.id,
-                                        content=result_str,
-                                    )
+                            # Yield tool call end event
+                            yield StreamEvent(
+                                type=EventType.TOOL_CALL_END, tool_name=tc.function.name
+                            )
+                        except Exception as e:
+                            error_msg = str(e)
+                            logger.error(f"Tool {tc.function.name} failed: {error_msg}")
+                            # Add an error as the tool result
+                            messages.append(
+                                Message(
+                                    role="tool",
+                                    name=tc.function.name,
+                                    tool_call_id=tc.id,
+                                    content=f"Error: {error_msg}",
                                 )
-                                # Yield tool call end event
-                                yield StreamEvent(
-                                    type=EventType.TOOL_CALL_END, tool_name=tc.function.name
-                                )
-                            except Exception as e:
-                                error_msg = str(e)
-                                logger.error(f"Tool {tc.function.name} failed: {error_msg}")
-                                # Add an error as the tool result
-                                messages.append(
-                                    Message(
-                                        role="tool",
-                                        name=tc.function.name,
-                                        tool_call_id=tc.id,
-                                        content=f"Error: {error_msg}",
-                                    )
-                                )
-                                # Yield the tool call error event
-                                yield StreamEvent(
-                                    type=EventType.TOOL_CALL_ERROR,
-                                    tool_name=tc.function.name,
-                                    error=error_msg,
-                                )
-            except StopAsyncIteration:
-                logger.debug(
-                    "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
-                    chunk_count,
-                    saw_finish_reason,
-                )
-            except StopIteration:
-                logger.debug(
-                    "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
-                    chunk_count,
-                    saw_finish_reason,
-                )
+                            )
+                            # Yield the tool call error event
+                            yield StreamEvent(
+                                type=EventType.TOOL_CALL_ERROR,
+                                tool_name=tc.function.name,
+                                error=error_msg,
+                            )
             if not saw_tool_calls:
                 logger.debug(
                     "[AGENT STREAM] end: chunks={}, saw_finish_reason={}",
