@@ -8,8 +8,81 @@ from __future__ import annotations
 from donkit.llm import GenerateRequest, LLMModelAbstract, Message
 from loguru import logger
 
-HISTORY_COMPRESSION_THRESHOLD = 25  # Compress when user messages exceed this
+HISTORY_TOKEN_THRESHOLD = 220_000  # Compress when estimated tokens exceed this
 HISTORY_KEEP_RECENT_TURNS = 1  # Keep last N complete conversation turns after compression
+
+# Module-level cache for tiktoken encoding
+_tiktoken_encoding = None
+_tiktoken_loaded = False
+
+
+def _get_tiktoken_encoding():
+    """Lazy-load tiktoken encoding with caching."""
+    global _tiktoken_encoding, _tiktoken_loaded
+    if _tiktoken_loaded:
+        return _tiktoken_encoding
+    _tiktoken_loaded = True
+    try:
+        import tiktoken
+
+        _tiktoken_encoding = tiktoken.get_encoding("cl100k_base")
+    except ImportError:
+        logger.debug("tiktoken not available, using fallback token estimation")
+    except Exception as e:
+        logger.warning(f"Failed to load tiktoken encoding: {e}")
+    return _tiktoken_encoding
+
+
+def _count_text_tokens(text: str) -> int:
+    """Count tokens in a text string using tiktoken or fallback."""
+    if not text:
+        return 0
+    encoding = _get_tiktoken_encoding()
+    if encoding:
+        try:
+            return len(encoding.encode(text))
+        except Exception:
+            pass
+    return len(text) // 4
+
+
+def _estimate_token_count(messages: list[Message]) -> int:
+    """Estimate total token count across all messages.
+
+    Counts tokens from message content (str or list[ContentPart]),
+    tool_calls (function name + arguments), and adds per-message overhead.
+
+    Args:
+        messages: List of conversation messages
+
+    Returns:
+        Estimated token count
+    """
+    total = 0
+    for message in messages:
+        # Per-message overhead (role, formatting tokens)
+        total += 4
+
+        # Content tokens
+        if isinstance(message.content, str):
+            total += _count_text_tokens(message.content)
+        elif isinstance(message.content, list):
+            for part in message.content:
+                if hasattr(part, "content") and isinstance(part.content, str):
+                    total += _count_text_tokens(part.content)
+
+        # Tool call tokens
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                total += _count_text_tokens(tool_call.function.name)
+                total += _count_text_tokens(tool_call.function.arguments)
+
+        # tool_call_id
+        if message.tool_call_id:
+            total += _count_text_tokens(message.tool_call_id)
+
+    return total
+
 
 HISTORY_SUMMARY_PROMPT = """Summarize this conversation concisely.
 Preserve ALL key information: file paths, project names, configurations, decisions, errors.
@@ -61,8 +134,8 @@ async def compress_history_if_needed(
     Returns:
         Compressed history list or original if no compression needed
     """
-    user_msg_count = sum(1 for m in history if m.role == "user")
-    if user_msg_count <= HISTORY_COMPRESSION_THRESHOLD:
+    estimated_tokens = _estimate_token_count(history)
+    if estimated_tokens <= HISTORY_TOKEN_THRESHOLD:
         return history
 
     # Separate system messages and conversation
@@ -88,7 +161,10 @@ async def compress_history_if_needed(
 
         # Build new history: system + summary + recent messages
         new_history = system_msgs + [Message(role="assistant", content=summary_text)] + msgs_to_keep
-        logger.debug(f"Compressed history: {len(history)} -> {len(new_history)} messages")
+        logger.debug(
+            f"Compressed history: {len(history)} -> {len(new_history)} messages "
+            f"(estimated tokens: {estimated_tokens} -> {_estimate_token_count(new_history)})"
+        )
         return new_history
     except Exception as e:
         logger.warning(f"Failed to compress history: {e}")
