@@ -1640,15 +1640,15 @@ unstructured = {version = ">=0.18.15,<0.19.0", extras = ["pdf"]}
 
 [[package]]
 name = "donkit-vectorstore-loader"
-version = "0.1.8"
+version = "0.1.9"
 description = "Vectorstore upload helpers for Donkit RagOps"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "donkit_vectorstore_loader-0.1.8-py3-none-any.whl", hash = "sha256:524e4783fcbd8c4f0843adc2d0be3fc84796bd695eef5fb80264c929f399563c"},
-    {file = "donkit_vectorstore_loader-0.1.8.tar.gz", hash = "sha256:1b170308f85a00aa192a0b41921af4f1c9329758554e96de8b97605428a888bb"},
+    {file = "donkit_vectorstore_loader-0.1.9-py3-none-any.whl", hash = "sha256:2e2fa85226acdb66c61fa67feaf9b24b74e8a590090d2928cbcab18fff2084af"},
+    {file = "donkit_vectorstore_loader-0.1.9.tar.gz", hash = "sha256:907a5c4f566910de8a3fd58649cee2303ce728e64e43ded3064c3de4fb0084fa"},
 ]
 
 [package.dependencies]
@@ -10348,4 +10348,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "4e83b3723f6916e90f4df75f8a59f6ddb47bcfd80c941d2ac70ef4a6fe5aa750"
+content-hash = "fab71f7c3161cb55f0c3557202b0b4d23542e187ca080891af567c4c52ff0dce"
