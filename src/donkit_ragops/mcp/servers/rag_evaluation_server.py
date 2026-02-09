@@ -26,20 +26,6 @@ from fastmcp import FastMCP
 from loguru import logger
 from pydantic import BaseModel, Field
 
-# Configure loguru to write to file
-_log_level = os.getenv("RAGOPS_LOG_LEVEL", "CRITICAL").upper()
-if _log_level == "DEBUG":
-    LOG_DIR = Path(
-        os.getenv(
-            "RAGOPS_LOG_DIR",
-            Path(__file__).resolve().parent / "logs",
-        )
-    )
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    LOG_FILE = LOG_DIR / "evaluation.log"
-    logger.add(LOG_FILE, rotation="10 MB", retention="7 days", level="DEBUG")
-    logger.debug(f"Logging to {LOG_FILE}")
-
 
 class BatchEvaluationArgs(BaseModel):
     input_path: str = Field(

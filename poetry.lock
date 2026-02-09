@@ -53,7 +53,7 @@ version = "2.6.1"
 description = "Happy Eyeballs for asyncio"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "aiohappyeyeballs-2.6.1-py3-none-any.whl", hash = "sha256:f349ba8f4b75cb25c99c5c2d84e997e485204d2902a9597802b0371f09331fb8"},
@@ -66,7 +66,7 @@ version = "3.13.3"
 description = "Async http client/server framework (asyncio)"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "aiohttp-3.13.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d5a372fd5afd301b3a89582817fdcdb6c34124787c70dbcc616f259013e7eef7"},
@@ -209,7 +209,7 @@ version = "1.4.0"
 description = "aiosignal: a list of registered asynchronous callbacks"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "aiosignal-1.4.0-py3-none-any.whl", hash = "sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e"},
@@ -226,7 +226,7 @@ version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"},
@@ -239,7 +239,7 @@ version = "0.42.0"
 description = "The official Python library for the anthropic API"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "anthropic-0.42.0-py3-none-any.whl", hash = "sha256:46775f65b723c078a2ac9e9de44a46db5c6a4fabeacfd165e5ea78e6817f4eff"},
@@ -278,7 +278,7 @@ version = "4.12.1"
 description = "High-level concurrency and networking framework on top of asyncio or Trio"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "anyio-4.12.1-py3-none-any.whl", hash = "sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c"},
@@ -313,7 +313,7 @@ version = "25.4.0"
 description = "Classes Without Boilerplate"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373"},
@@ -513,7 +513,7 @@ version = "2026.1.4"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "certifi-2026.1.4-py3-none-any.whl", hash = "sha256:9943707519e4add1115f44c2bc244f782c0249876bf51b6599fee1ffbedd685c"},
@@ -526,7 +526,7 @@ version = "2.0.0"
 description = "Foreign Function Interface for Python calling C code."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "(python_version == \"3.12\" or python_version == \"3.13\") and platform_python_implementation != \"PyPy\""
 files = [
     {file = "cffi-2.0.0-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:0cf2d91ecc3fcc0625c2c530fe004f82c110405f101548512cce44322fa8ac44"},
@@ -624,7 +624,7 @@ version = "3.4.4"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "charset_normalizer-3.4.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:e824f1492727fa856dd6eda4f7cee25f8518a12f3c4a56a74e8095695089cf6d"},
@@ -818,7 +818,7 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {main = "(platform_system == \"Windows\" or sys_platform == \"win32\" or os_name == \"nt\") and (python_version == \"3.12\" or python_version == \"3.13\")", dev = "(platform_system == \"Windows\" or sys_platform == \"win32\") and (python_version == \"3.12\" or python_version == \"3.13\")"}
+markers = {main = "(platform_system == \"Windows\" or sys_platform == \"win32\" or os_name == \"nt\") and (python_version == \"3.12\" or python_version == \"3.13\")", dev = "(python_version == \"3.12\" or python_version == \"3.13\") and sys_platform == \"win32\""}
 
 [[package]]
 name = "coloredlogs"
@@ -1063,7 +1063,7 @@ version = "46.0.4"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 optional = false
 python-versions = "!=3.9.0,!=3.9.1,>=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "cryptography-46.0.4-cp311-abi3-macosx_10_9_universal2.whl", hash = "sha256:281526e865ed4166009e235afadf3a4c4cba6056f99336a99efba65336fd5485"},
@@ -1301,7 +1301,7 @@ version = "1.9.0"
 description = "Distro - an OS platform information API"
 optional = false
 python-versions = ">=3.6"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"},
@@ -1573,26 +1573,24 @@ openai = ">=2.1.0,<3.0.0"
 
 [[package]]
 name = "donkit-llm"
-version = "0.1.12"
+version = "0.1.13"
 description = "Unified LLM model implementations for Donkit (OpenAI, Azure OpenAI, Claude, Vertex AI, Ollama)"
 optional = false
-python-versions = ">=3.12,<3.14"
-groups = ["main", "dev"]
+python-versions = "<3.14,>=3.12"
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
-files = []
-develop = true
+files = [
+    {file = "donkit_llm-0.1.13-py3-none-any.whl", hash = "sha256:044351df34fc3e3273c4f059bd47af7caea43a79b6ed4c52ccadfe6b57ef6973"},
+    {file = "donkit_llm-0.1.13.tar.gz", hash = "sha256:a2e300f6a1100a256f00d6ac7bcec235cc00e309ebec917fe1a5ef11bb32e890"},
+]
 
 [package.dependencies]
-anthropic = {version = "^0.42.0", extras = ["vertex"]}
-donkit-ragops-api-gateway-client = "^0.2.0"
-google-auth = "^2.0.0"
-google-genai = "^1.38.0"
-openai = "^2.1.0"
-pydantic = "^2.8.0"
-
-[package.source]
-type = "directory"
-url = "../ragops-agent/shared/donkit-llm"
+anthropic = {version = ">=0.42.0,<0.43.0", extras = ["vertex"]}
+donkit-ragops-api-gateway-client = ">=0.2.0,<0.3.0"
+google-auth = ">=2.0.0,<3.0.0"
+google-genai = ">=1.38.0,<2.0.0"
+openai = ">=2.1.0,<3.0.0"
+pydantic = ">=2.8.0,<3.0.0"
 
 [[package]]
 name = "donkit-ragops-api-gateway-client"
@@ -1600,7 +1598,7 @@ version = "0.2.1"
 description = "Async HTTP client for interacting with the Donkit ragops-api-gateway"
 optional = false
 python-versions = "<3.14,>=3.12"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "donkit_ragops_api_gateway_client-0.2.1-py3-none-any.whl", hash = "sha256:cb8dae43e01f895ce02a1d04c27983f8eb3c4989e6383f64f2b4bebc251f6628"},
@@ -1642,15 +1640,15 @@ unstructured = {version = ">=0.18.15,<0.19.0", extras = ["pdf"]}
 
 [[package]]
 name = "donkit-vectorstore-loader"
-version = "0.1.8"
+version = "0.1.9"
 description = "Vectorstore upload helpers for Donkit RagOps"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "donkit_vectorstore_loader-0.1.8-py3-none-any.whl", hash = "sha256:524e4783fcbd8c4f0843adc2d0be3fc84796bd695eef5fb80264c929f399563c"},
-    {file = "donkit_vectorstore_loader-0.1.8.tar.gz", hash = "sha256:1b170308f85a00aa192a0b41921af4f1c9329758554e96de8b97605428a888bb"},
+    {file = "donkit_vectorstore_loader-0.1.9-py3-none-any.whl", hash = "sha256:2e2fa85226acdb66c61fa67feaf9b24b74e8a590090d2928cbcab18fff2084af"},
+    {file = "donkit_vectorstore_loader-0.1.9.tar.gz", hash = "sha256:907a5c4f566910de8a3fd58649cee2303ce728e64e43ded3064c3de4fb0084fa"},
 ]
 
 [package.dependencies]
@@ -2001,7 +1999,7 @@ version = "1.8.0"
 description = "A list-like structure which implements collections.abc.MutableSequence"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "frozenlist-1.8.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:b37f6d31b3dcea7deb5e9696e529a6aa4a898adc33db82da12e4c60a7c4d2011"},
@@ -2214,7 +2212,7 @@ version = "2.48.0"
 description = "Google Authentication Library"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "google_auth-2.48.0-py3-none-any.whl", hash = "sha256:2e2a537873d449434252a9632c28bfc268b0adb1e53f9fb62afc5333a975903f"},
@@ -2267,7 +2265,7 @@ version = "1.60.0"
 description = "GenAI Python SDK"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "google_genai-1.60.0-py3-none-any.whl", hash = "sha256:967338378ffecebec19a8ed90cf8797b26818bacbefd7846a9280beb1099f7f3"},
@@ -2479,7 +2477,7 @@ version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
@@ -2581,7 +2579,7 @@ version = "1.0.9"
 description = "A minimal low-level HTTP client."
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
@@ -2658,7 +2656,7 @@ version = "0.28.1"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"},
@@ -2767,7 +2765,7 @@ version = "3.11"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "idna-3.11-py3-none-any.whl", hash = "sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea"},
@@ -2943,7 +2941,7 @@ version = "0.12.0"
 description = "Fast iterable JSON parser."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "jiter-0.12.0-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:e7acbaba9703d5de82a2c98ae6a0f59ab9770ab5af5fa35e43a303aee962cf65"},
@@ -4363,7 +4361,7 @@ version = "6.7.1"
 description = "multidict implementation"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "multidict-6.7.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:c93c3db7ea657dd4637d57e74ab73de31bccefe144d3d4ce370052035bc85fb5"},
@@ -5139,7 +5137,7 @@ version = "2.16.0"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "openai-2.16.0-py3-none-any.whl", hash = "sha256:5f46643a8f42899a84e80c38838135d7038e7718333ce61396994f887b09a59b"},
@@ -5967,7 +5965,7 @@ version = "0.4.1"
 description = "Accelerated property cache"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "propcache-0.4.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7c2d1fa3201efaf55d730400d945b5b3ab6e672e100ba0f9a409d950ab25d7db"},
@@ -6306,7 +6304,7 @@ version = "0.6.2"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "pyasn1-0.6.2-py3-none-any.whl", hash = "sha256:1eb26d860996a18e9b6ed05e7aae0e9fc21619fcee6af91cca9bad4fbea224bf"},
@@ -6319,7 +6317,7 @@ version = "0.4.2"
 description = "A collection of ASN.1-based protocols modules"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "pyasn1_modules-0.4.2-py3-none-any.whl", hash = "sha256:29253a9207ce32b64c3ac6600edc75368f98473906e8fd1043bd6b5b1de2c14a"},
@@ -6668,7 +6666,7 @@ version = "3.0"
 description = "C parser in Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "(python_version == \"3.12\" or python_version == \"3.13\") and platform_python_implementation != \"PyPy\" and implementation_name != \"PyPy\""
 files = [
     {file = "pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"},
@@ -6681,7 +6679,7 @@ version = "2.12.5"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "pydantic-2.12.5-py3-none-any.whl", hash = "sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d"},
@@ -6705,7 +6703,7 @@ version = "2.41.5"
 description = "Core functionality for Pydantic validation and serialization"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "pydantic_core-2.41.5-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:77b63866ca88d804225eaa4af3e664c5faf3568cea95360d21f4725ab6e07146"},
@@ -7845,7 +7843,7 @@ version = "2.32.5"
 description = "Python HTTP for Humans."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6"},
@@ -8070,7 +8068,7 @@ version = "4.9.1"
 description = "Pure-Python RSA implementation"
 optional = false
 python-versions = "<4,>=3.6"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762"},
@@ -8426,7 +8424,7 @@ version = "1.3.1"
 description = "Sniff out which async library your code is running under"
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
@@ -8644,7 +8642,7 @@ version = "9.1.2"
 description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
@@ -8939,7 +8937,7 @@ version = "4.67.1"
 description = "Fast, Extensible Progress Meter"
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2"},
@@ -9229,11 +9227,11 @@ description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
-markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
 ]
+markers = {main = "python_version == \"3.12\" or python_version == \"3.13\"", dev = "python_version == \"3.12\""}
 
 [[package]]
 name = "typing-inspect"
@@ -9258,7 +9256,7 @@ version = "0.4.2"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7"},
@@ -9532,7 +9530,7 @@ version = "2.6.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
@@ -9843,7 +9841,7 @@ version = "15.0.1"
 description = "An implementation of the WebSocket Protocol (RFC 6455 & 7692)"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "websockets-15.0.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d63efaa0cd96cf0c5fe4d581521d9fa87744540d4bc999ae6e08595a1014b45b"},
@@ -10073,7 +10071,7 @@ version = "1.22.0"
 description = "Yet another URL library"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
     {file = "yarl-1.22.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:c7bd6683587567e5a49ee6e336e0612bec8329be1b7d4c8af5687dcdeb67ee1e"},
@@ -10350,4 +10348,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "93a0c412b1ede80a5389551fad808a57a8c60d7af662c1f8298f81d29c1bc080"
+content-hash = "fab71f7c3161cb55f0c3557202b0b4d23542e187ca080891af567c4c52ff0dce"

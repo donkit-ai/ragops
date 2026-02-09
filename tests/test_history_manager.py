@@ -5,9 +5,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from donkit.llm import GenerateResponse, Message
+from donkit.llm import FunctionCall, GenerateResponse, Message, ToolCall
 
 from donkit_ragops.history_manager import (
+    _estimate_token_count,
     _find_recent_complete_turns,
     compress_history_if_needed,
 )
@@ -45,8 +46,6 @@ class TestFindRecentCompleteTurns:
 
     def test_turn_with_tool_calls(self):
         """Should keep assistant message with tool calls and tool results together."""
-        from donkit.llm import FunctionCall, ToolCall
-
         messages = [
             Message(role="user", content="Old question"),
             Message(role="assistant", content="Old answer"),
@@ -100,12 +99,83 @@ class TestFindRecentCompleteTurns:
         assert result == messages
 
 
+class TestEstimateTokenCount:
+    """Tests for _estimate_token_count helper."""
+
+    def test_empty_messages(self):
+        """Should return 0 for empty list."""
+        assert _estimate_token_count([]) == 0
+
+    def test_simple_text_messages(self):
+        """Should count tokens for simple text messages."""
+        messages = [
+            Message(role="user", content="Hello world"),
+            Message(role="assistant", content="Hi there"),
+        ]
+        result = _estimate_token_count(messages)
+        # Should be > 0 and include overhead
+        assert result > 8  # At least 4 overhead per message
+
+    def test_none_content(self):
+        """Should handle None content gracefully."""
+        messages = [
+            Message(role="assistant", content=None),
+        ]
+        result = _estimate_token_count(messages)
+        assert result == 4  # Only per-message overhead
+
+    def test_tool_calls_counted(self):
+        """Should count tokens from tool calls."""
+        messages_without_tools = [
+            Message(role="assistant", content=None),
+        ]
+        messages_with_tools = [
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        function=FunctionCall(
+                            name="read_file",
+                            arguments='{"path": "/some/very/long/file/path.py"}',
+                        ),
+                    )
+                ],
+            ),
+        ]
+        tokens_without = _estimate_token_count(messages_without_tools)
+        tokens_with = _estimate_token_count(messages_with_tools)
+        assert tokens_with > tokens_without
+
+    def test_tool_call_id_counted(self):
+        """Should count tokens from tool_call_id."""
+        messages = [
+            Message(role="tool", tool_call_id="call_123", content="result"),
+        ]
+        result = _estimate_token_count(messages)
+        # Should include overhead + content tokens + tool_call_id tokens
+        assert result > 4
+
+    def test_large_content_token_count(self):
+        """Should produce reasonable token count for large content."""
+        large_text = "word " * 50_000  # ~50K words ≈ ~50K+ tokens
+        messages = [
+            Message(role="user", content=large_text),
+        ]
+        result = _estimate_token_count(messages)
+        # With tiktoken, "word " is 1 token, so ~50K tokens + overhead
+        # With fallback (len//4), 250K chars // 4 = 62.5K
+        # Either way, should be substantial
+        assert result > 10_000
+
+
 class TestCompressHistoryIfNeeded:
     """Tests for compress_history_if_needed."""
 
     @pytest.mark.asyncio
     async def test_no_compression_below_threshold(self):
-        """Should not compress if user messages below threshold."""
+        """Should not compress if estimated tokens below threshold."""
         history = [
             Message(role="system", content="System prompt"),
             Message(role="user", content="Q1"),
@@ -124,11 +194,15 @@ class TestCompressHistoryIfNeeded:
     @pytest.mark.asyncio
     async def test_compression_preserves_system_messages(self):
         """Should preserve system messages when compressing."""
-        # Create 26 user messages to exceed threshold of 25
-        history = [Message(role="system", content="System prompt")]
-        for i in range(1, 27):  # Q1-Q26
-            history.append(Message(role="user", content=f"Q{i}"))
-            history.append(Message(role="assistant", content=f"A{i}"))
+        # Create large messages to exceed 220K token threshold
+        large_text = "x " * 110_000  # ~110K tokens
+        history = [
+            Message(role="system", content="System prompt"),
+            Message(role="user", content=large_text),
+            Message(role="assistant", content=large_text),
+            Message(role="user", content="Q2"),
+            Message(role="assistant", content="A2"),
+        ]
 
         provider = Mock()
         provider.generate = AsyncMock(
@@ -137,29 +211,26 @@ class TestCompressHistoryIfNeeded:
 
         result = await compress_history_if_needed(history, provider)
 
-        # Should have: system + summary + last turn (Q26 + A26)
+        # Should have: system + summary + last turn (Q2 + A2)
         assert len(result) == 4
         assert result[0].role == "system"
         assert result[0].content == "System prompt"
         assert result[1].role == "assistant"
         assert "[CONVERSATION HISTORY SUMMARY]" in result[1].content
-        assert result[2].content == "Q26"
-        assert result[3].content == "A26"
+        assert result[2].content == "Q2"
+        assert result[3].content == "A2"
 
     @pytest.mark.asyncio
     async def test_compression_preserves_tool_calls(self):
         """Should preserve complete turn with tool calls and results."""
-        from donkit.llm import FunctionCall, ToolCall
-
-        # Create 26 user messages to exceed threshold of 25
-        history = [Message(role="system", content="System")]
-        for i in range(1, 26):  # Q1-Q25
-            history.append(Message(role="user", content=f"Q{i}"))
-            history.append(Message(role="assistant", content=f"A{i}"))
-
-        # Q26 with tool calls - 26th user message triggers compression
-        history.extend([
-            Message(role="user", content="Q26 with tool"),
+        # Create large messages to exceed 220K token threshold
+        large_text = "x " * 110_000  # ~110K tokens
+        history = [
+            Message(role="system", content="System"),
+            Message(role="user", content=large_text),
+            Message(role="assistant", content=large_text),
+            # Last turn with tool calls
+            Message(role="user", content="Q with tool"),
             Message(
                 role="assistant",
                 content=None,
@@ -172,7 +243,7 @@ class TestCompressHistoryIfNeeded:
             ),
             Message(role="tool", tool_call_id="call_123", content="Tool result"),
             Message(role="assistant", content="Final answer"),
-        ])
+        ]
 
         provider = Mock()
         provider.generate = AsyncMock(
@@ -185,7 +256,7 @@ class TestCompressHistoryIfNeeded:
         assert len(result) == 6
         assert result[0].role == "system"
         assert result[1].role == "assistant"  # Summary
-        assert result[2].content == "Q26 with tool"
+        assert result[2].content == "Q with tool"
         assert result[3].role == "assistant"
         assert result[3].tool_calls is not None
         assert result[4].role == "tool"
@@ -194,19 +265,12 @@ class TestCompressHistoryIfNeeded:
     @pytest.mark.asyncio
     async def test_compression_failure_returns_original(self):
         """Should return original history if compression fails."""
+        large_text = "x " * 110_000  # ~110K tokens to exceed threshold
         history = [
-            Message(role="user", content="Q1"),
+            Message(role="user", content=large_text),
             Message(role="assistant", content="A1"),
             Message(role="user", content="Q2"),
             Message(role="assistant", content="A2"),
-            Message(role="user", content="Q3"),
-            Message(role="assistant", content="A3"),
-            Message(role="user", content="Q4"),
-            Message(role="assistant", content="A4"),
-            Message(role="user", content="Q5"),
-            Message(role="assistant", content="A5"),
-            Message(role="user", content="Q6"),
-            Message(role="assistant", content="A6"),
         ]
 
         provider = Mock()
@@ -216,3 +280,38 @@ class TestCompressHistoryIfNeeded:
 
         # Should return original history on error
         assert result == history
+
+    @pytest.mark.asyncio
+    async def test_token_threshold_with_tool_calls(self):
+        """Should account for tool call tokens when evaluating threshold."""
+        # Create history where tool calls push it over the threshold
+        # Use "x " pattern to avoid tiktoken compressing repeated single chars
+        large_args = '{"data": "' + "x " * 220_000 + '"}'  # ~220K tokens
+        history = [
+            Message(role="user", content="Do something"),
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        function=FunctionCall(
+                            name="big_tool",
+                            arguments=large_args,
+                        ),
+                    )
+                ],
+            ),
+            Message(role="tool", tool_call_id="call_1", content="Done"),
+            Message(role="user", content="Next question"),
+            Message(role="assistant", content="Next answer"),
+        ]
+
+        provider = Mock()
+        provider.generate = AsyncMock(return_value=GenerateResponse(content="Summary"))
+
+        result = await compress_history_if_needed(history, provider)
+
+        # Should compress because tool call arguments are large
+        assert len(result) < len(history)
+        provider.generate.assert_called_once()
