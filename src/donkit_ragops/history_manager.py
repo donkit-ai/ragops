@@ -8,8 +8,16 @@ from __future__ import annotations
 from donkit.llm import GenerateRequest, LLMModelAbstract, Message
 from loguru import logger
 
-HISTORY_TOKEN_THRESHOLD = 220_000  # Compress when estimated tokens exceed this
+HISTORY_TOKEN_THRESHOLD = 200_000  # Compress when estimated tokens exceed this
 HISTORY_KEEP_RECENT_TURNS = 1  # Keep last N complete conversation turns after compression
+EMERGENCY_MSG_MAX_CHARS = 8_000  # Max chars per message during emergency truncation
+
+FALLBACK_TRUNCATION_NOTICE = (
+    "[CONVERSATION HISTORY TRUNCATED]\n"
+    "Previous conversation context was too large to summarize. "
+    "Key context may have been lost. The most recent interaction is preserved below.\n"
+    "[END TRUNCATION NOTICE]"
+)
 
 # Module-level cache for tiktoken encoding
 _tiktoken_encoding = None
@@ -121,6 +129,27 @@ def _find_recent_complete_turns(messages: list[Message], num_turns: int) -> list
     return messages[start_idx:]
 
 
+def _emergency_truncate_messages(messages: list[Message]) -> list[Message]:
+    """Truncate individual message content that is excessively large.
+
+    Last-resort fallback when even the last turn exceeds the token threshold.
+    Preserves message structure (roles, tool_call_ids) while truncating content.
+    Keeps 60% from the start and 40% from the end of each oversized message.
+    """
+    truncated = []
+    for msg in messages:
+        if isinstance(msg.content, str) and len(msg.content) > EMERGENCY_MSG_MAX_CHARS:
+            keep_start = int(EMERGENCY_MSG_MAX_CHARS * 0.6)
+            keep_end = EMERGENCY_MSG_MAX_CHARS - keep_start - 100
+            orig_len = len(msg.content)
+            notice = f"\n\n[... truncated {orig_len} -> {EMERGENCY_MSG_MAX_CHARS} chars ...]\n\n"
+            new_content = msg.content[:keep_start] + notice + msg.content[-keep_end:]
+            truncated.append(msg.model_copy(update={"content": new_content}))
+        else:
+            truncated.append(msg)
+    return truncated
+
+
 async def compress_history_if_needed(
     history: list[Message],
     provider: LLMModelAbstract,
@@ -167,5 +196,28 @@ async def compress_history_if_needed(
         )
         return new_history
     except Exception as e:
-        logger.warning(f"Failed to compress history: {e}")
-        return history
+        logger.warning(f"LLM-based compression failed: {e}. Using mechanical fallback.")
+
+    # Fallback: mechanical truncation without LLM
+    new_history = (
+        system_msgs + [Message(role="assistant", content=FALLBACK_TRUNCATION_NOTICE)] + msgs_to_keep
+    )
+
+    # If even the fallback exceeds the threshold, emergency-truncate individual messages
+    fallback_tokens = _estimate_token_count(new_history)
+    if fallback_tokens > HISTORY_TOKEN_THRESHOLD:
+        logger.warning(
+            f"Fallback still exceeds threshold ({fallback_tokens} > {HISTORY_TOKEN_THRESHOLD}). "
+            "Emergency-truncating individual messages."
+        )
+        new_history = (
+            system_msgs
+            + [Message(role="assistant", content=FALLBACK_TRUNCATION_NOTICE)]
+            + _emergency_truncate_messages(msgs_to_keep)
+        )
+
+    logger.debug(
+        f"Mechanical fallback compression: {len(history)} -> {len(new_history)} messages "
+        f"(estimated tokens: {estimated_tokens} -> {_estimate_token_count(new_history)})"
+    )
+    return new_history

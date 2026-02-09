@@ -365,6 +365,21 @@ TOOL_DONE = "[dim]Tool:[/dim] [green]{tool}[/green]"
 TOOL_ERROR = "[dim]Tool failed:[/dim] [red]{tool}[/red] - {error}"
 
 # ============================================================================
+# History Compression Messages
+# ============================================================================
+
+HISTORY_COMPRESSED_PLAIN = "History compressed to fit context window"
+
+
+def styled_history_compressed() -> StyledText:
+    """Return styled history compressed message."""
+    return styled_text((StyleName.DIM, "History compressed to fit context window"))
+
+
+# Legacy Rich markup versions
+HISTORY_COMPRESSED = "[dim]History compressed to fit context window[/dim]"
+
+# ============================================================================
 # Progress Messages
 # ============================================================================
 
