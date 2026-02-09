@@ -42,6 +42,7 @@ from donkit_ragops.agent.local_tools.tools import (
     tool_time_now,
     tool_update_rag_config_field,
 )
+from donkit_ragops.history_manager import compress_history_if_needed
 from donkit_ragops.mcp.protocol import MCPClientProtocol
 
 
@@ -50,6 +51,7 @@ class EventType(StrEnum):
     TOOL_CALL_START = auto()
     TOOL_CALL_END = auto()
     TOOL_CALL_ERROR = auto()
+    HISTORY_COMPRESSED = auto()
 
 
 @dataclass
@@ -307,6 +309,8 @@ class LLMAgent:
                     content=result_str,
                 )
             )
+            # Compress between tool calls if context is growing too large
+            messages[:] = await compress_history_if_needed(messages, self.provider)
 
     async def achat(
         self, *, prompt: str, system: str | None = None, model: str | None = None
@@ -341,6 +345,7 @@ class LLMAgent:
         )
 
         for _ in range(self.max_iterations):
+            messages[:] = await compress_history_if_needed(messages, self.provider)
             request = GenerateRequest(messages=messages, tools=tools)
             resp = await self.provider.generate(request)
 
@@ -375,6 +380,10 @@ class LLMAgent:
         )
 
         for _ in range(self.max_iterations):
+            prev_len = len(messages)
+            messages[:] = await compress_history_if_needed(messages, self.provider)
+            if len(messages) < prev_len:
+                yield StreamEvent(type=EventType.HISTORY_COMPRESSED)
             request = GenerateRequest(messages=messages, tools=tools)
             streamed_content = ""
             saw_finish_reason = False
@@ -420,6 +429,11 @@ class LLMAgent:
                             yield StreamEvent(
                                 type=EventType.TOOL_CALL_END, tool_name=tc.function.name
                             )
+                            # Compress between tool calls if context growing
+                            prev_len_inter = len(messages)
+                            messages[:] = await compress_history_if_needed(messages, self.provider)
+                            if len(messages) < prev_len_inter:
+                                yield StreamEvent(type=EventType.HISTORY_COMPRESSED)
                         except Exception as e:
                             error_msg = str(e)
                             logger.error(f"Tool {tc.function.name} failed: {error_msg}")

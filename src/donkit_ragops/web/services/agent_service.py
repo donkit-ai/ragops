@@ -15,7 +15,6 @@ from donkit_ragops.checklist_manager import (
     ChecklistStatusProvider,
     get_active_checklist_text,
 )
-from donkit_ragops.history_manager import compress_history_if_needed
 from donkit_ragops.web.session.models import WebSession
 from donkit_ragops.web.tools.interactive import current_web_session
 
@@ -151,6 +150,12 @@ class AgentService:
                         "timestamp": time.time(),
                     }
 
+                elif event.type == EventType.HISTORY_COMPRESSED:
+                    yield {
+                        "type": "history_compressed",
+                        "timestamp": time.time(),
+                    }
+
         except asyncio.CancelledError:
             logger.debug("Agent stream cancelled")
             yield {
@@ -183,15 +188,6 @@ class AgentService:
                     await session.message_persister.persist_assistant_message(content=reply)
                 except Exception as e:
                     logger.warning(f"Failed to persist assistant message: {e}")
-
-        # Compress history if needed
-        if session.agent and session.agent.provider:
-            try:
-                session.history[:] = await compress_history_if_needed(
-                    session.history, session.agent.provider
-                )
-            except Exception as e:
-                logger.warning(f"Failed to compress history: {e}")
 
         # Stream end
         yield {

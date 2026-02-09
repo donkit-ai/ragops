@@ -16,7 +16,6 @@ from loguru import logger
 
 from donkit_ragops import texts
 from donkit_ragops.display import ScreenRenderer
-from donkit_ragops.history_manager import compress_history_if_needed
 from donkit_ragops.prints import RAGOPS_LOGO_ART, RAGOPS_LOGO_TEXT
 from donkit_ragops.repl.base import BaseREPL, ReplContext
 from donkit_ragops.repl.commands import CommandRegistry, create_default_registry
@@ -539,12 +538,6 @@ class EnterpriseREPL(BaseREPL):
         else:
             await self._handle_non_streaming_response()
 
-        # Compress history if needed
-        if self.context.provider:
-            self.context.history[:] = await compress_history_if_needed(
-                self.context.history, self.context.provider
-            )
-
     async def _handle_streaming_response(self) -> None:
         """Handle streaming response from agent."""
         reply = ""
@@ -605,6 +598,8 @@ class EnterpriseREPL(BaseREPL):
                             event.tool_name, event.error or ""
                         )
                     )
+                elif event.type == event.type.HISTORY_COMPRESSED:
+                    self.context.ui.print(f"\n{texts.HISTORY_COMPRESSED}\n")
 
                 if self.context.mcp_handler:
                     reply, display_content, temp_executing = (

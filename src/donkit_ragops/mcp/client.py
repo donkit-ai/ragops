@@ -125,12 +125,21 @@ class MCPClient(MCPClientProtocol):
         if self.progress_callback:
             self.progress_callback(progress, total, message)
         else:
-            # Fallback to print if no callback provided
+            # Fallback: overwrite the same line using \r
+            import sys
+
             if total is not None:
                 percentage = (progress / total) * 100
-                print(f"Progress: {percentage:.1f}% - {message or ''}")
+                line = f"Progress: {percentage:.1f}% - {message or ''}"
             else:
-                print(f"Progress: {progress} - {message or ''}")
+                line = f"Progress: {progress} - {message or ''}"
+            # Clear line and write progress in-place
+            sys.stdout.write(f"\r\033[K{line}")
+            sys.stdout.flush()
+            # Print newline when done (100%)
+            if total is not None and progress >= total:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
 
     async def alist_tools(self) -> list[dict[str, Any]]:
         """List available tools from the MCP server."""
