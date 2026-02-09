@@ -191,31 +191,39 @@ class MCPEventHandler:
     def progress_callback(self, progress: float, total: float | None, message: str | None) -> None:
         """Callback compatible with `MCPClient` progress updates.
 
-        In append-only mode, just prints progress inline.
+        Uses carriage return to overwrite progress line in-place.
         """
+        import sys
+
         if total is not None:
             percentage = (progress / total) * 100
-            progress_text = texts.PROGRESS_PERCENTAGE.format(
+            progress_text = texts.PROGRESS_PERCENTAGE_PLAIN.format(
                 percentage=percentage, message=message or ""
             )
         else:
-            progress_text = texts.PROGRESS_GENERIC.format(progress=progress, message=message or "")
+            progress_text = texts.PROGRESS_GENERIC_PLAIN.format(
+                progress=progress, message=message or ""
+            )
 
-        # In append-only mode, just print progress (no screen clearing)
+        # Update transcript
         if self.progress_line_index is None:
             self.render_helper.transcript.append(progress_text)
             self.progress_line_index = len(self.render_helper.transcript) - 1
-            ui = get_ui()
-            ui.print(progress_text)
         else:
-            # Update transcript but don't reprint (avoid spam)
             self.render_helper.transcript[self.progress_line_index] = progress_text
 
+        # Overwrite the same line in terminal using \r
+        sys.stdout.write(f"\r\033[K{progress_text}")
+        sys.stdout.flush()
+
     def clear_progress(self) -> None:
-        """Clear progress tracking (but don't remove from console - append-only)."""
+        """Clear progress tracking and move to next line."""
+        import sys
+
         if self.progress_line_index is not None:
-            # In append-only mode, we can't remove printed lines
-            # Just reset the index
+            # Move to next line so subsequent output doesn't overwrite progress
+            sys.stdout.write("\n")
+            sys.stdout.flush()
             self.progress_line_index = None
 
     @staticmethod

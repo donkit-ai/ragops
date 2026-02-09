@@ -8,6 +8,8 @@ import pytest
 from donkit.llm import FunctionCall, GenerateResponse, Message, ToolCall
 
 from donkit_ragops.history_manager import (
+    FALLBACK_TRUNCATION_NOTICE,
+    _emergency_truncate_messages,
     _estimate_token_count,
     _find_recent_complete_turns,
     compress_history_if_needed,
@@ -263,12 +265,12 @@ class TestCompressHistoryIfNeeded:
         assert result[5].content == "Final answer"
 
     @pytest.mark.asyncio
-    async def test_compression_failure_returns_original(self):
-        """Should return original history if compression fails."""
+    async def test_compression_failure_uses_mechanical_fallback(self):
+        """Should use mechanical fallback when LLM compression fails."""
         large_text = "x " * 110_000  # ~110K tokens to exceed threshold
         history = [
             Message(role="user", content=large_text),
-            Message(role="assistant", content="A1"),
+            Message(role="assistant", content=large_text),
             Message(role="user", content="Q2"),
             Message(role="assistant", content="A2"),
         ]
@@ -278,8 +280,13 @@ class TestCompressHistoryIfNeeded:
 
         result = await compress_history_if_needed(history, provider)
 
-        # Should return original history on error
-        assert result == history
+        # Should NOT return original history — should use fallback
+        assert result != history
+        # Should contain fallback notice + last turn
+        assert any(FALLBACK_TRUNCATION_NOTICE in (m.content or "") for m in result)
+        # Last turn (Q2 + A2) should be preserved
+        assert result[-2].content == "Q2"
+        assert result[-1].content == "A2"
 
     @pytest.mark.asyncio
     async def test_token_threshold_with_tool_calls(self):
@@ -315,3 +322,109 @@ class TestCompressHistoryIfNeeded:
         # Should compress because tool call arguments are large
         assert len(result) < len(history)
         provider.generate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_fallback_preserves_system_messages(self):
+        """Mechanical fallback should preserve system messages."""
+        large_text = "x " * 110_000
+        history = [
+            Message(role="system", content="Important system prompt"),
+            Message(role="user", content=large_text),
+            Message(role="assistant", content=large_text),
+            Message(role="user", content="Q2"),
+            Message(role="assistant", content="A2"),
+        ]
+
+        provider = Mock()
+        provider.generate = AsyncMock(side_effect=Exception("Context too large"))
+
+        result = await compress_history_if_needed(history, provider)
+
+        assert result[0].role == "system"
+        assert result[0].content == "Important system prompt"
+        assert any(FALLBACK_TRUNCATION_NOTICE in (m.content or "") for m in result)
+        assert result[-2].content == "Q2"
+        assert result[-1].content == "A2"
+
+    @pytest.mark.asyncio
+    async def test_emergency_truncation_when_last_turn_is_huge(self):
+        """Should emergency-truncate individual messages when last turn exceeds threshold."""
+        # Old part exceeds threshold to trigger compression
+        large_old = "x " * 110_000
+        # Last turn tool result is huge — exceeds threshold on its own
+        large_tool_result = "y " * 210_000
+        history = [
+            Message(role="user", content=large_old),
+            Message(role="assistant", content=large_old),
+            Message(role="user", content="Q2"),
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        function=FunctionCall(name="big_tool", arguments="{}"),
+                    )
+                ],
+            ),
+            Message(role="tool", tool_call_id="call_1", content=large_tool_result),
+            Message(role="assistant", content="Final"),
+        ]
+
+        provider = Mock()
+        provider.generate = AsyncMock(side_effect=Exception("Context too large"))
+
+        result = await compress_history_if_needed(history, provider)
+
+        # Should have used emergency truncation
+        assert any(FALLBACK_TRUNCATION_NOTICE in (m.content or "") for m in result)
+        # The tool result should be truncated
+        tool_msgs = [m for m in result if m.role == "tool"]
+        if tool_msgs:
+            assert len(tool_msgs[0].content) < len(large_tool_result)
+            assert "truncated" in tool_msgs[0].content
+
+
+class TestEmergencyTruncateMessages:
+    """Tests for _emergency_truncate_messages helper."""
+
+    def test_small_messages_unchanged(self):
+        """Should not modify messages smaller than the limit."""
+        messages = [
+            Message(role="user", content="Short question"),
+            Message(role="assistant", content="Short answer"),
+        ]
+        result = _emergency_truncate_messages(messages)
+        assert result[0].content == "Short question"
+        assert result[1].content == "Short answer"
+
+    def test_large_message_truncated(self):
+        """Should truncate messages exceeding EMERGENCY_MSG_MAX_CHARS."""
+        large_content = "x" * 50_000
+        messages = [
+            Message(role="tool", tool_call_id="call_1", content=large_content),
+        ]
+        result = _emergency_truncate_messages(messages)
+        assert len(result[0].content) < len(large_content)
+        assert "truncated" in result[0].content
+        # Should preserve role and tool_call_id
+        assert result[0].role == "tool"
+        assert result[0].tool_call_id == "call_1"
+
+    def test_preserves_start_and_end(self):
+        """Should keep beginning and end of truncated content."""
+        content = "START_MARKER" + "x" * 50_000 + "END_MARKER"
+        messages = [
+            Message(role="assistant", content=content),
+        ]
+        result = _emergency_truncate_messages(messages)
+        assert result[0].content.startswith("START_MARKER")
+        assert result[0].content.endswith("END_MARKER")
+
+    def test_none_content_unchanged(self):
+        """Should handle None content gracefully."""
+        messages = [
+            Message(role="assistant", content=None),
+        ]
+        result = _emergency_truncate_messages(messages)
+        assert result[0].content is None
