@@ -6,7 +6,7 @@
 
 **Optimal RAG in hours, not months.**
 
-Version 0.5.4 - A smart, LLM-powered CLI agent that automates the entire lifecycle of Retrieval-Augmented Generation (RAG) pipelines — from creation and experimentation to deployment.
+A smart, LLM-powered CLI agent that automates the entire lifecycle of Retrieval-Augmented Generation (RAG) pipelines — from creation and experimentation to deployment.
 Forget spending months tweaking chunking strategies, embeddings, and vector DBs by hand. Just describe what you need, and let the agent run 100+ parallel experiments to discover what actually works for your data — fast, accurate, and infra-agnostic.
 
 Built by [Donkit AI](https://donkit.ai/?utm_source=github) — Automated Context Engineering.

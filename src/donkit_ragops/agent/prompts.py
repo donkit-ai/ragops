@@ -87,6 +87,7 @@ EXECUTION (do this AUTOMATICALLY, no permission needed)
 - Deploy vector DB → load_chunks → add_loaded_files
 - Deploy rag-service
 - After ALL done → propose 1 test question and TEST it automatically
+- Note: asking questions through the agent is primarily for testing that the pipeline works. The full RAG service is running in Docker — let the user know the API endpoint is available for integration.
 ⸻
 FILE TRACKING
 - After loading chunks → add_loaded_files with exact .json paths
