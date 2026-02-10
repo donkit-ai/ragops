@@ -26,6 +26,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [, setCurrentToolCalls] = useState<ToolCall[]>([]);
   const [interactiveRequests, setInteractiveRequests] = useState<InteractiveRequest[]>([]);
+  const [noCredits, setNoCredits] = useState(false);
   const { checklist, updateFromMessage } = useChecklist(sessionId);
   const dialogsRef = useRef<HTMLDivElement>(null);
 
@@ -295,6 +296,10 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         console.error('WebSocket error:', message.error);
         break;
 
+      case 'no_credits':
+        setNoCredits(true);
+        break;
+
       case 'confirm_request':
         console.log('[ChatContainer] Received confirm_request:', message);
         if (message.request_id) {
@@ -448,13 +453,25 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           </>
         )}
 
+        {/* No credits warning */}
+        {noCredits && (
+          <div className="flex-shrink-0 px-6 py-3 border-t border-dark-border bg-accent-red/10">
+            <div className="max-w-4xl mx-auto text-center">
+              <p className="text-accent-red font-medium">
+                You have run out of credits. Please top up your balance to continue.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Input with file upload */}
         <div className="flex-shrink-0">
           <MessageInput
             onSend={handleSend}
             onCancel={handleCancel}
             isStreaming={isStreaming}
-            disabled={status !== 'connected'}
+            disabled={status !== 'connected' || noCredits}
+            noCredits={noCredits}
             sessionId={sessionId}
             onFilesUploaded={handleFilesUploaded}
           />

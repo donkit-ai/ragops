@@ -6,6 +6,7 @@ interface MessageInputProps {
   onCancel: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  noCredits?: boolean;
   sessionId: string;
   onFilesUploaded: (files: Array<{ name: string; path: string; s3_path?: string }>, enterpriseMode: boolean) => void;
 }
@@ -22,6 +23,7 @@ export default function MessageInput({
   onCancel,
   isStreaming,
   disabled,
+  noCredits,
   sessionId,
   onFilesUploaded,
 }: MessageInputProps) {
@@ -265,7 +267,7 @@ export default function MessageInput({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Provide a clear instruction for what your RAG pipeline should be able to do"
+            placeholder={noCredits ? 'You have run out of credits. Please top up your balance to continue.' : 'Provide a clear instruction for what your RAG pipeline should be able to do'}
             className="resize-none bg-transparent border-none text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none disabled:opacity-50 text-[15px]"
             rows={1}
             disabled={disabled}

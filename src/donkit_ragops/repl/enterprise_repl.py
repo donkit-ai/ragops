@@ -519,6 +519,21 @@ class EnterpriseREPL(BaseREPL):
             message: User's chat message
             silent: If True, don't show in UI or persist to history (for internal messages)
         """
+        ui = get_ui()
+
+        # Check credit balance before processing
+        try:
+            async with self.api_client:
+                balance = await self.api_client.get_balance()
+                if balance <= 0:
+                    ui.print(
+                        "\nYou have run out of credits. Please top up your balance to continue.\n",
+                        StyleName.ERROR,
+                    )
+                    return
+        except Exception as e:
+            logger.warning(f"Failed to check credit balance: {e}")
+
         if not silent:
             if self.context.render_helper:
                 self.context.render_helper.append_user_line(message)
