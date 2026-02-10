@@ -32,7 +32,6 @@ export default function MessageInput({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isFilesExpanded, setIsFilesExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [areFilesExpanded, setAreFilesExpanded] = useState(true);
@@ -49,7 +48,7 @@ export default function MessageInput({
   useEffect(() => {
     setUploadedFiles([]);
     setError(null);
-    setIsFilesExpanded(false);
+    setAreFilesExpanded(true);
   }, [sessionId]);
 
   const handleSubmit = () => {
