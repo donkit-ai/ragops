@@ -27,7 +27,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [, setCurrentToolCalls] = useState<ToolCall[]>([]);
   const [interactiveRequests, setInteractiveRequests] = useState<InteractiveRequest[]>([]);
   const { checklist, updateFromMessage } = useChecklist(sessionId);
-  const [isChecklistCollapsed, setIsChecklistCollapsed] = useState(false);
+  const [, setIsChecklistCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const dialogsRef = useRef<HTMLDivElement>(null);
 
@@ -481,7 +481,6 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
                       key={request.id}
                       requestId={request.id}
                       question={request.question || 'Continue?'}
-                      defaultValue={request.defaultValue ?? true}
                       onResponse={handleConfirmResponse}
                     />
                   ) : (

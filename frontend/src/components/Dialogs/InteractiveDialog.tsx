@@ -4,14 +4,12 @@ import { Check, X } from 'lucide-react';
 interface ConfirmDialogProps {
   requestId: string;
   question: string;
-  defaultValue: boolean;
   onResponse: (requestId: string, confirmed: boolean) => void;
 }
 
 export function ConfirmDialog({
   requestId,
   question,
-  defaultValue,
   onResponse,
 }: ConfirmDialogProps) {
   const [responded, setResponded] = useState(false);
