@@ -9,6 +9,8 @@ from donkit.llm import FunctionCall, GenerateResponse, Message, ToolCall
 
 from donkit_ragops.history_manager import (
     FALLBACK_TRUNCATION_NOTICE,
+    HISTORY_TOKEN_THRESHOLD,
+    _compress_tool_calls_in_turn,
     _emergency_truncate_messages,
     _estimate_token_count,
     _find_recent_complete_turns,
@@ -428,3 +430,263 @@ class TestEmergencyTruncateMessages:
         ]
         result = _emergency_truncate_messages(messages)
         assert result[0].content is None
+
+
+class TestCompressToolCallsInTurn:
+    """Tests for _compress_tool_calls_in_turn helper."""
+
+    def _make_tool_pair(self, tool_name: str, result: str, call_id: str):
+        """Helper to create an assistant(tool_calls) + tool result pair."""
+        return [
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id=call_id,
+                        function=FunctionCall(name=tool_name, arguments="{}"),
+                    )
+                ],
+            ),
+            Message(role="tool", tool_call_id=call_id, content=result),
+        ]
+
+    def test_few_pairs_unchanged(self):
+        """Should not compress if fewer pairs than threshold."""
+        msgs = [Message(role="user", content="do stuff")]
+        msgs += self._make_tool_pair("tool_a", "result_a", "c1")
+        msgs += self._make_tool_pair("tool_b", "result_b", "c2")
+        result = _compress_tool_calls_in_turn(msgs, num_recent_pairs=3)
+        assert len(result) == len(msgs)
+
+    def test_compresses_old_pairs(self):
+        """Should compress old tool pairs, keeping recent ones."""
+        msgs = [Message(role="user", content="build RAG")]
+        msgs += self._make_tool_pair("create_project", "project created", "c1")
+        msgs += self._make_tool_pair("reader", "122 pages read", "c2")
+        msgs += self._make_tool_pair("chunker", "1064 chunks", "c3")
+        msgs += self._make_tool_pair("compose_start", "qdrant started", "c4")
+        msgs += self._make_tool_pair("vectorstore_load", "loaded", "c5")
+        msgs += self._make_tool_pair("rag_query", "search results", "c6")
+
+        result = _compress_tool_calls_in_turn(msgs, num_recent_pairs=2)
+
+        # Should have: user + summary + last 2 pairs (4 msgs) = 6 total
+        assert len(result) < len(msgs)
+        # User message preserved
+        assert result[0].content == "build RAG"
+        # Summary should mention old tool names
+        summary = result[1].content
+        assert "COMPRESSED TOOL HISTORY" in summary
+        assert "create_project" in summary
+        assert "reader" in summary
+        assert "chunker" in summary
+        assert "compose_start" in summary
+        # Last 2 pairs preserved in full
+        assert result[-1].content == "search results"
+        assert result[-3].content == "loaded"
+
+    def test_preserves_user_message(self):
+        """User message at the start of the turn should always be preserved."""
+        msgs = [Message(role="user", content="important question")]
+        for i in range(10):
+            msgs += self._make_tool_pair(f"tool_{i}", f"result_{i}", f"c{i}")
+
+        result = _compress_tool_calls_in_turn(msgs, num_recent_pairs=2)
+        assert result[0].role == "user"
+        assert result[0].content == "important question"
+
+    def test_empty_messages(self):
+        """Should handle empty input."""
+        assert _compress_tool_calls_in_turn([]) == []
+
+    def test_no_tool_calls(self):
+        """Should return unchanged if no tool calls in the turn."""
+        msgs = [
+            Message(role="user", content="hello"),
+            Message(role="assistant", content="hi there"),
+        ]
+        result = _compress_tool_calls_in_turn(msgs)
+        assert result == msgs
+
+
+class TestCompressWithinSingleTurn:
+    """Integration tests: compress_history_if_needed with single-turn autonomous work."""
+
+    @pytest.mark.asyncio
+    async def test_single_turn_with_many_tool_calls(self):
+        """Should compress tool calls within a single turn when it exceeds threshold."""
+        # Simulate autonomous agent: one user msg + many tool calls with big results
+        history = [
+            Message(role="system", content="System prompt"),
+            Message(role="user", content="build RAG pipeline"),
+        ]
+        # Add 10 tool call pairs with large results (~25k tokens each)
+        for i in range(10):
+            large_result = f"result_{i} " * 50_000  # ~50k tokens
+            history.append(
+                Message(
+                    role="assistant",
+                    content=None,
+                    tool_calls=[
+                        ToolCall(
+                            id=f"call_{i}",
+                            function=FunctionCall(
+                                name=f"tool_{i}",
+                                arguments="{}",
+                            ),
+                        )
+                    ],
+                )
+            )
+            history.append(
+                Message(
+                    role="tool",
+                    tool_call_id=f"call_{i}",
+                    content=large_result,
+                )
+            )
+
+        provider = Mock()
+        # provider.generate should NOT be called — no previous turns to summarize
+        provider.generate = AsyncMock(side_effect=Exception("should not be called"))
+
+        result = await compress_history_if_needed(history, provider)
+
+        # Should be compressed
+        assert len(result) < len(history)
+        # System message preserved
+        assert result[0].role == "system"
+        # User message preserved
+        assert any(m.content == "build RAG pipeline" for m in result)
+        # Should have compressed tool history
+        assert any(
+            "COMPRESSED TOOL HISTORY" in (m.content or "") for m in result
+        )
+
+    @pytest.mark.asyncio
+    async def test_single_turn_result_fits_in_threshold(self):
+        """After compression within a single turn, result must fit in the token threshold."""
+        history = [
+            Message(role="system", content="System prompt"),
+            Message(role="user", content="build RAG"),
+        ]
+        # 20 tool calls with large results — way over any threshold
+        for i in range(20):
+            large_result = f"data_{i} " * 50_000
+            history.append(
+                Message(
+                    role="assistant",
+                    content=None,
+                    tool_calls=[
+                        ToolCall(
+                            id=f"call_{i}",
+                            function=FunctionCall(name=f"tool_{i}", arguments="{}"),
+                        )
+                    ],
+                )
+            )
+            history.append(
+                Message(role="tool", tool_call_id=f"call_{i}", content=large_result)
+            )
+
+        provider = Mock()
+        provider.generate = AsyncMock(side_effect=Exception("should not be called"))
+
+        result = await compress_history_if_needed(history, provider)
+
+        result_tokens = _estimate_token_count(result)
+        # The result must be smaller than the original
+        assert result_tokens < _estimate_token_count(history)
+        # And must not exceed the threshold (or at least be drastically reduced)
+        # Emergency truncation should kick in if tool-call compression isn't enough
+        assert result_tokens < HISTORY_TOKEN_THRESHOLD * 1.5  # allow some headroom
+
+    @pytest.mark.asyncio
+    async def test_multi_turn_result_fits_in_threshold(self):
+        """After LLM summary compression, result must fit in the token threshold."""
+        # Turn 1: big
+        large_text = "x " * 110_000
+        history = [
+            Message(role="system", content="System prompt"),
+            Message(role="user", content=large_text),
+            Message(role="assistant", content=large_text),
+            # Turn 2: current turn with several tool calls
+            Message(role="user", content="now do stuff"),
+        ]
+        for i in range(8):
+            big_result = f"result_{i} " * 20_000
+            history.append(
+                Message(
+                    role="assistant",
+                    content=None,
+                    tool_calls=[
+                        ToolCall(
+                            id=f"call_{i}",
+                            function=FunctionCall(name=f"step_{i}", arguments="{}"),
+                        )
+                    ],
+                )
+            )
+            history.append(
+                Message(role="tool", tool_call_id=f"call_{i}", content=big_result)
+            )
+
+        provider = Mock()
+        provider.generate = AsyncMock(
+            return_value=GenerateResponse(content="Summary of old turn")
+        )
+
+        result = await compress_history_if_needed(history, provider)
+
+        result_tokens = _estimate_token_count(result)
+        assert result_tokens < _estimate_token_count(history)
+        # System + summary + compressed last turn should be manageable
+        assert result[0].role == "system"
+        # LLM was called to summarize old turns
+        provider.generate.assert_called_once()
+        # Last turn tool calls should be compressed (8 pairs > KEEP_RECENT_TOOL_PAIRS)
+        assert any("COMPRESSED TOOL HISTORY" in (m.content or "") for m in result)
+
+    @pytest.mark.asyncio
+    async def test_shrink_tool_results_before_llm_summary(self):
+        """LLM should receive shrunk tool results, not full payloads."""
+        large_tool_output = "x " * 200_000  # huge tool result in old turn
+        history = [
+            Message(role="system", content="System"),
+            Message(role="user", content="first question"),
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id="call_old",
+                        function=FunctionCall(name="big_tool", arguments="{}"),
+                    )
+                ],
+            ),
+            Message(role="tool", tool_call_id="call_old", content=large_tool_output),
+            Message(role="assistant", content="done with first"),
+            # New turn
+            Message(role="user", content="second question"),
+            Message(role="assistant", content="answer"),
+        ]
+
+        captured_request = {}
+
+        async def capture_generate(request):
+            captured_request["messages"] = request.messages
+            return GenerateResponse(content="Summary")
+
+        provider = Mock()
+        provider.generate = AsyncMock(side_effect=capture_generate)
+
+        await compress_history_if_needed(history, provider)
+
+        # Check that LLM received shrunk tool results
+        assert "messages" in captured_request
+        for msg in captured_request["messages"]:
+            if msg.role == "tool":
+                # Tool result sent to LLM must be truncated
+                assert len(msg.content) < len(large_tool_output)
+                assert "truncated" in msg.content
