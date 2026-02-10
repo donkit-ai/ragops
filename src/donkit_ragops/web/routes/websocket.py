@@ -191,6 +191,28 @@ async def websocket_endpoint(
                     )
                     continue
 
+                # Check credit balance for enterprise mode
+                logger.debug(
+                    f"Credit check: enterprise_mode={session.enterprise_mode}, "
+                    f"api_client={session.api_client is not None}"
+                )
+                if session.enterprise_mode and session.api_client:
+                    try:
+                        async with session.api_client:
+                            balance = await session.api_client.get_balance()
+                            logger.debug(f"Credit balance: {balance}")
+                            if balance <= 0:
+                                await send_message(
+                                    {
+                                        "type": "no_credits",
+                                        "message": "You have run out of credits. Please top up your balance to continue.",
+                                        "timestamp": time.time(),
+                                    }
+                                )
+                                continue
+                    except Exception as e:
+                        logger.warning(f"Failed to check credit balance: {e}")
+
                 # Cancel any existing task
                 if session.current_task and not session.current_task.done():
                     session.current_task.cancel()

@@ -23,7 +23,8 @@ export type WebSocketMessageType =
   | 'error_message'
   | 'info_message'
   | 'confirm_request'
-  | 'choice_request';
+  | 'choice_request'
+  | 'no_credits';
 
 export interface WebSocketMessage {
   type: WebSocketMessageType;
