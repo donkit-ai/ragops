@@ -8,17 +8,21 @@ from __future__ import annotations
 from donkit.llm import GenerateRequest, LLMModelAbstract, Message
 from loguru import logger
 
-HISTORY_TOKEN_THRESHOLD = 200_000  # Compress when estimated tokens exceed this
+HISTORY_TOKEN_THRESHOLD = 150_000  # Compress when estimated tokens exceed this
 HISTORY_KEEP_RECENT_TURNS = 1  # Keep last N complete conversation turns after compression
-EMERGENCY_MSG_MAX_CHARS = 8_000  # Max chars per message during emergency truncation
-
+EMERGENCY_MSG_MAX_CHARS = 4_000  # Max chars per message during emergency truncation
+# How many recent tool-call pairs (assistant+tool) to keep when compressing within a turn
+KEEP_RECENT_TOOL_PAIRS = 3
+TOOL_RESULT_SUMMARY_CHARS = 500  # Max chars to keep from old tool results when summarizing
 FALLBACK_TRUNCATION_NOTICE = (
     "[CONVERSATION HISTORY TRUNCATED]\n"
     "Previous conversation context was too large to summarize. "
     "Key context may have been lost. The most recent interaction is preserved below.\n"
     "[END TRUNCATION NOTICE]"
 )
-
+HISTORY_SUMMARY_PROMPT = """Summarize this conversation concisely.
+Preserve ALL key information: file paths, project names, configurations, decisions, errors.
+Format as bullet points. Be brief but complete."""
 # Module-level cache for tiktoken encoding
 _tiktoken_encoding = None
 _tiktoken_loaded = False
@@ -92,11 +96,6 @@ def _estimate_token_count(messages: list[Message]) -> int:
     return total
 
 
-HISTORY_SUMMARY_PROMPT = """Summarize this conversation concisely.
-Preserve ALL key information: file paths, project names, configurations, decisions, errors.
-Format as bullet points. Be brief but complete."""
-
-
 def _find_recent_complete_turns(messages: list[Message], num_turns: int) -> list[Message]:
     """Find the last N complete conversation turns.
 
@@ -129,6 +128,114 @@ def _find_recent_complete_turns(messages: list[Message], num_turns: int) -> list
     return messages[start_idx:]
 
 
+def _compress_tool_calls_in_turn(
+    msgs_to_keep: list[Message],
+    num_recent_pairs: int = KEEP_RECENT_TOOL_PAIRS,
+) -> list[Message]:
+    """Compress old tool call results within a single turn.
+
+    When the agent works autonomously, a single turn can accumulate dozens of
+    tool calls. This function keeps the user message, the last N tool-call
+    pairs (assistant-with-tool_calls + tool result), and summarises older
+    tool results into a short notice so the LLM retains awareness of what
+    was done without the full output.
+
+    A "tool-call pair" is:
+      - assistant message with tool_calls (no text content)
+      - one or more tool result messages that follow it
+    """
+    if not msgs_to_keep:
+        return msgs_to_keep
+
+    # Split: leading user message(s) vs tool-call sequence
+    # The turn typically starts with a user message, then alternating
+    # assistant(tool_calls) + tool messages.
+    leading: list[Message] = []
+    tool_sequence: list[Message] = []
+    found_tool_call = False
+
+    for msg in msgs_to_keep:
+        if not found_tool_call and msg.role in ("user", "assistant") and not msg.tool_calls:
+            leading.append(msg)
+        else:
+            found_tool_call = True
+            tool_sequence.append(msg)
+
+    if not tool_sequence:
+        return msgs_to_keep
+
+    # Group tool_sequence into pairs: (assistant-with-tool_calls, [tool results...])
+    pairs: list[list[Message]] = []
+    current_pair: list[Message] = []
+    for msg in tool_sequence:
+        if msg.role == "assistant" and msg.tool_calls and current_pair:
+            # Start of a new pair — save previous
+            pairs.append(current_pair)
+            current_pair = [msg]
+        else:
+            current_pair.append(msg)
+
+    if current_pair:
+        pairs.append(current_pair)
+
+    if len(pairs) <= num_recent_pairs:
+        # Not enough pairs to compress
+        return msgs_to_keep
+
+    # Split into old pairs (to summarise) and recent pairs (to keep)
+    old_pairs = pairs[:-num_recent_pairs]
+    recent_pairs = pairs[-num_recent_pairs:]
+
+    # Build a compact summary of old tool calls
+    summaries: list[str] = []
+    for pair in old_pairs:
+        for msg in pair:
+            if msg.role == "assistant" and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    summaries.append(f"- Called {tc.function.name}")
+
+            elif msg.role == "tool":
+                # Keep first 200 chars of each result as a hint
+                preview = (msg.content or "")[:200]
+                if len(msg.content or "") > 200:
+                    preview += "..."
+                tool_name = msg.name or "tool"
+                summaries.append(f"  {tool_name} result: {preview}")
+
+    summary_text = (
+        "[COMPRESSED TOOL HISTORY]\n" + "\n".join(summaries) + "\n[END COMPRESSED TOOL HISTORY]"
+    )
+
+    # Flatten recent pairs
+    recent_msgs: list[Message] = []
+    for pair in recent_pairs:
+        recent_msgs.extend(pair)
+
+    return leading + [Message(role="assistant", content=summary_text)] + recent_msgs
+
+
+def _shrink_tool_results(messages: list[Message]) -> list[Message]:
+    """Replace long tool result content with a short preview.
+
+    Used before sending old messages to the LLM for summarization, so the
+    LLM sees *what* each tool returned without the full payload.
+    """
+    shrunk = []
+    for msg in messages:
+        if (
+            msg.role == "tool"
+            and isinstance(msg.content, str)
+            and len(msg.content) > TOOL_RESULT_SUMMARY_CHARS
+        ):
+            preview = msg.content[:TOOL_RESULT_SUMMARY_CHARS] + (
+                f"\n... [truncated, was {len(msg.content)} chars]"
+            )
+            shrunk.append(msg.model_copy(update={"content": preview}))
+        else:
+            shrunk.append(msg)
+    return shrunk
+
+
 def _emergency_truncate_messages(messages: list[Message]) -> list[Message]:
     """Truncate individual message content that is excessively large.
 
@@ -148,6 +255,14 @@ def _emergency_truncate_messages(messages: list[Message]) -> list[Message]:
         else:
             truncated.append(msg)
     return truncated
+
+
+def _log_compressed_history(history: list[Message], label: str) -> None:
+    """Log the full compressed history (debug only)."""
+    logger.debug(f"=== History after {label} ({len(history)} messages) ===")
+    for i, msg in enumerate(history):
+        logger.debug(f"  [{i}] {msg}")
+    logger.debug(f"=== End history ({label}) ===")
 
 
 async def compress_history_if_needed(
@@ -177,33 +292,62 @@ async def compress_history_if_needed(
     msgs_to_summarize = conversation_msgs[: len(conversation_msgs) - len(msgs_to_keep)]
 
     if not msgs_to_summarize:
-        return history
+        # All messages are in the current turn — compress tool calls within it
+        compressed_turn = _compress_tool_calls_in_turn(msgs_to_keep)
+        new_history = system_msgs + compressed_turn
+        new_tokens = _estimate_token_count(new_history)
+        if new_tokens <= HISTORY_TOKEN_THRESHOLD:
+            logger.debug(
+                f"Compressed tool calls within turn: {len(history)} -> {len(new_history)} messages "
+                f"(estimated tokens: {estimated_tokens} -> {new_tokens})"
+            )
+            _log_compressed_history(new_history, "tool-call compression")
+            return new_history
+        # Still over threshold — emergency-truncate individual messages
+        logger.debug(
+            f"Tool-call compression not enough ({new_tokens} > {HISTORY_TOKEN_THRESHOLD}), "
+            "applying emergency truncation"
+        )
+        emergency = system_msgs + _emergency_truncate_messages(compressed_turn)
+        _log_compressed_history(emergency, "emergency truncation (single turn)")
+        return emergency
 
     # Generate summary using LLM - pass conversation as messages
+    # Shrink old tool results first so they don't blow the LLM context
+    shrunk_to_summarize = _shrink_tool_results(msgs_to_summarize)
     try:
         request = GenerateRequest(
-            messages=msgs_to_summarize + [Message(role="user", content=HISTORY_SUMMARY_PROMPT)]
+            messages=shrunk_to_summarize + [Message(role="user", content=HISTORY_SUMMARY_PROMPT)]
         )
         response = await provider.generate(request)
         summary = response.content or ""
         summary_text = f"[CONVERSATION HISTORY SUMMARY]\n{summary}\n[END SUMMARY]"
 
         # Build new history: system + summary + recent messages
-        new_history = system_msgs + [Message(role="assistant", content=summary_text)] + msgs_to_keep
+        # Also compress tool calls within the kept turn if it's large
+        compressed_keep = _compress_tool_calls_in_turn(msgs_to_keep)
+        new_history = (
+            system_msgs + [Message(role="assistant", content=summary_text)] + compressed_keep
+        )
         logger.debug(
-            f"Compressed history: {len(history)} -> {len(new_history)} messages "
+            f"Compressed history (LLM summary): {len(history)} -> {len(new_history)} messages "
             f"(estimated tokens: {estimated_tokens} -> {_estimate_token_count(new_history)})"
         )
+        _log_compressed_history(new_history, "LLM summary")
         return new_history
     except Exception as e:
         logger.warning(f"LLM-based compression failed: {e}. Using mechanical fallback.")
 
     # Fallback: mechanical truncation without LLM
+    # Compress tool calls within the kept turn first
+    compressed_keep = _compress_tool_calls_in_turn(msgs_to_keep)
     new_history = (
-        system_msgs + [Message(role="assistant", content=FALLBACK_TRUNCATION_NOTICE)] + msgs_to_keep
+        system_msgs
+        + [Message(role="assistant", content=FALLBACK_TRUNCATION_NOTICE)]
+        + compressed_keep
     )
 
-    # If even the fallback exceeds the threshold, emergency-truncate individual messages
+    # If still exceeds the threshold, emergency-truncate individual messages
     fallback_tokens = _estimate_token_count(new_history)
     if fallback_tokens > HISTORY_TOKEN_THRESHOLD:
         logger.warning(
@@ -213,11 +357,12 @@ async def compress_history_if_needed(
         new_history = (
             system_msgs
             + [Message(role="assistant", content=FALLBACK_TRUNCATION_NOTICE)]
-            + _emergency_truncate_messages(msgs_to_keep)
+            + _emergency_truncate_messages(compressed_keep)
         )
 
     logger.debug(
         f"Mechanical fallback compression: {len(history)} -> {len(new_history)} messages "
         f"(estimated tokens: {estimated_tokens} -> {_estimate_token_count(new_history)})"
     )
+    _log_compressed_history(new_history, "mechanical fallback")
     return new_history
