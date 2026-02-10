@@ -205,7 +205,10 @@ async def websocket_endpoint(
                                 await send_message(
                                     {
                                         "type": "no_credits",
-                                        "message": "You have run out of credits. Please top up your balance to continue.",
+                                        "message": (
+                                            "You have run out of credits. "
+                                            "Please top up your balance to continue."
+                                        ),
                                         "timestamp": time.time(),
                                     }
                                 )
