@@ -508,7 +508,7 @@ def tool_quick_start_rag_config() -> AgentTool:
                 "generation_model": recommended["generation_model"],
                 "vector_db": "qdrant",
                 "read_format": "json",
-                "split_type": "semantic",
+                "split_type": "character",
                 "chunk_size": 500,
                 "chunk_overlap": 0,
                 "ranker": False,
