@@ -7,49 +7,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark theme base colors (matching Figma design)
+        // Dark theme base colors – now powered by CSS variables from global design tokens
         dark: {
-          bg: '#0a0a0a',       // Very dark background
-          surface: '#1a1a1a',  // Card/surface background
-          input: '#222529',    // Input field background (from Figma)
-          border: '#2a2a2a',   // Borders
-          'border-input': '#888E95', // Input field border (from Figma)
-          hover: '#242424',    // Hover states
+          // Semantic background colors
+          bg: 'var(--color-bg)',
+          surface: 'var(--color-action-item-selected)',
+          input: 'transparent',
+          // Borders
+          border: 'var(--color-border)',
+          'border-input': 'var(--color-border-hover)',
+          // Hover states
+          hover: 'var(--color-action-item-hover)',
           text: {
-            primary: '#ffffff',
-            secondary: '#a0a0a0',
-            muted: '#666666',
+            primary: 'var(--color-txt-icon-1)',
+            secondary: 'var(--color-txt-icon-2)',
+            muted: 'var(--color-txt-icon-2)',
           }
         },
         // Accent colors
         accent: {
           red: {
-            DEFAULT: '#EA6464',
-            hover: '#d84545',
-            light: '#f28b8b',
+            DEFAULT: 'var(--color-accent)',
+            hover: 'var(--color-accent-hover)',
+            light: 'var(--color-accent-hover)',
           },
           green: {
-            DEFAULT: '#10b981',
-            hover: '#059669',
-            light: '#6ee7b7',
+            DEFAULT: 'var(--color-success)',
+            hover: 'var(--color-success)',
+            light: 'var(--color-success)',
           },
           orange: {
-            DEFAULT: '#f97316',
-            hover: '#ea580c',
-            light: '#fdba74',
+            DEFAULT: 'var(--color-neutral)',
+            hover: 'var(--color-neutral)',
+            light: 'var(--color-neutral)',
           },
           blue: {
-            DEFAULT: '#3b82f6',
-            hover: '#2563eb',
-            light: '#93c5fd',
+            DEFAULT: 'var(--color-white-60)',
+            hover: 'var(--color-white)',
+            light: 'var(--color-white-20)',
           }
         },
         // Status colors (for badges)
         status: {
-          done: '#10b981',
-          failed: '#ef4444',
-          pending: '#3b82f6',
-          running: '#f97316',
+          done: 'var(--color-success)',
+          failed: 'var(--color-error)',
+          pending: 'var(--color-neutral)',
+          running: 'var(--color-neutral)',
         }
       },
     },

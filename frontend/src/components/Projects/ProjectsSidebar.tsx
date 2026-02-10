@@ -1,5 +1,6 @@
 import { useProjects } from '../../hooks/useProjects';
-import { Folder, MessageSquare, RefreshCw, Loader2, Plus, AlertCircle } from 'lucide-react';
+import { MessageSquare, RefreshCw, Loader2, Plus, AlertCircle, Folder } from 'lucide-react';
+import FilesIcon from '../../assets/icons/files.svg';
 
 interface ProjectsSidebarProps {
   sessionId: string;
@@ -39,12 +40,26 @@ export default function ProjectsSidebar({
   };
 
   return (
-    <div className="w-80 bg-dark-surface border-r border-dark-border flex flex-col h-full">
+    <div className="w-80 flex flex-col h-full" style={{ 
+      backgroundColor: 'var(--color-action-item-selected)', 
+      borderRight: '1px solid var(--color-border)' 
+    }}>
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-dark-border">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-dark-text-primary flex items-center gap-2">
-            <Folder className="w-5 h-5" />
+      <div className="flex-shrink-0" style={{ 
+        padding: 'var(--space-m)', 
+        borderBottom: '1px solid var(--color-border)' 
+      }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: 'var(--space-m)' }}>
+          <h2 className="h3 flex items-center" style={{ fontWeight: 500, gap: 'var(--space-s)' }}>
+            <img
+              src={FilesIcon}
+              alt=""
+              className="icon-txt1"
+              style={{
+                width: '20px',
+                height: '20px',
+              }}
+            />
             Projects
           </h2>
           <button
@@ -60,7 +75,7 @@ export default function ProjectsSidebar({
         {/* New Project Button */}
         <button
           onClick={onNewProject}
-          className="w-full py-2 px-3 rounded-lg bg-accent-red hover:bg-accent-red-hover text-white font-medium flex items-center justify-center gap-2 transition-colors"
+          className="btn-primary w-full justify-center"
         >
           <Plus className="w-4 h-4" />
           New Project
@@ -70,25 +85,32 @@ export default function ProjectsSidebar({
       {/* Projects List */}
       <div className="flex-1 overflow-y-auto">
         {loading && projects.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-dark-text-muted">
+          <div className="flex items-center justify-center" style={{ height: '128px', color: 'var(--color-txt-icon-2)' }}>
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         ) : error ? (
-          <div className="p-4 text-center">
-            <AlertCircle className="w-8 h-8 text-accent-red mx-auto mb-2" />
-            <p className="text-sm text-dark-text-muted">{error}</p>
+          <div style={{ padding: 'var(--space-m)', textAlign: 'center' }}>
+            <AlertCircle className="w-8 h-8 mx-auto" style={{ color: 'var(--color-accent)', marginBottom: 'var(--space-s)' }} />
+            <p className="p2">{error}</p>
             <button
               onClick={refreshProjects}
-              className="mt-2 text-sm text-accent-red hover:underline"
+              className="p2"
+              style={{ marginTop: 'var(--space-s)', color: 'var(--color-accent)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = 'none';
+              }}
             >
               Try again
             </button>
           </div>
         ) : projects.length === 0 ? (
-          <div className="p-4 text-center text-dark-text-muted">
-            <Folder className="w-12 h-12 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No projects yet</p>
-            <p className="text-xs mt-1">Create your first project to get started</p>
+          <div style={{ padding: 'var(--space-m)', textAlign: 'center', color: 'var(--color-txt-icon-2)' }}>
+            <Folder className="w-12 h-12 mx-auto" style={{ marginBottom: 'var(--space-s)', opacity: 0.3 }} />
+            <p className="p2">No projects yet</p>
+            <p className="p2" style={{ marginTop: 'var(--space-xs)', fontSize: 'var(--font-size-p2)' }}>Create your first project to get started</p>
           </div>
         ) : (
           <div className="divide-y divide-dark-border">
@@ -96,21 +118,25 @@ export default function ProjectsSidebar({
               <button
                 key={project.id}
                 onClick={() => onProjectSelect(project.id)}
-                className={`
-                  w-full p-3 text-left hover:bg-dark-bg transition-colors
-                  ${
-                    currentProjectId === project.id
-                      ? 'bg-dark-bg border-l-4 border-accent-red'
-                      : ''
-                  }
-                `}
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-m)',
+                  textAlign: 'left',
+                  backgroundColor: currentProjectId === project.id ? 'var(--color-bg)' : 'transparent',
+                  borderLeft: currentProjectId === project.id ? `4px solid var(--color-accent)` : 'none',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-action-item-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = currentProjectId === project.id ? 'var(--color-bg)' : 'transparent';
+                }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-dark-text-primary truncate">
-                      {getProjectTitle(project)}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-dark-text-muted">
+                    <div className="p2 truncate" style={{ fontWeight: 500 }}>{getProjectTitle(project)}</div>
+                    <div className="flex items-center" style={{ gap: 'var(--space-s)', marginTop: 'var(--space-xs)', fontSize: 'var(--font-size-p2)', color: 'var(--color-txt-icon-2)' }}>
                       <MessageSquare className="w-3 h-3" />
                       <span>{project.message_count} messages</span>
                       <span>•</span>

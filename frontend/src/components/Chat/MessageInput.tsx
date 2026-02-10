@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react';
-import { Send, StopCircle, Loader2, Paperclip, X, File } from 'lucide-react';
+import { Send, StopCircle, Loader2, Paperclip, X, File, ChevronDown } from 'lucide-react';
 
 interface MessageInputProps {
   onSend: (message: string) => void;
@@ -8,6 +8,7 @@ interface MessageInputProps {
   disabled?: boolean;
   sessionId: string;
   onFilesUploaded: (files: Array<{ name: string; path: string; s3_path?: string }>, enterpriseMode: boolean) => void;
+  rightPadding?: string;
 }
 
 interface UploadedFile {
@@ -24,6 +25,7 @@ export default function MessageInput({
   disabled,
   sessionId,
   onFilesUploaded,
+  rightPadding = 'var(--page-padding-hor)',
 }: MessageInputProps) {
   const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -32,6 +34,8 @@ export default function MessageInput({
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [areFilesExpanded, setAreFilesExpanded] = useState(true);
+  const [isHoveringFilesHeader, setIsHoveringFilesHeader] = useState(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -179,26 +183,109 @@ export default function MessageInput({
   };
 
   return (
-    <div className="px-6 py-4 bg-dark-bg">
+    <div style={{ 
+      padding: `var(--space-m) var(--page-padding-hor)`, 
+      paddingRight: rightPadding,
+      backgroundColor: 'var(--color-bg)' 
+    }}>
       {/* Uploaded files list */}
       {uploadedFiles.length > 0 && (
-        <div className="mb-3 max-w-4xl mx-auto space-y-2">
-          {uploadedFiles.map((file) => (
-            <div
-              key={file.path}
-              className="flex items-center gap-2 bg-dark-surface border border-dark-border rounded-lg px-3 py-2 text-sm"
-            >
-              <File className="w-4 h-4 text-dark-text-muted flex-shrink-0" />
-              <span className="flex-1 truncate text-dark-text-primary">{file.name}</span>
-              <span className="text-dark-text-muted text-xs">{formatFileSize(file.size)}</span>
-            </div>
-          ))}
+        <div
+          className="max-w-4xl mx-auto"
+          style={{
+            marginBottom: 'var(--space-m)',
+          }}
+        >
+          {/* Shared container for all files (including header/chevron) */}
+          <div
+            style={{
+              backgroundColor: 'var(--color-bg)',
+              border: `1px solid ${
+                uploadedFiles.length > 2 &&
+                !areFilesExpanded &&
+                isHoveringFilesHeader
+                  ? 'var(--color-border-hover)'
+                  : 'var(--color-border)'
+              }`,
+              borderRadius: 'var(--space-s)',
+              padding: 'var(--space-s) var(--space-m)',
+              transition: 'border-color 0.15s ease',
+            }}
+          >
+            {uploadedFiles.length > 2 && (
+              <button
+                type="button"
+                onClick={() => setAreFilesExpanded((prev) => !prev)}
+                className="w-full flex items-center justify-between"
+                style={{
+                  marginBottom: areFilesExpanded ? 'var(--space-xs)' : 0,
+                  padding: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={() => setIsHoveringFilesHeader(true)}
+                onMouseLeave={() => setIsHoveringFilesHeader(false)}
+              >
+                <span
+                  className="p1"
+                  style={{
+                    fontWeight: 500,
+                    color: 'var(--color-txt-icon-2)',
+                  }}
+                >
+                  {uploadedFiles.length} files
+                </span>
+                <ChevronDown
+                  style={{
+                    width: 24,
+                    height: 24,
+                    color: isHoveringFilesHeader
+                      ? 'var(--color-txt-icon-1)'
+                      : 'var(--color-txt-icon-2)',
+                    transform: areFilesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s ease, color 0.15s ease',
+                  }}
+                />
+              </button>
+            )}
+
+            {((uploadedFiles.length <= 2) || areFilesExpanded) && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-xs)',
+                  fontSize: 'var(--font-size-p2)',
+                }}
+              >
+                {uploadedFiles.map((file) => (
+                  <div
+                    key={file.path}
+                    className="flex items-center"
+                    style={{
+                      gap: 'var(--space-s)',
+                    }}
+                  >
+                    <File className="w-4 h-4 text-dark-text-muted flex-shrink-0" />
+                    <span className="flex-1 truncate text-dark-text-primary">{file.name}</span>
+                    <span className="text-dark-text-muted text-xs">{formatFileSize(file.size)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Error message */}
       {error && (
-        <div className="mb-3 max-w-4xl mx-auto text-sm text-accent-red flex items-center gap-1">
+        <div className="max-w-4xl mx-auto flex items-center" style={{ 
+          marginBottom: 'var(--space-m)', 
+          fontSize: 'var(--font-size-p2)', 
+          color: 'var(--color-accent)',
+          gap: 'var(--space-xs)'
+        }}>
           <X className="w-4 h-4" />
           {error}
         </div>
@@ -212,16 +299,38 @@ export default function MessageInput({
         onDrop={handleDrop}
       >
         <div
-          className={`flex flex-col gap-4 bg-dark-input border rounded-lg p-4 transition-all relative ${
-            isDragging
-              ? 'border-accent-red border-2 bg-accent-red/10 scale-[1.02]'
-              : 'border-dark-border-input'
-          }`}
+          className="flex flex-col transition-all relative"
+          style={{
+            gap: 'var(--space-m)',
+            backgroundColor: 'transparent',
+            border: isDragging ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+            borderRadius: 'var(--space-s)',
+            padding: 'var(--space-m)',
+            transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+            transition: 'border-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }
+          }}
         >
           {/* Drag overlay */}
           {isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-accent-red/20 rounded-lg z-10 pointer-events-none">
-              <div className="text-accent-red font-medium text-lg flex items-center gap-2">
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none" style={{ 
+              backgroundColor: 'var(--color-action-item-selected)', 
+              borderRadius: 'var(--space-s)' 
+            }}>
+              <div className="font-medium flex items-center" style={{ 
+                color: 'var(--color-accent)', 
+                fontSize: 'var(--font-size-h3)',
+                gap: 'var(--space-s)'
+              }}>
                 <Paperclip className="w-6 h-6" />
                 Drop files here
               </div>
@@ -235,7 +344,16 @@ export default function MessageInput({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Provide a clear instruction for what your RAG pipeline should be able to do"
-            className="resize-none bg-transparent border-none text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none disabled:opacity-50 text-[15px]"
+            style={{
+              resize: 'none',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: 'var(--color-txt-icon-1)',
+              fontSize: 'var(--font-size-p1)',
+              fontFamily: 'inherit',
+              outline: 'none'
+            }}
+            className="disabled:opacity-50"
             rows={1}
             disabled={disabled}
           />
@@ -247,7 +365,21 @@ export default function MessageInput({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || disabled}
-                className="flex items-center gap-2 px-2 py-1 text-sm text-dark-text-secondary hover:text-dark-text-primary transition-colors disabled:opacity-50"
+                className="flex items-center transition-colors disabled:opacity-50"
+                style={{ 
+                  gap: 'var(--space-s)', 
+                  padding: 'var(--space-xs) var(--space-s)', 
+                  fontSize: 'var(--font-size-p2)', 
+                  color: 'var(--color-txt-icon-2)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isUploading && !disabled) {
+                    e.currentTarget.style.color = 'var(--color-txt-icon-1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--color-txt-icon-2)';
+                }}
                 title="Attach files"
               >
                 {isUploading ? (
@@ -270,7 +402,20 @@ export default function MessageInput({
             {isStreaming ? (
               <button
                 onClick={onCancel}
-                className="flex-shrink-0 w-10 h-10 bg-accent-red hover:bg-accent-red-hover text-white rounded-full flex items-center justify-center transition-colors"
+                className="flex-shrink-0 flex items-center justify-center transition-colors"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: 'var(--color-accent)',
+                  borderRadius: '50%',
+                  color: 'var(--color-white)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-accent-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-accent)';
+                }}
                 title="Stop generation"
               >
                 <StopCircle className="w-5 h-5" />
@@ -279,7 +424,22 @@ export default function MessageInput({
               <button
                 onClick={handleSubmit}
                 disabled={!input.trim() || disabled}
-                className="flex-shrink-0 w-10 h-10 bg-accent-red hover:bg-accent-red-hover disabled:bg-dark-border disabled:text-dark-text-muted text-white rounded-full flex items-center justify-center transition-colors"
+                className="flex-shrink-0 flex items-center justify-center transition-colors"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: (!input.trim() || disabled) ? 'var(--color-border)' : 'var(--color-accent)',
+                  borderRadius: '50%',
+                  color: (!input.trim() || disabled) ? 'var(--color-txt-icon-2)' : 'var(--color-white)'
+                }}
+                onMouseEnter={(e) => {
+                  if (input.trim() && !disabled) {
+                    e.currentTarget.style.backgroundColor = 'var(--color-accent-hover)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = (!input.trim() || disabled) ? 'var(--color-border)' : 'var(--color-accent)';
+                }}
                 title="Send message"
               >
                 {disabled ? (

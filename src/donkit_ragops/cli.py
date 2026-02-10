@@ -113,10 +113,10 @@ def main(
         help="Render checklist panel at start and after each step",
     ),
 ) -> None:
-    """donkit-ragops - LLM-powered CLI agent for building RAG pipelines.
+    """donkit-ragops v0.5.4 - Smart LLM-powered CLI agent for automated RAG pipeline creation.
 
     Start an interactive REPL session where the agent orchestrates built-in MCP servers
-    to plan, chunk, read, evaluate, and load documents into vector stores.
+    to plan, chunk, read, evaluate, and load documents into vector stores with parallel experimentation.
 
     MODES:
       Local mode (default)    - Build RAG pipelines locally using Docker

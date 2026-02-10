@@ -1,4 +1,12 @@
-import { ArrowRight, Building2, CheckCircle2, Cloud, Key, Loader2, Monitor, Plus, Settings } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Copy, Key, Loader2, Plus, Settings } from 'lucide-react';
+import DonkitIcon from '../../assets/donkit-icon-round.svg';
+import LocalModeIcon from '../../assets/icons/laptop-minimal-check.svg';
+import SaaSModeIcon from '../../assets/icons/cloud.svg';
+import EnterpriseModeIcon from '../../assets/icons/building-2.svg';
+import AlertIcon from '../../assets/icons/triangle-alert.svg';
+import ThemeSystemIcon from '../../assets/icons/monitor-cog.svg';
+import ThemeLightIcon from '../../assets/icons/sun.svg';
+import ThemeDarkIcon from '../../assets/icons/moon-star.svg';
 import { useEffect, useState } from 'react';
 import { useSettings } from '../../hooks/useSettings';
 import type { ProviderInfo } from '../../types/settings';
@@ -10,8 +18,11 @@ interface SessionSetupProps {
   error?: string | null;
 }
 
+type Mode = 'local' | 'saas' | 'enterprise';
+type Theme = 'system' | 'light' | 'dark';
+
 export default function SessionSetup({ onStart, loading, error }: SessionSetupProps) {
-  const [mode, setMode] = useState<'local' | 'saas' | 'enterprise'>('local');
+  const [mode, setMode] = useState<Mode | null>(null);
   const [apiToken, setApiToken] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
@@ -19,6 +30,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [checkingConfig, setCheckingConfig] = useState(false);
   const [donkitConfigured, setDonkitConfigured] = useState(false);
+  const [theme, setTheme] = useState<Theme>('system');
 
   const { getProviders } = useSettings();
 
@@ -26,6 +38,26 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
   useEffect(() => {
     loadProviders();
   }, []);
+
+  // Apply UI colour scheme (same logic as portal Profile)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'system') {
+      const m = window.matchMedia?.('(prefers-color-scheme: dark)');
+      if (!m) return;
+      const apply = () => {
+        if (m.matches) {
+          root.removeAttribute('data-theme');
+        } else {
+          root.setAttribute('data-theme', 'light');
+        }
+      };
+      apply();
+      m.addEventListener('change', apply);
+      return () => m.removeEventListener('change', apply);
+    }
+    root.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const loadProviders = async () => {
     setCheckingConfig(true);
@@ -53,24 +85,18 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
     }
   };
 
-  const handleStart = async () => {
-    if (mode === 'saas') {
-      // If donkit is configured and no manual token entered, use saved token
-      if (donkitConfigured && !showTokenInput) {
-        // Start directly with saved token
-        await onStart({
-          enterprise_mode: true,
-          api_token: undefined,  // Backend will use saved token
-          provider: undefined,
-        });
-        return;
-      }
+  const handleCopyHelpCommand = () => {
+    const command = 'donkit-ragops --help';
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(command).catch((err) => {
+        console.error('Failed to copy help command:', err);
+      });
+    }
+  };
 
-      // If not configured and token input not shown yet, show it
-      if (!donkitConfigured && !showTokenInput) {
-        setShowTokenInput(true);
-        return;
-      }
+  const handleStart = async () => {
+    if (!mode) {
+      return;
     }
 
     if (mode === 'local' && configuredProviders.length === 0) {
@@ -88,9 +114,15 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
 
   const handleModeChange = (newMode: 'local' | 'saas' | 'enterprise') => {
     setMode(newMode);
-    setShowTokenInput(false);
-    setApiToken('');
     setShowSetupWizard(false);
+
+    if (newMode === 'saas') {
+      // Immediately show API token input for SaaS mode
+      setShowTokenInput(true);
+    } else {
+      setShowTokenInput(false);
+      setApiToken('');
+    }
   };
 
   const handleSetupComplete = async () => {
@@ -113,36 +145,72 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-bg to-dark-surface flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
+    <div className="min-h-screen flex flex-col" style={{ 
+      paddingTop: 'var(--page-padding-vert)',
+      paddingBottom: 'var(--space-l)',
+      paddingLeft: 'var(--page-padding-hor)',
+      paddingRight: 'var(--page-padding-hor)',
+      backgroundColor: 'var(--color-bg)'
+    }}>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-2xl w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-dark-text-primary mb-2">RAGOps Agent</h1>
-          <p className="text-dark-text-secondary">Choose your operating mode to get started</p>
+        <div className="text-center" style={{ marginBottom: 0 }}>
+          <div
+            className="flex items-center justify-center"
+            style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-l)' }}
+          >
+            <img
+              src={DonkitIcon}
+              alt="Donkit"
+              width={40}
+              height={40}
+              style={{ borderRadius: 'var(--space-s)' }}
+            />
+            <h1 className="h1" style={{ marginBottom: 0 }}>RAGOps Agent</h1>
+          </div>
+          <h3 className="h3" style={{ marginBottom: 'var(--space-m)', color: 'var(--color-txt-icon-2)' }}>
+            Choose your operating mode to get started:
+          </h3>
         </div>
 
         {/* Mode Selection */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3" style={{ gap: 'var(--space-m)', marginBottom: 'var(--space-l)' }}>
           {/* Local Mode */}
           <button
             onClick={() => handleModeChange('local')}
-            className={`
-              p-6 rounded-xl border-2 transition-all h-full
-              ${
-                mode === 'local'
-                  ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
-                  : 'border-dark-border bg-dark-surface hover:border-dark-text-muted'
-              }
-            `}
+            style={{
+              padding: 'var(--space-l)',
+              borderRadius: 'var(--space-s)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: mode === 'local' ? 'var(--color-action-item-selected)' : 'transparent',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+              height: '100%'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-action-item-hover)';
+              e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = mode === 'local'
+                ? 'var(--color-action-item-selected)'
+                : 'transparent';
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
           >
             <div className="flex flex-col items-center text-center h-full">
-              <Monitor
-                className={`w-12 h-12 mb-3 ${
-                  mode === 'local' ? 'text-accent-blue' : 'text-dark-text-muted'
-                }`}
+              <img
+                src={LocalModeIcon}
+                alt=""
+                className="icon-txt1"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  marginBottom: 'var(--space-m)',
+                }}
               />
-              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Local</h3>
-              <p className="text-sm text-dark-text-secondary">
+              <h3 className="h4" style={{ marginBottom: 'var(--space-xs)', fontWeight: 500 }}>Local</h3>
+              <p className="p2">
                 Run everything locally with your own LLM provider
               </p>
               <div className="flex-1" />
@@ -154,7 +222,14 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                       {configuredProviders.length} {configuredProviders.length === 1 ? 'provider' : 'providers'}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-orange/10 text-accent-orange rounded">
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-1"
+                      style={{
+                        backgroundColor: 'var(--color-action-item-selected)',
+                        color: 'var(--color-txt-icon-1)',
+                        borderRadius: 'var(--space-xs)',
+                      }}
+                    >
                       <Settings className="w-3 h-3" />
                       Setup required
                     </span>
@@ -169,23 +244,38 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           {/* SaaS Mode */}
           <button
             onClick={() => handleModeChange('saas')}
-            className={`
-              p-6 rounded-xl border-2 transition-all h-full
-              ${
-                mode === 'saas'
-                  ? 'border-accent-red bg-accent-red/10 shadow-lg shadow-accent-red/20'
-                  : 'border-dark-border bg-dark-surface hover:border-dark-text-muted'
-              }
-            `}
+            style={{
+              padding: 'var(--space-l)',
+              borderRadius: 'var(--space-s)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: mode === 'saas' ? 'var(--color-action-item-selected)' : 'transparent',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+              height: '100%'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-action-item-hover)';
+              e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = mode === 'saas'
+                ? 'var(--color-action-item-selected)'
+                : 'transparent';
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
           >
             <div className="flex flex-col items-center text-center h-full">
-              <Cloud
-                className={`w-12 h-12 mb-3 ${
-                  mode === 'saas' ? 'text-accent-red' : 'text-dark-text-muted'
-                }`}
+              <img
+                src={SaaSModeIcon}
+                alt=""
+                className="icon-txt1"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  marginBottom: 'var(--space-m)',
+                }}
               />
-              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">SaaS</h3>
-              <p className="text-sm text-dark-text-secondary">
+              <h3 className="h4" style={{ marginBottom: 'var(--space-xs)', fontWeight: 500 }}>SaaS</h3>
+              <p className="p2">
                 Connect to Donkit Cloud for managed RAG pipelines
               </p>
               <div className="flex-1" />
@@ -197,7 +287,14 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                       API Key configured
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-orange/10 text-accent-orange rounded">
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-1"
+                      style={{
+                        backgroundColor: 'var(--color-action-item-selected)',
+                        color: 'var(--color-txt-icon-1)',
+                        borderRadius: 'var(--space-xs)',
+                      }}
+                    >
                       <Key className="w-3 h-3" />
                       API Key required
                     </span>
@@ -210,14 +307,30 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           </button>
 
           {/* Enterprise Mode (On-Prem) */}
-          <button
-            disabled
-            className="p-6 rounded-xl border-2 transition-all border-dark-border bg-dark-surface opacity-50 cursor-not-allowed h-full"
+          <div
+            style={{
+              padding: 'var(--space-l)',
+              borderRadius: 'var(--space-s)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'transparent',
+              opacity: 0.5,
+              cursor: 'not-allowed',
+              height: '100%'
+            }}
           >
-            <div className="flex flex-col items-center text-center h-full">
-              <Building2 className="w-12 h-12 mb-3 text-dark-text-muted" />
-              <h3 className="font-semibold text-lg mb-1 text-dark-text-primary">Enterprise</h3>
-              <p className="text-sm text-dark-text-secondary">
+            <div className="flex flex-col items-center text-center h-full" style={{ opacity: 1, cursor: 'default' }}>
+              <img
+                src={EnterpriseModeIcon}
+                alt=""
+                className="icon-txt1"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  marginBottom: 'var(--space-m)',
+                }}
+              />
+              <h3 className="h4" style={{ marginBottom: 'var(--space-xs)', fontWeight: 500 }}>Enterprise</h3>
+              <p className="p2">
                 Deploy locally on-premises or within your corporate VPC
               </p>
               <div className="flex-1" />
@@ -226,53 +339,103 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                   href="https://donkit.ai/?utm_source=app"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-dark-bg text-dark-text-muted rounded hover:text-dark-text-primary transition-colors"
+                  className="btn-secondary"
+                  style={{
+                    fontSize: 'var(--font-size-p2)',
+                    padding: 'var(--space-xs) var(--space-m)',
+                    cursor: 'pointer',
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   Contact Us
                 </a>
               </div>
             </div>
-          </button>
+          </div>
         </div>
 
         {/* Provider selection for Local Mode */}
         {mode === 'local' && configuredProviders.length > 0 && !checkingConfig && (
-          <div className="mb-6 bg-dark-surface rounded-xl p-6 border border-dark-border shadow-sm">
-            <h3 className="text-sm font-semibold text-dark-text-primary mb-3">Select Provider</h3>
+          <div style={{ 
+            marginBottom: 'var(--space-l)', 
+            backgroundColor: 'transparent', 
+            borderRadius: 'var(--space-s)', 
+            padding: 'var(--space-l)', 
+            border: '1px solid var(--color-border)' 
+          }}>
+            <h3 className="p2" style={{ fontWeight: 500, marginBottom: 'var(--space-m)' }}>Select Provider</h3>
             <div className="space-y-2">
-              {configuredProviders.map((provider) => (
-                <button
-                  key={provider.name}
-                  onClick={() => setSelectedProvider(provider.name)}
-                  className={`
-                    w-full p-3 rounded-lg border transition-all text-left
-                    ${
-                      selectedProvider === provider.name
-                        ? 'border-accent-blue bg-accent-blue/10'
-                        : 'border-dark-border bg-dark-bg hover:border-dark-text-muted'
-                    }
-                  `}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-dark-text-primary">{provider.display_name}</div>
-                      <div className="text-xs text-dark-text-muted">{provider.description}</div>
+              {configuredProviders.map((provider) => {
+                const isSelected = selectedProvider === provider.name;
+                return (
+                  <button
+                    key={provider.name}
+                    onClick={() => setSelectedProvider(provider.name)}
+                    className="w-full text-left"
+                    style={{
+                      padding: 'var(--space-m)',
+                      borderRadius: 'var(--space-xs)',
+                      border: '1px solid var(--color-border)',
+                      backgroundColor: isSelected ? 'var(--color-action-item-selected)' : 'transparent',
+                      color: 'var(--color-txt-icon-1)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--color-action-item-hover)';
+                      e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isSelected
+                        ? 'var(--color-action-item-selected)'
+                        : 'transparent';
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div style={{ fontWeight: 500, color: 'var(--color-txt-icon-1)' }}>
+                          {provider.display_name}
+                        </div>
+                        <div style={{ fontSize: 'var(--font-size-p2)', color: 'var(--color-txt-icon-2)', marginTop: 'var(--space-xs)' }}>
+                          {provider.description}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-txt-icon-1)' }} />
+                      )}
                     </div>
-                    {selectedProvider === provider.name && (
-                      <CheckCircle2 className="w-5 h-5 text-accent-blue flex-shrink-0" />
-                    )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Configuration hint for Local Mode */}
         {mode === 'local' && configuredProviders.length === 0 && !checkingConfig && (
-          <div className="mb-6 p-4 bg-accent-blue/10 border border-accent-blue/30 rounded-lg">
-            <p className="text-sm text-dark-text-primary">
+          <div style={{ 
+            marginBottom: 'var(--space-l)', 
+            padding: 'var(--space-m)', 
+            backgroundColor: 'transparent', 
+            border: '1px solid var(--color-border)', 
+            borderRadius: 'var(--space-s)', 
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 'var(--space-m)',
+          }}>
+            <img
+              src={AlertIcon}
+              alt=""
+              className="icon-txt2"
+              style={{
+                width: 24,
+                height: 24,
+                marginTop: 2,
+                flexShrink: 0,
+              }}
+            />
+            <p className="p2">
               <strong>First time setup:</strong> You'll need to configure at least one LLM provider (OpenAI, Vertex AI, etc.) before starting.
               Click "Setup Provider" below to get started.
             </p>
@@ -281,9 +444,15 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
 
         {/* API Token Input (SaaS only) */}
         {mode === 'saas' && showTokenInput && (
-          <div className="mb-6 bg-dark-surface rounded-xl p-6 border border-dark-border shadow-sm">
-            <label className="block mb-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-dark-text-primary mb-2">
+          <div style={{ 
+            marginBottom: 'var(--space-l)', 
+            backgroundColor: 'transparent', 
+            borderRadius: 'var(--space-s)', 
+            padding: 'var(--space-l)', 
+            border: '1px solid var(--color-border)' 
+          }}>
+            <label className="block" style={{ marginBottom: 'var(--space-s)' }}>
+              <div className="flex items-center gap-2 p2" style={{ fontWeight: 500, marginBottom: 'var(--space-s)' }}>
                 <Key className="w-4 h-4" />
                 API Token (optional)
               </div>
@@ -292,10 +461,37 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 value={apiToken}
                 onChange={(e) => setApiToken(e.target.value)}
                 placeholder="Enter your API token or leave empty to use saved token"
-                className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-dark-text-primary placeholder:text-dark-text-muted focus:ring-2 focus:ring-accent-red focus:border-transparent"
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-s) var(--space-m)',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--space-s)',
+                  color: 'var(--color-txt-icon-1)',
+                  fontFamily: 'inherit',
+                  fontSize: 'var(--font-size-p1)',
+                  transition: 'border-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.matches(':focus')) {
+                    e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.matches(':focus')) {
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--color-border-hover)';
+                  e.target.style.outline = 'none';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-border)';
+                }}
               />
             </label>
-            <p className="text-xs text-dark-text-muted mt-2">
+            <p className="p2" style={{ marginTop: 'var(--space-s)', color: 'var(--color-txt-icon-2)' }}>
               If you've already logged in via CLI (<code className="bg-dark-bg px-2 py-0.5 rounded">donkit-ragops login</code>), you can
               leave this empty.
             </p>
@@ -303,63 +499,69 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
         )}
 
         {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-accent-red/10 border border-accent-red/30 rounded-lg">
-            <p className="text-accent-red text-sm">{error}</p>
+        {mode && error && (
+          <div style={{ 
+            marginBottom: 'var(--space-l)', 
+            padding: 'var(--space-m)', 
+            backgroundColor: 'rgba(234, 100, 100, 0.1)', 
+            border: '1px solid rgba(234, 100, 100, 0.3)', 
+            borderRadius: 'var(--space-s)' 
+          }}>
+            <p className="p2" style={{ color: 'var(--color-accent)' }}>{error}</p>
           </div>
         )}
 
-        {/* Start Button */}
-        <button
-          onClick={handleStart}
-          disabled={loading || checkingConfig}
-          className={`
-            w-full py-4 rounded-xl font-semibold text-white
-            flex items-center justify-center gap-2
-            transition-all
-            ${
-              mode === 'local'
-                ? 'bg-accent-blue hover:bg-accent-blue-hover'
-                : mode === 'saas'
-                  ? 'bg-accent-red hover:bg-accent-red-hover'
-                  : 'bg-dark-text-muted'
-            }
-            ${loading || checkingConfig ? 'opacity-50 cursor-not-allowed' : 'shadow-lg hover:shadow-xl'}
-          `}
-        >
-          {loading || checkingConfig ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {checkingConfig ? 'Checking configuration...' : 'Starting...'}
-            </>
-          ) : (
-            <>
-              {mode === 'saas' && !donkitConfigured && !showTokenInput ? (
-                <>
-                  Next
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              ) : mode === 'local' && configuredProviders.length === 0 ? (
-                <>
-                  <Settings className="w-5 h-5" />
-                  Setup Provider
-                </>
-              ) : (
-                <>
-                  Start {mode === 'local' ? 'Local' : 'SaaS'} Mode
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </>
-          )}
-        </button>
+        {/* Start Button (primary, accent red) – only after mode is selected */}
+        {mode && (
+          <button
+            onClick={handleStart}
+            disabled={loading || checkingConfig}
+            className="btn-primary btn-primary--full"
+          >
+            {loading || checkingConfig ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {checkingConfig ? 'Checking configuration...' : 'Starting...'}
+              </>
+            ) : (
+              <>
+                {mode === 'local' && configuredProviders.length === 0 ? (
+                  <>
+                    <Settings className="w-5 h-5" />
+                    Setup Provider
+                  </>
+                ) : (
+                  <>
+                    Start {mode === 'local' ? 'Local' : 'SaaS'} Mode
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </>
+            )}
+          </button>
+        )}
 
         {/* Add/Manage providers button for local mode */}
         {mode === 'local' && (
           <button
             onClick={handleAddProvider}
             disabled={loading || checkingConfig}
-            className="w-full mt-3 py-2 text-sm text-dark-text-muted hover:text-dark-text-primary flex items-center justify-center gap-2 transition-colors"
+            className="w-full flex items-center justify-center transition-colors"
+            style={{
+              marginTop: 'var(--space-m)',
+              padding: 'var(--space-s) 0',
+              fontSize: 'var(--font-size-p2)',
+              color: 'var(--color-txt-icon-2)',
+              gap: 'var(--space-s)'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading && !checkingConfig) {
+                e.currentTarget.style.color = 'var(--color-txt-icon-1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-txt-icon-2)';
+            }}
           >
             <Plus className="w-4 h-4" />
             {configuredProviders.length === 0 ? 'Add Provider' : 'Add/Manage Providers'}
@@ -371,16 +573,256 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           <button
             onClick={() => setShowTokenInput(true)}
             disabled={loading || checkingConfig}
-            className="w-full mt-3 py-2 text-sm text-dark-text-muted hover:text-dark-text-primary flex items-center justify-center gap-2 transition-colors"
+            className="w-full flex items-center justify-center transition-colors"
+            style={{
+              marginTop: 'var(--space-m)',
+              padding: 'var(--space-s) 0',
+              fontSize: 'var(--font-size-p2)',
+              color: 'var(--color-txt-icon-2)',
+              gap: 'var(--space-s)'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading && !checkingConfig) {
+                e.currentTarget.style.color = 'var(--color-txt-icon-1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-txt-icon-2)';
+            }}
           >
             <Key className="w-4 h-4" />
             Use a different API key
           </button>
         )}
 
-        {/* Info Footer */}
-        <div className="mt-8 text-center text-sm text-dark-text-muted">
-          <p>Need help? Run <code className="bg-dark-surface border border-dark-border px-2 py-1 rounded">donkit-ragops --help</code></p>
+        </div>
+      </div>
+
+      {/* Info Footer - fixed to bottom */}
+      <div className="w-full flex justify-center">
+        <div className="max-w-2xl w-full"
+          style={{
+            marginTop: 'var(--space-xl)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            gap: 'var(--space-l)',
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Help command block */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 'var(--space-xs)',
+            }}
+          >
+            <span className="p2" style={{ color: 'var(--color-txt-icon-2)' }}>
+              Need help?
+            </span>
+            <div
+              style={{
+                position: 'relative',
+                maxWidth: '100%',
+              }}
+            >
+              <code
+                style={{
+                  display: 'block',
+                  backgroundColor: 'var(--color-action-item-selected)',
+                  border: '1px solid var(--color-border)',
+                  padding: 'var(--space-xs) var(--space-xl) var(--space-xs) var(--space-s)',
+                  borderRadius: 'var(--space-xs)',
+                  fontFamily: 'inherit',
+                  fontSize: 'var(--font-size-p2)',
+                  color: 'var(--color-txt-icon-2)',
+                }}
+              >
+                donkit-ragops --help
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyHelpCommand}
+                aria-label="Copy help command"
+                style={{
+                  position: 'absolute',
+                  right: '4px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '24px',
+                  height: '24px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  borderRadius: '50%',
+                  backgroundColor: 'transparent',
+                  color: 'var(--color-txt-icon-2)',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-txt-icon-1)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-txt-icon-2)';
+                }}
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* UI colour scheme (copied from portal Profile) */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 'var(--space-xs)',
+            }}
+          >
+            <span
+              className="p2"
+              style={{
+                fontWeight: 300,
+                color: 'var(--color-txt-icon-2)',
+              }}
+            >
+              UI colour scheme
+            </span>
+            <div
+              className="flex items-center"
+              role="group"
+              aria-label="UI colour scheme"
+              style={{ gap: 'var(--space-xs)' }}
+            >
+              <button
+                type="button"
+                onClick={() => setTheme('system')}
+                aria-pressed={theme === 'system'}
+                style={{
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                  borderRadius: 'var(--space-xs)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor:
+                    theme === 'system' ? 'var(--color-action-item-selected)' : 'transparent',
+                  color: 'var(--color-txt-icon-1)',
+                  cursor: 'pointer',
+                  transition:
+                    'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                }}
+                title="System"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    'var(--color-action-item-hover)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    theme === 'system' ? 'var(--color-action-item-selected)' : 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border)';
+                }}
+              >
+                <img
+                  src={ThemeSystemIcon}
+                  alt=""
+                  className="icon-txt1"
+                  style={{ width: 24, height: 24 }}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                aria-pressed={theme === 'light'}
+                style={{
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                  borderRadius: 'var(--space-xs)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor:
+                    theme === 'light' ? 'var(--color-action-item-selected)' : 'transparent',
+                  color: 'var(--color-txt-icon-1)',
+                  cursor: 'pointer',
+                  transition:
+                    'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                }}
+                title="Light"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    'var(--color-action-item-hover)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    theme === 'light' ? 'var(--color-action-item-selected)' : 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border)';
+                }}
+              >
+                <img
+                  src={ThemeLightIcon}
+                  alt=""
+                  className="icon-txt1"
+                  style={{ width: 24, height: 24 }}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                aria-pressed={theme === 'dark'}
+                style={{
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                  borderRadius: 'var(--space-xs)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor:
+                    theme === 'dark' ? 'var(--color-action-item-selected)' : 'transparent',
+                  color: 'var(--color-txt-icon-1)',
+                  cursor: 'pointer',
+                  transition:
+                    'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                }}
+                title="Dark"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    'var(--color-action-item-hover)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    theme === 'dark' ? 'var(--color-action-item-selected)' : 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    'var(--color-border)';
+                }}
+              >
+                <img
+                  src={ThemeDarkIcon}
+                  alt=""
+                  className="icon-txt1"
+                  style={{ width: 24, height: 24 }}
+                />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
