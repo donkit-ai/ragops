@@ -32,6 +32,7 @@ export default function MessageInput({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFilesExpanded, setIsFilesExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [areFilesExpanded, setAreFilesExpanded] = useState(true);
@@ -43,6 +44,13 @@ export default function MessageInput({
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [input]);
+
+  // Reset uploaded files when session changes
+  useEffect(() => {
+    setUploadedFiles([]);
+    setError(null);
+    setIsFilesExpanded(false);
+  }, [sessionId]);
 
   const handleSubmit = () => {
     if (input.trim() && !isStreaming && !disabled) {
