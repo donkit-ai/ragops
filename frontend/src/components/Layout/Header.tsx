@@ -1,4 +1,4 @@
-import { Database } from 'lucide-react';
+import DonkitIcon from '../../assets/donkit-icon-round.svg';
 
 interface HeaderProps {
   provider?: string;
@@ -7,24 +7,37 @@ interface HeaderProps {
 
 export default function Header({ provider, model }: HeaderProps) {
   return (
-    <header className="bg-dark-surface border-b border-dark-border px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-accent-red rounded-lg flex items-center justify-center">
-            <Database className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-dark-text-primary">RAGOps</h1>
-            <p className="text-sm text-dark-text-secondary">AI-Powered RAG Pipeline Builder</p>
-          </div>
-        </div>
-        {provider && (
-          <div className="text-sm text-dark-text-secondary">
-            <span className="font-medium">{provider}</span>
-            {model && <span className="text-dark-text-muted ml-1">/ {model}</span>}
-          </div>
-        )}
+    <header
+      style={{
+        padding: `var(--space-xs) var(--page-padding-hor)`,
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+    >
+      <div className="flex items-center" style={{ gap: 'var(--space-s)' }}>
+        <img
+          src={DonkitIcon}
+          alt="Donkit"
+          width={32}
+          height={32}
+          style={{ borderRadius: 'var(--space-s)' }}
+        />
+        <p className="p2" style={{ margin: 0, color: 'var(--color-txt-icon-1)' }}>
+          <span style={{ fontWeight: 600 }}>RAGOps</span>
+          <span style={{ marginLeft: 'var(--space-s)', fontWeight: 300 }}>
+            AI-Powered RAG Pipeline Builder
+          </span>
+        </p>
       </div>
+      {provider && (
+        <div className="p2">
+          <span style={{ fontWeight: 500 }}>{provider}</span>
+          {model && <span style={{ marginLeft: 'var(--space-xs)', color: 'var(--color-txt-icon-2)' }}>/ {model}</span>}
+        </div>
+      )}
     </header>
   );
 }

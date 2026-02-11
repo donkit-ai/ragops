@@ -2,98 +2,498 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #ffffff;
-  background-color: #0a0a0a;
-}
+/* CSS Variables - must be in base layer to be available everywhere */
+@layer base {
+  :root {
+    /* Basic Colours - White */
+  --color-white: #FFFAFA;
+  --color-white-60: rgba(255, 250, 250, 0.6);
+  --color-white-20: rgba(255, 250, 250, 0.2);
+  --color-white-10: rgba(255, 250, 250, 0.1);
 
-body {
-  margin: 0;
+  /* Basic Colours - Black */
+  --color-black: #0E0F11;
+  --color-black-80: rgba(14, 15, 17, 0.8);
+  --color-black-60: rgba(14, 15, 17, 0.6);
+  --color-black-20: rgba(14, 15, 17, 0.2);
+  --color-black-10: rgba(14, 15, 17, 0.1);
+  --color-black-05: rgba(14, 15, 17, 0.05);
+
+  /* Basic Colours - Red */
+  --color-red: #EA6464;
+  --color-red-90: rgba(234, 100, 100, 0.9);
+
+  /* Alerts */
+  --color-error: #FF1200;
+  --color-neutral: #FFBB00;
+  --color-success: #00C86E;
+
+  /* Breakpoints (Artboard min-width) */
+  --breakpoint-mobile: 375px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1280px;
+
+  /* Sizechart (Spacing) - Mobile (default) */
+  --space-xs: 8px;
+  --space-s: 12px;
+  --space-m: 16px;
+  --space-l: 24px;
+  --space-xl: 32px;
+
+  /* Page (Layout) - Mobile (default) */
+  --page-padding-hor: 16px;
+  --page-padding-vert: 32px;
+  --page-header-height: 64px;
+
+  /* Typography - Mobile (default) */
+  --font-size-h1: 36px;
+  --font-size-h2: 28px;
+  --font-size-h3: 24px;
+  --font-size-h4: 16px;
+  --font-size-p1: 16px;
+  --font-size-p2: 12px;
+
+  /* Dark Scheme (default) - Semantic Colors */
+  --color-bg: var(--color-black);
+  --color-border: var(--color-white-20);
+  --color-border-hover: var(--color-white-60);
+  --color-txt-icon-1: var(--color-white);
+  --color-txt-icon-2: var(--color-white-60);
+  --color-accent: var(--color-red);
+  --color-accent-hover: var(--color-red-90);
+  --color-action-item-selected: var(--color-white-10);
+  --color-action-item-hover: var(--color-white-20);
+
+    /* Base typography settings */
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  [data-theme="light"] {
+    /* Light Scheme - Semantic Colors */
+  --color-bg: var(--color-white);
+  --color-border: var(--color-black-20);
+  --color-border-hover: var(--color-black-60);
+  --color-txt-icon-1: var(--color-black);
+  --color-txt-icon-2: var(--color-black-60);
+  --color-accent: var(--color-red);
+  --color-accent-hover: var(--color-red-90);
+    --color-action-item-selected: var(--color-black-05);
+    --color-action-item-hover: var(--color-black-10);
+  }
+
+  /* Sizechart & Page - Tablet */
+  @media (min-width: 768px) {
+    :root {
+      --space-xs: 8px;
+      --space-s: 16px;
+      --space-m: 20px;
+      --space-l: 28px;
+      --space-xl: 40px;
+      --page-padding-hor: 24px;
+      --page-padding-vert: 48px;
+      --page-header-height: 72px;
+    }
+  }
+
+  /* Sizechart & Page - Desktop */
+  @media (min-width: 1280px) {
+    :root {
+      --space-xs: 8px;
+      --space-s: 16px;
+      --space-m: 16px;
+      --space-l: 32px;
+      --space-xl: 48px;
+      --page-padding-hor: 64px;
+      --page-padding-vert: 64px;
+      --page-header-height: 72px;
+    }
+  }
+
+  /* Typography - Tablet */
+  @media (min-width: 768px) {
+    :root {
+      --font-size-h1: 40px;
+      --font-size-h2: 32px;
+      --font-size-h3: 28px;
+      --font-size-h4: 20px;
+      --font-size-p1: 16px;
+      --font-size-p2: 16px;
+    }
+  }
+
+  /* Typography - Desktop */
+  @media (min-width: 1280px) {
+    :root {
+      --font-size-h1: 48px;
+      --font-size-h2: 36px;
+      --font-size-h3: 32px;
+      --font-size-h4: 24px;
+      --font-size-p1: 20px;
+      --font-size-p2: 16px;
+    }
+  }
+
+  body {
+    margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg);
+  color: var(--color-txt-icon-1);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  code {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  }
 }
 
-/* Custom dark scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+/* Typography utility classes - in components layer */
+@layer components {
+    h1,
+  .h1 {
+    font-size: var(--font-size-h1);
+    font-weight: 300;
+    line-height: 1.2;
+    color: var(--color-txt-icon-1);
+    margin-bottom: var(--space-l);
+  }
 
-::-webkit-scrollbar-track {
-  background: #1a1a1a;
-}
+  h2,
+  .h2 {
+    font-size: var(--font-size-h2);
+    font-weight: 300;
+    line-height: 1.3;
+    color: var(--color-txt-icon-1);
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 4px;
-}
+  h3,
+  .h3 {
+    font-size: var(--font-size-h3);
+    font-weight: 300;
+    line-height: 1.3;
+    color: var(--color-txt-icon-1);
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
-}
+  h4,
+  .h4 {
+    font-size: var(--font-size-h4);
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--color-txt-icon-1);
+  }
 
-/* Markdown styles for dark theme */
-.prose {
-  color: #ffffff;
-  max-width: none;
-}
+  p,
+  .p1 {
+    font-size: var(--font-size-p1);
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--color-txt-icon-1);
+  }
 
-.prose p {
-  color: #e5e5e5;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-}
+  .p2 {
+    font-size: var(--font-size-p2);
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--color-txt-icon-2);
+  }
 
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-  color: #ffffff;
-}
+  /* Custom dark scrollbar - hidden by default, shows on hover/scroll */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
 
-.prose pre {
-  background: #1a1a1a;
-  color: #e5e5e5;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  overflow-x: auto;
-  border: 1px solid #2a2a2a;
-}
+  /* Show scrollbar on hover for scrollable elements */
+  *:hover {
+    scrollbar-color: var(--color-border) transparent;
+  }
 
-.prose code {
-  background: #2a2a2a;
-  color: #ffffff;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.875em;
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  /* Show scrollbar thumb on hover */
+  *:hover::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+  }
+
+  /* Markdown styles for dark theme */
+  .prose {
+    color: var(--color-txt-icon-1);
+    max-width: none;
+  }
+
+  .prose p {
+    color: var(--color-txt-icon-1);
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .prose p:first-child {
+    margin-top: 0;
+  }
+
+  .prose.p1 p {
+    font-size: var(--font-size-p1);
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    color: var(--color-txt-icon-1);
+  }
+
+  .prose pre {
+    background: var(--color-action-item-selected);
+    color: var(--color-txt-icon-1);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+  }
+
+  .prose code {
+    background: var(--color-action-item-hover);
+    color: var(--color-txt-icon-1);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-weight: 500;
+  }
+
+  .prose pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .prose a {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .prose a:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+  }
+
+  .prose strong {
+    color: var(--color-txt-icon-1);
+    font-weight: 600;
+  }
+
+  .prose ul, .prose ol {
+    color: var(--color-txt-icon-1);
+  }
+
+  .prose blockquote {
+    border-left-color: var(--color-border);
+    color: var(--color-txt-icon-2);
+  }
+
+  /* =====================================
+   * Shared UI elements (buttons, inputs)
+   * Mirrored from portal-frontend
+   * ===================================*/
+
+  .btn-primary {
+    display: inline-flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-s) var(--space-m);
+  font-size: var(--font-size-p1);
   font-weight: 500;
+  font-family: inherit;
+  color: var(--color-white);
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--space-s);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.prose pre code {
-  background: transparent;
-  padding: 0;
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary--full {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-s) var(--space-m);
+  font-size: var(--font-size-p1);
+  font-weight: 400;
+  font-family: inherit;
+  color: var(--color-txt-icon-1);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--space-s);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.prose a {
-  color: #3b82f6;
-  text-decoration: none;
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-action-item-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .input {
+    width: 100%;
+  padding: var(--space-s) var(--space-m);
+  font-size: var(--font-size-p1);
+  font-family: inherit;
+  color: var(--color-txt-icon-1);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--space-s);
+  transition: border-color 0.2s ease;
 }
 
-.prose a:hover {
-  color: #60a5fa;
-  text-decoration: underline;
-}
+  .input::placeholder {
+    color: var(--color-txt-icon-2);
+  }
 
-.prose strong {
-  color: #ffffff;
-  font-weight: 600;
-}
+  .input:hover:not(:disabled) {
+    border-color: var(--color-border-hover);
+  }
 
-.prose ul, .prose ol {
-  color: #e5e5e5;
-}
+  .input:focus,
+  .input:active {
+    outline: none;
+    border-color: var(--color-border-hover);
+  }
 
-.prose blockquote {
-  border-left-color: #2a2a2a;
-  color: #a0a0a0;
+  /* Apply hover styles to all input and textarea elements */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  input[type="tel"],
+  textarea,
+  select {
+    border-color: var(--color-border);
+    transition: border-color 0.2s ease;
+  }
+
+  input[type="text"]:hover:not(:disabled),
+  input[type="email"]:hover:not(:disabled),
+  input[type="password"]:hover:not(:disabled),
+  input[type="number"]:hover:not(:disabled),
+  input[type="search"]:hover:not(:disabled),
+  input[type="url"]:hover:not(:disabled),
+  input[type="tel"]:hover:not(:disabled),
+  textarea:hover:not(:disabled),
+  select:hover:not(:disabled) {
+    border-color: var(--color-border-hover);
+  }
+
+  input[type="text"]:focus,
+  input[type="text"]:active,
+  input[type="email"]:focus,
+  input[type="email"]:active,
+  input[type="password"]:focus,
+  input[type="password"]:active,
+  input[type="number"]:focus,
+  input[type="number"]:active,
+  input[type="search"]:focus,
+  input[type="search"]:active,
+  input[type="url"]:focus,
+  input[type="url"]:active,
+  input[type="tel"]:focus,
+  input[type="tel"]:active,
+  textarea:focus,
+  textarea:active,
+  select:focus,
+  select:active {
+    outline: none;
+    border-color: var(--color-border-hover);
+  }
+
+  .card {
+    background-color: var(--color-action-item-selected);
+    border-radius: var(--space-s);
+    border: 1px solid var(--color-border);
+  }
+
+  .card--padded {
+    padding: var(--space-l);
+  }
+
+  /* Checklist panel mobile overlay */
+  .checklist-panel-mobile {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    background-color: var(--color-bg);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (min-width: 801px) {
+    .checklist-panel-mobile {
+      position: relative;
+      right: auto;
+      top: auto;
+      bottom: auto;
+      z-index: auto;
+      box-shadow: none;
+    }
+  }
+
+  /* Icon helpers that follow text colors across themes */
+  .icon-txt1 {
+    /* White on dark, original (dark) on light via data-theme */
+    filter: brightness(0) invert(1);
+  }
+
+  [data-theme="light"] .icon-txt1 {
+    filter: none;
+  }
+
+  .icon-txt2 {
+    /* Secondary text color: slightly dimmer */
+    filter: brightness(0) invert(1);
+    opacity: 0.6;
+  }
+
+  [data-theme="light"] .icon-txt2 {
+    filter: none;
+    opacity: 0.6;
+  }
 }

@@ -34,6 +34,8 @@ def _print_checklist_to_ui(checklist_data: dict[str, Any]) -> None:
             icon = "[green]✓[/green]"
         elif status == "in_progress":
             icon = "[yellow]⚡[/yellow]"
+        elif status == "failed":
+            icon = "[red]✗[/red]"
         else:  # pending
             icon = "[dim]○[/dim]"
 

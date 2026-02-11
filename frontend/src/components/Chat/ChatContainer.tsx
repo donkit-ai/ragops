@@ -27,7 +27,20 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [, setCurrentToolCalls] = useState<ToolCall[]>([]);
   const [interactiveRequests, setInteractiveRequests] = useState<InteractiveRequest[]>([]);
   const { checklist, updateFromMessage } = useChecklist(sessionId);
+  const [, setIsChecklistCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const dialogsRef = useRef<HTMLDivElement>(null);
+
+  // Track window size for mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 800);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -397,16 +410,40 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     sendChat(uploadMessage, true);  // silent=true
   }, [sendChat]);
 
+  // Calculate right padding for mobile when checklist is visible (mobile only)
+  const collapsedChecklistWidth = '64px'; // w-16 = 4rem = 64px
+  const mobileRightPadding = isMobile && checklist.hasChecklist
+    ? `calc(var(--page-padding-hor) + ${collapsedChecklistWidth})`
+    : 'var(--page-padding-hor)';
+  
+  // For MessageList, use space-m as base instead of page-padding-hor
+  const mobileRightPaddingMessages = isMobile && checklist.hasChecklist
+    ? `calc(var(--space-m) + ${collapsedChecklistWidth})`
+    : 'var(--space-m)';
+
   return (
-    <div className="flex h-full overflow-hidden bg-dark-bg">
+    <div className="flex h-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Main chat area - centered */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-dark-border bg-dark-surface px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-dark-text-primary">RAGOps Chat</h1>
+        <div
+          className="flex-shrink-0 flex items-center justify-between"
+          style={{
+            backgroundColor: 'var(--color-action-item-selected)',
+            padding: `var(--space-xs) var(--page-padding-hor)`,
+            paddingRight: mobileRightPadding,
+          }}
+        >
+          <div className="flex items-center" style={{ gap: 'var(--space-m)' }}>
+            <h1 className="h4" style={{ fontWeight: 500, margin: 0 }}>RAGOps Chat</h1>
             {interactiveRequests.length > 0 && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-orange/20 text-accent-orange animate-pulse">
+              <span className="p2 inline-flex items-center" style={{ 
+                padding: 'var(--space-xs) var(--space-s)', 
+                borderRadius: '999px', 
+                fontWeight: 500, 
+                backgroundColor: 'var(--color-action-item-selected)', 
+                color: 'var(--color-neutral)' 
+              }}>
                 ⚠️ Action Required
               </span>
             )}
@@ -415,35 +452,48 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         </div>
 
         {/* Messages */}
-        <MessageList messages={messages} />
+        <MessageList messages={messages} rightPadding={mobileRightPaddingMessages} />
 
         {/* Interactive dialogs */}
         {interactiveRequests.length > 0 && (
           <>
             {console.log('[ChatContainer] Rendering interactive dialogs, count:', interactiveRequests.length)}
-            <div ref={dialogsRef} className="flex-shrink-0 px-6 py-3 border-t border-dark-border bg-dark-surface">
-              <div className="mb-2 text-sm font-medium text-accent-orange">
-                ⚠️ Action Required ({interactiveRequests.length})
+            <div
+              ref={dialogsRef}
+              className="flex-shrink-0"
+              style={{
+                padding: `var(--space-m) var(--page-padding-hor) 0`,
+                paddingRight: mobileRightPadding,
+                borderTop: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-bg)',
+              }}
+            >
+              <div className="max-w-4xl mx-auto w-full">
+                <div
+                  className="p2"
+                  style={{ marginBottom: 'var(--space-s)', fontWeight: 500, color: 'var(--color-neutral)' }}
+                >
+                  ⚠️ Action Required ({interactiveRequests.length})
+                </div>
+                {interactiveRequests.map((request) =>
+                  request.type === 'confirm' ? (
+                    <ConfirmDialog
+                      key={request.id}
+                      requestId={request.id}
+                      question={request.question || 'Continue?'}
+                      onResponse={handleConfirmResponse}
+                    />
+                  ) : (
+                    <ChoiceDialog
+                      key={request.id}
+                      requestId={request.id}
+                      title={request.title || 'Select an option'}
+                      choices={request.choices || []}
+                      onResponse={handleChoiceResponse}
+                    />
+                  )
+                )}
               </div>
-              {interactiveRequests.map((request) =>
-                request.type === 'confirm' ? (
-                  <ConfirmDialog
-                    key={request.id}
-                    requestId={request.id}
-                    question={request.question || 'Continue?'}
-                    defaultValue={request.defaultValue ?? true}
-                    onResponse={handleConfirmResponse}
-                  />
-                ) : (
-                  <ChoiceDialog
-                    key={request.id}
-                    requestId={request.id}
-                    title={request.title || 'Select an option'}
-                    choices={request.choices || []}
-                    onResponse={handleChoiceResponse}
-                  />
-                )
-              )}
             </div>
           </>
         )}
@@ -457,14 +507,23 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
             disabled={status !== 'connected'}
             sessionId={sessionId}
             onFilesUploaded={handleFilesUploaded}
+            rightPadding={mobileRightPadding}
           />
         </div>
       </div>
 
       {/* Right sidebar - only show when there's content */}
       {checklist.hasChecklist && (
-        <div className="w-80 flex-shrink-0 border-l border-dark-border bg-dark-surface overflow-auto">
-          <ChecklistPanel content={checklist.content} />
+        <div 
+          className="flex-shrink-0 overflow-auto checklist-panel-mobile" 
+          style={{ 
+            borderLeft: '1px solid var(--color-border)'
+          }}
+        >
+          <ChecklistPanel 
+            content={checklist.content} 
+            onCollapseChange={setIsChecklistCollapsed}
+          />
         </div>
       )}
     </div>

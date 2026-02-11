@@ -32,21 +32,23 @@ export default function ConnectionStatus({ status }: ConnectionStatusProps) {
     }
   };
 
-  const getColor = () => {
-    switch (status) {
-      case 'connected':
-        return 'text-status-done bg-status-done/10';
-      case 'connecting':
-        return 'text-status-running bg-status-running/10';
-      case 'disconnected':
-        return 'text-dark-text-secondary bg-dark-hover';
-      case 'error':
-        return 'text-status-failed bg-status-failed/10';
-    }
+
+  const colorMap = {
+    connected: { text: 'var(--color-success)', bg: 'var(--color-action-item-selected)' },
+    connecting: { text: 'var(--color-neutral)', bg: 'var(--color-action-item-selected)' },
+    disconnected: { text: 'var(--color-txt-icon-2)', bg: 'var(--color-action-item-hover)' },
+    error: { text: 'var(--color-error)', bg: 'var(--color-action-item-selected)' }
   };
+  const colors = colorMap[status];
 
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${getColor()}`}>
+    <div className="flex items-center rounded-full font-medium" style={{ 
+      gap: '6px', 
+      padding: 'var(--space-xs) var(--space-s)', 
+      fontSize: 'var(--font-size-p2)',
+      color: colors.text,
+      backgroundColor: colors.bg
+    }}>
       {getIcon()}
       <span>{getText()}</span>
     </div>

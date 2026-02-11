@@ -83,17 +83,26 @@ export default function ProviderConfigForm({
     const showValue = isPassword && showPassword[field.name];
 
     return (
-      <div key={field.name} className="mb-4">
-        <label className="block mb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-dark-text-primary">
+      <div key={field.name} style={{ marginBottom: 'var(--space-m)' }}>
+        <label className="block" style={{ marginBottom: 'var(--space-s)' }}>
+          <div className="flex items-center" style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-xs)' }}>
+            <span className="p2" style={{ fontWeight: 500 }}>
               {field.label}
-              {!field.required && <span className="text-dark-text-muted ml-1">(optional)</span>}
+              {!field.required && <span style={{ marginLeft: 'var(--space-xs)', color: 'var(--color-txt-icon-2)' }}>(optional)</span>}
             </span>
             {field.help_text && (
               <div className="group relative">
-                <HelpCircle className="w-4 h-4 text-dark-text-muted cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-2 bg-dark-bg border border-dark-border rounded-lg text-xs text-dark-text-secondary z-10">
+                <HelpCircle className="w-4 h-4 cursor-help" style={{ color: 'var(--color-txt-icon-2)' }} />
+                <div className="absolute left-0 bottom-full hidden group-hover:block z-10" style={{ 
+                  marginBottom: 'var(--space-s)', 
+                  width: '256px', 
+                  padding: 'var(--space-s)', 
+                  backgroundColor: 'var(--color-bg)', 
+                  border: '1px solid var(--color-border)', 
+                  borderRadius: 'var(--space-s)', 
+                  fontSize: 'var(--font-size-p2)', 
+                  color: 'var(--color-txt-icon-2)' 
+                }}>
                   {field.help_text}
                 </div>
               </div>
@@ -106,19 +115,46 @@ export default function ProviderConfigForm({
               value={value}
               onChange={(e) => handleChange(field.name, e.target.value)}
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              className={`
-                w-full px-4 py-2.5 bg-dark-bg border rounded-lg text-dark-text-primary
-                placeholder:text-dark-text-muted
-                focus:ring-2 focus:ring-accent-blue focus:border-transparent
-                ${error ? 'border-accent-red' : 'border-dark-border'}
-                ${isPassword ? 'pr-12' : ''}
-              `}
+              style={{
+                width: '100%',
+                padding: 'var(--space-s) var(--space-m)',
+                backgroundColor: 'transparent',
+                border: `1px solid ${error ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                borderRadius: 'var(--space-s)',
+                color: 'var(--color-txt-icon-1)',
+                fontFamily: 'inherit',
+                fontSize: 'var(--font-size-p1)',
+                paddingRight: isPassword ? '48px' : undefined,
+                transition: 'border-color 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!error && !e.currentTarget.matches(':focus')) {
+                  e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!error && !e.currentTarget.matches(':focus')) {
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                }
+              }}
+              onFocus={(e) => {
+                if (!error) {
+                  e.target.style.borderColor = 'var(--color-border-hover)';
+                }
+                e.target.style.outline = 'none';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = error ? 'var(--color-accent)' : 'var(--color-border)';
+              }}
             />
             {isPassword && (
               <button
                 type="button"
                 onClick={() => togglePasswordVisibility(field.name)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-text-muted hover:text-dark-text-primary"
+                className="absolute top-1/2 -translate-y-1/2"
+                style={{ right: '12px', color: 'var(--color-txt-icon-2)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-txt-icon-1)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-txt-icon-2)'}
               >
                 {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -126,7 +162,7 @@ export default function ProviderConfigForm({
           </div>
 
           {error && (
-            <p className="text-xs text-accent-red mt-1">{error}</p>
+            <p className="p2" style={{ marginTop: 'var(--space-xs)', color: 'var(--color-accent)' }}>{error}</p>
           )}
         </label>
       </div>
@@ -134,17 +170,26 @@ export default function ProviderConfigForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-m)' }}>
       {/* Provider info */}
-      <div className="mb-6 p-4 bg-dark-bg rounded-lg border border-dark-border">
-        <h3 className="font-semibold text-dark-text-primary mb-1">{provider.display_name}</h3>
-        <p className="text-sm text-dark-text-secondary mb-2">{provider.description}</p>
+      <div style={{ 
+        marginBottom: 'var(--space-l)', 
+        padding: 'var(--space-m)', 
+        backgroundColor: 'var(--color-bg)', 
+        borderRadius: 'var(--space-s)', 
+        border: '1px solid var(--color-border)' 
+      }}>
+        <h3 className="h4" style={{ fontWeight: 500, marginBottom: 'var(--space-xs)' }}>{provider.display_name}</h3>
+        <p className="p2" style={{ marginBottom: 'var(--space-s)', color: 'var(--color-txt-icon-2)' }}>{provider.description}</p>
         {provider.documentation_url && (
           <a
             href={provider.documentation_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-accent-blue hover:underline"
+            className="inline-flex items-center"
+            style={{ gap: 'var(--space-xs)', fontSize: 'var(--font-size-p2)', color: 'var(--color-white-60)' }}
+            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
           >
             Get API key →
           </a>
@@ -152,14 +197,19 @@ export default function ProviderConfigForm({
       </div>
 
       {/* Dynamic fields */}
-      <div className="space-y-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-m)' }}>
         {provider.fields.map(renderField)}
       </div>
 
       {/* Embeddings warning */}
       {!provider.has_embeddings && (
-        <div className="p-3 bg-accent-orange/10 border border-accent-orange/30 rounded-lg">
-          <p className="text-sm text-accent-orange">
+        <div style={{ 
+          padding: 'var(--space-m)', 
+          backgroundColor: 'rgba(255, 187, 0, 0.1)', 
+          border: '1px solid rgba(255, 187, 0, 0.3)', 
+          borderRadius: 'var(--space-s)' 
+        }}>
+          <p className="p2" style={{ color: 'var(--color-neutral)' }}>
             <strong>Note:</strong> {provider.display_name} doesn't support embeddings. You'll need to
             configure a separate embeddings provider after this step.
           </p>
@@ -167,18 +217,18 @@ export default function ProviderConfigForm({
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex" style={{ gap: 'var(--space-m)', paddingTop: 'var(--space-m)' }}>
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-6 py-3 bg-dark-bg hover:bg-dark-border text-dark-text-primary rounded-lg transition-colors"
+          className="btn-secondary"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
         <button
           type="submit"
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-accent-blue hover:bg-accent-blue-hover text-white font-semibold rounded-lg transition-colors"
+          className="btn-primary flex-1 justify-center"
         >
           Test & Save
           <ArrowRight className="w-4 h-4" />

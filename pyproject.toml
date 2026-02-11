@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "donkit-ragops"
-version = "0.5.8"
+version = "0.5.9"
 description = "CLI agent for building RAG pipelines"
 authors = ["Donkit AI <opensource@donkit.ai>"]
 license = "MIT"
@@ -27,7 +27,7 @@ openai = "^2.1.0"
 google-genai = "^1.38.0"
 langchain = "^0.3.27"
 donkit-chunker = "0.1.9"
-donkit-vectorstore-loader = "^0.1.8"
+donkit-vectorstore-loader = "^0.1.9"
 donkit-embeddings = "0.1.10"
 langchain-openai = "^0.3.35"
 langchain-community = "^0.3.31"

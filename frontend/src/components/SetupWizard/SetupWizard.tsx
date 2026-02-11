@@ -124,12 +124,15 @@ export default function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-bg to-dark-surface flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center" style={{ 
+      padding: 'var(--page-padding-vert) var(--page-padding-hor)',
+      backgroundColor: 'var(--color-bg)'
+    }}>
       <div className="max-w-2xl w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-dark-text-primary mb-2">Setup LLM Provider</h1>
-          <p className="text-dark-text-secondary">
+        <div className="text-center" style={{ marginBottom: 'var(--space-xl)' }}>
+          <h1 className="h1" style={{ marginBottom: 'var(--space-s)' }}>Setup LLM Provider</h1>
+          <p className="p1" style={{ color: 'var(--color-txt-icon-2)' }}>
             {step === 'select' && 'Choose your preferred LLM provider'}
             {step === 'configure' && `Configure ${selectedProvider?.display_name || 'provider'}`}
             {step === 'test' && 'Testing credentials...'}
@@ -139,14 +142,19 @@ export default function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
         </div>
 
         {/* Progress Indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className={`w-3 h-3 rounded-full ${step === 'select' ? 'bg-accent-blue' : 'bg-dark-border'}`} />
-          <div className={`w-3 h-3 rounded-full ${step === 'configure' ? 'bg-accent-blue' : 'bg-dark-border'}`} />
-          <div className={`w-3 h-3 rounded-full ${step === 'test' || step === 'save' || step === 'success' ? 'bg-accent-blue' : 'bg-dark-border'}`} />
+        <div className="flex items-center justify-center" style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-xl)' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: step === 'select' ? 'var(--color-white-60)' : 'var(--color-border)' }} />
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: step === 'configure' ? 'var(--color-white-60)' : 'var(--color-border)' }} />
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: (step === 'test' || step === 'save' || step === 'success') ? 'var(--color-white-60)' : 'var(--color-border)' }} />
         </div>
 
         {/* Content */}
-        <div className="bg-dark-surface rounded-xl p-6 border border-dark-border shadow-lg">
+        <div style={{ 
+          backgroundColor: 'var(--color-action-item-selected)', 
+          borderRadius: 'var(--space-s)', 
+          padding: 'var(--space-l)', 
+          border: '1px solid var(--color-border)' 
+        }}>
           {step === 'select' && (
             <ProviderSelection
               providers={providers}
@@ -164,74 +172,83 @@ export default function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
           )}
 
           {step === 'test' && (
-            <div className="text-center py-8">
+            <div className="text-center" style={{ padding: 'var(--space-xl) 0' }}>
               {testResult ? (
                 testResult.success ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-accent-green/10 flex items-center justify-center">
-                      <Check className="w-8 h-8 text-accent-green" />
+                  <div className="flex flex-col items-center" style={{ gap: 'var(--space-m)' }}>
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 200, 110, 0.1)' }}>
+                      <Check className="w-8 h-8" style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <h3 className="text-lg font-semibold text-dark-text-primary">Credentials Valid</h3>
-                    <p className="text-dark-text-secondary">{testResult.message}</p>
+                    <h3 className="h3" style={{ fontWeight: 500 }}>Credentials Valid</h3>
+                    <p className="p1" style={{ color: 'var(--color-txt-icon-2)' }}>{testResult.message}</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-accent-red/10 flex items-center justify-center">
-                      <span className="text-2xl text-accent-red">✕</span>
+                  <div className="flex flex-col items-center" style={{ gap: 'var(--space-m)' }}>
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(234, 100, 100, 0.1)' }}>
+                      <span style={{ fontSize: '24px', color: 'var(--color-accent)' }}>✕</span>
                     </div>
-                    <h3 className="text-lg font-semibold text-dark-text-primary">Validation Failed</h3>
-                    <p className="text-accent-red">{testResult.message}</p>
+                    <h3 className="h3" style={{ fontWeight: 500 }}>Validation Failed</h3>
+                    <p style={{ color: 'var(--color-accent)' }}>{testResult.message}</p>
                     <button
                       onClick={handleBack}
-                      className="mt-4 px-6 py-2 bg-dark-bg hover:bg-dark-border text-dark-text-primary rounded-lg transition-colors"
+                      className="transition-colors"
+                      style={{
+                        marginTop: 'var(--space-m)',
+                        padding: 'var(--space-s) var(--space-l)',
+                        backgroundColor: 'var(--color-bg)',
+                        color: 'var(--color-txt-icon-1)',
+                        borderRadius: 'var(--space-s)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-border)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg)'}
                     >
                       Go Back
                     </button>
                   </div>
                 )
               ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="w-12 h-12 text-accent-blue animate-spin" />
-                  <h3 className="text-lg font-semibold text-dark-text-primary">Testing Credentials</h3>
-                  <p className="text-dark-text-secondary">Please wait...</p>
+                <div className="flex flex-col items-center" style={{ gap: 'var(--space-m)' }}>
+                  <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--color-white-60)' }} />
+                  <h3 className="h3" style={{ fontWeight: 500 }}>Testing Credentials</h3>
+                  <p className="p1" style={{ color: 'var(--color-txt-icon-2)' }}>Please wait...</p>
                 </div>
               )}
             </div>
           )}
 
           {step === 'save' && (
-            <div className="text-center py-8">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-12 h-12 text-accent-blue animate-spin" />
-                <h3 className="text-lg font-semibold text-dark-text-primary">Saving Configuration</h3>
-                <p className="text-dark-text-secondary">Almost done...</p>
+            <div className="text-center" style={{ padding: 'var(--space-xl) 0' }}>
+              <div className="flex flex-col items-center" style={{ gap: 'var(--space-m)' }}>
+                <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--color-white-60)' }} />
+                <h3 className="h3" style={{ fontWeight: 500 }}>Saving Configuration</h3>
+                <p className="p1" style={{ color: 'var(--color-txt-icon-2)' }}>Almost done...</p>
               </div>
             </div>
           )}
 
           {step === 'success' && selectedProvider && (
-            <div className="text-center py-8">
-              <div className="flex flex-col items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-accent-green/10 flex items-center justify-center">
-                  <Check className="w-8 h-8 text-accent-green" />
+            <div className="text-center" style={{ padding: 'var(--space-xl) 0' }}>
+              <div className="flex flex-col items-center" style={{ gap: 'var(--space-m)', marginBottom: 'var(--space-l)' }}>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 200, 110, 0.1)' }}>
+                  <Check className="w-8 h-8" style={{ color: 'var(--color-success)' }} />
                 </div>
-                <h3 className="text-lg font-semibold text-dark-text-primary">Provider Configured!</h3>
-                <p className="text-dark-text-secondary">
+                <h3 className="h3" style={{ fontWeight: 500 }}>Provider Configured!</h3>
+                <p className="p1" style={{ color: 'var(--color-txt-icon-2)' }}>
                   {selectedProvider.display_name} has been successfully configured.
                 </p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex" style={{ gap: 'var(--space-m)' }}>
                 <button
                   onClick={handleAddAnother}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-dark-bg hover:bg-dark-border text-dark-text-primary rounded-lg transition-colors"
+                  className="btn-secondary flex-1 justify-center"
                 >
                   <Plus className="w-4 h-4" />
                   Add Another Provider
                 </button>
                 <button
                   onClick={handleDone}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-accent-blue hover:bg-accent-blue-hover text-white font-semibold rounded-lg transition-colors"
+                  className="btn-primary flex-1 justify-center"
                 >
                   Done
                   <Check className="w-4 h-4" />
@@ -246,7 +263,18 @@ export default function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
           <button
             onClick={handleBack}
             disabled={loading}
-            className="mt-4 flex items-center gap-2 text-dark-text-muted hover:text-dark-text-primary transition-colors"
+            className="flex items-center transition-colors"
+            style={{
+              marginTop: 'var(--space-m)',
+              gap: 'var(--space-s)',
+              color: 'var(--color-txt-icon-2)'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.color = 'var(--color-txt-icon-1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-txt-icon-2)';
+            }}
           >
             <ArrowLeft className="w-4 h-4" />
             Back

@@ -253,6 +253,8 @@ def format_checklist_compact(checklist_data: dict[str, Any] | None) -> str:
             icon = "[green]✓[/green]"
         elif status == "in_progress":
             icon = "[yellow]⚡[/yellow]"
+        elif status == "failed":
+            icon = "[red]✗[/red]"
         else:  # pending
             icon = "[dim]○[/dim]"
 

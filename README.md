@@ -76,6 +76,9 @@ Built by [Donkit AI](https://donkit.ai/?utm_source=github) — Automated Context
 * **Docker Compose orchestration** — Automated deployment of RAG infrastructure (vector DB, RAG service)
 * **Built-in Evaluation & Scoring** — Automatically generates evaluation dataset (if needed), runs Q&A tests and scores pipeline accuracy on your real data.
 * **Multiple LLM providers** — Supports Vertex AI (Recommended), OpenAI, Anthropic Claude, Azure OpenAI, Ollama, OpenRouter
+* **Interactive Web UI** — Browser-based interface with real-time agent responses and visual project management
+* **Session-scoped Checklists** — Structured workflow with clear stages, approvals, and progress tracking
+* **Multi-mode Operation** — Local, SaaS, and Enterprise deployment options for any scale
 
 ## Main Capabilities
 * **Interactive REPL** — Start an interactive session with readline history and autocompletion
@@ -624,6 +627,28 @@ poetry run donkit-ragops-web
 
 # Run unified MCP server
 poetry run donkit-ragops-mcp
+```
+
+### Building the static frontend
+
+The Web UI is served from **`src/donkit_ragops/web/static/`**, not from `frontend/dist/`. To see your frontend changes when running in production mode (without `--dev`):
+
+1. **From the project root**, run the full build script (it builds Vite and copies output to `static/`):
+
+   ```bash
+   ./scripts/build-frontend.sh   # macOS/Linux
+   # or
+   scripts/build-frontend.ps1    # Windows PowerShell
+   ```
+
+2. Restart `donkit-ragops-web` if it is already running.
+
+If you only run `npm run build` inside `frontend/`, the result goes to `frontend/dist/` and the app will still serve the old files from `static/`. Use the script above so that the built files are copied into `static/`.
+
+For live reload during development, use:
+
+```bash
+poetry run donkit-ragops-web --dev
 ```
 
 ### Running Tests

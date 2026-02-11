@@ -7,9 +7,10 @@ import DonkitLogo from '../../assets/donkit-logo.svg';
 
 interface MessageListProps {
   messages: ChatMessage[];
+  rightPadding?: string;
 }
 
-export default function MessageList({ messages }: MessageListProps) {
+export default function MessageList({ messages, rightPadding = 'var(--space-m)' }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,22 +19,31 @@ export default function MessageList({ messages }: MessageListProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-dark-text-secondary">
+      <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--color-txt-icon-2)' }}>
         <div className="text-center">
-          <img src={DonkitLogo} alt="Donkit" className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-lg">Start a conversation</p>
-          <p className="text-sm mt-2">Ask me to help build your RAG pipeline</p>
+          <img src={DonkitLogo} alt="Donkit" className="w-16 h-16 mx-auto" style={{ marginBottom: 'var(--space-m)', opacity: 0.3 }} />
+          <p className="h3" style={{ marginBottom: 0 }}>Start a conversation</p>
+          <p className="p2" style={{ marginTop: 'var(--space-s)' }}>Ask me to help build your RAG pipeline</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-dark-bg min-h-0">
+    <div className="flex-1 overflow-y-auto min-h-0" style={{ 
+      padding: 'var(--space-m)', 
+      paddingRight: rightPadding,
+      backgroundColor: 'var(--color-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'var(--space-m)'
+    }}>
+      <div className="max-w-4xl mx-auto w-full flex flex-col" style={{ gap: 'var(--space-l)' }}>
       {messages.map((message) => (
         <div
           key={message.id}
-          className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+          className={`flex ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+          style={{ gap: 'var(--space-m)' }}
         >
           {/* Avatar */}
           <div
@@ -52,21 +62,24 @@ export default function MessageList({ messages }: MessageListProps) {
 
           {/* Message content */}
           <div
-            className={`max-w-[75%] ${
-              message.role === 'user'
-                ? 'bg-accent-blue text-white rounded-2xl rounded-tr-sm px-4 py-2.5'
-                : 'bg-dark-surface border border-dark-border rounded-2xl rounded-tl-sm px-4 py-2.5'
-            }`}
+            className="max-w-[75%]"
+            style={{
+              backgroundColor: message.role === 'user' ? 'var(--color-action-item-selected)' : 'transparent',
+              color: message.role === 'user' ? 'var(--color-txt-icon-1)' : 'var(--color-txt-icon-1)',
+              borderRadius: message.role === 'user' ? 'var(--space-l) var(--space-xs) var(--space-l) var(--space-l)' : 'var(--space-l) var(--space-l) var(--space-xs) var(--space-l)',
+              padding: message.role === 'user' ? 'var(--space-xs) var(--space-l)' : '0',
+              border: message.role === 'user' ? '1px solid var(--color-border)' : 'none'
+            }}
           >
             {message.role === 'user' ? (
-              <p className="whitespace-pre-wrap text-[15px]">{message.content}</p>
+              <p className="whitespace-pre-wrap p1">{message.content}</p>
             ) : message.parts && message.parts.length > 0 ? (
               // Render parts in chronological order
-              <div className="space-y-2">
+              <div className="space-y-2" style={{ paddingTop: 0, marginTop: 0 }}>
                 {message.parts.map((part: ContentPart, index: number) => (
-                  <div key={index}>
+                  <div key={index} style={index === 0 ? { marginTop: 0, paddingTop: 0 } : {}}>
                     {part.type === 'text' && part.content && (
-                      <div className="prose prose-sm max-w-none">
+                      <div className="prose max-w-none p1" style={{ marginTop: 0, paddingTop: 0 }}>
                         <ReactMarkdown>{part.content}</ReactMarkdown>
                       </div>
                     )}
@@ -79,7 +92,7 @@ export default function MessageList({ messages }: MessageListProps) {
             ) : (
               // Fallback for messages without parts (backward compatibility)
               <>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose max-w-none p1" style={{ marginTop: 0, paddingTop: 0 }}>
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
                 {message.toolCalls && message.toolCalls.length > 0 && (
@@ -100,6 +113,7 @@ export default function MessageList({ messages }: MessageListProps) {
         </div>
       ))}
       <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

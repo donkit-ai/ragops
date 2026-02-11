@@ -118,7 +118,7 @@ function App() {
   const isEnterpriseMode = session.enterprise_mode === true;
 
   return (
-    <div className="h-screen bg-dark-bg flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Header provider={session.provider} model={session.model} />
       <div className="flex-1 min-h-0 overflow-hidden flex">
         {/* Projects Sidebar (Enterprise mode only) */}
@@ -139,8 +139,13 @@ function App() {
 
       {/* Error notification */}
       {setupError && (
-        <div className="fixed bottom-4 right-4 max-w-md p-4 bg-accent-red/10 border border-accent-red/30 rounded-lg">
-          <p className="text-accent-red text-sm">{setupError}</p>
+        <div className="fixed bottom-4 right-4 max-w-md p2" style={{ 
+          padding: 'var(--space-m)', 
+          backgroundColor: 'rgba(234, 100, 100, 0.1)', 
+          border: '1px solid rgba(234, 100, 100, 0.3)', 
+          borderRadius: 'var(--space-s)' 
+        }}>
+          <p className="p2" style={{ color: 'var(--color-accent)' }}>{setupError}</p>
         </div>
       )}
     </div>
