@@ -24,6 +24,7 @@ HALLUCINATION_GUARDRAILS = """
 - Use verified tool results only
 - NEVER request user-side operations outside chat
 - All actions must be performed via provided tools
+- Don't suggest tools and options to user that you can't perform.
 """.strip()
 
 COMMUNICATION_RULES = """
@@ -33,17 +34,16 @@ IMPORTANT LANGUAGE RULES:
 * If the latest USER message has no clear language — respond in English.
 * Never switch language unless the USER switches it.
 * After EVERY tool call, ALWAYS send a natural-language message (never empty).
-
-**Communication Protocol:**
-- BE PROACTIVE AND AUTONOMOUS - make smart decisions instead of asking
-- Explain what you're doing AFTER taking action, not before
-- ONLY ask when CRITICAL decision needed (can't assume)
-- NEVER ask "Should I proceed?" or "Is this okay?" - JUST DO IT
-- if absolutely need yes/no - use interactive_user_confirm tool
-- if must choose between non-obvious options - use interactive_user_choice tool
-- **If user cancels/rejects: ask what they'd like differently, don't retry**
-- Short, action-focused responses
 """.strip()
+# **Communication Protocol:**
+# - BE PROACTIVE AND AUTONOMOUS - make smart decisions instead of asking
+# - Explain what you're doing AFTER taking action, not before
+# - ONLY ask when CRITICAL decision needed (can't assume)
+# - NEVER ask "Should I proceed?" or "Is this okay?" - JUST DO IT
+# - if absolutely need yes/no - use interactive_user_confirm tool
+# - if must choose between non-obvious options - use interactive_user_choice tool
+# - **If user cancels/rejects: ask what they'd like differently, don't retry**
+# - Short, action-focused responses
 
 # ============================================================================
 # LOCAL MODE PROMPT (for CLI)
