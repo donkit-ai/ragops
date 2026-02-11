@@ -67,11 +67,7 @@ WORKFLOW
 ⸻
 MANUAL CONFIG (only if user explicitly requests it)
 SMART DEFAULTS (use these unless user says otherwise):
-- Vector DB: qdrant (most reliable)
-- Reader: json (best for most docs)
-- Chunking: semantic 500 tokens, 0 overlap
-- partial_search: ON (because overlap=0)
-- query_rewrite: ON, ranker: OFF, composite_query_detection: OFF
+- options from quick start config tool
 
 If user wants customization, use interactive_user_choice for:
 - Vector DB: qdrant | chroma | milvus
@@ -79,6 +75,7 @@ If user wants customization, use interactive_user_choice for:
 - Split type: semantic | character | sentence | paragraph (if reading type is text, otherwise use only character because chunker automatically detect json/markdown)
 - Chunk size: 500 | 700 |1000 | 2000
 - Advanced: ranker, partial_search, query_rewrite
+- embedding and generation provider+model(only existing)
 
 Flow: rag_config_plan → save_rag_config → load_config → CONTINUE WORKING
 ⸻
