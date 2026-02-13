@@ -8,6 +8,7 @@ interface MessageInputProps {
   disabled?: boolean;
   sessionId: string;
   onFilesUploaded: (files: Array<{ name: string; path: string; s3_path?: string }>, enterpriseMode: boolean) => void;
+  leftPadding?: string;
   rightPadding?: string;
 }
 
@@ -25,6 +26,7 @@ export default function MessageInput({
   disabled,
   sessionId,
   onFilesUploaded,
+  leftPadding = 'var(--page-padding-hor)',
   rightPadding = 'var(--page-padding-hor)',
 }: MessageInputProps) {
   const [input, setInput] = useState('');
@@ -192,6 +194,7 @@ export default function MessageInput({
   return (
     <div style={{ 
       padding: `var(--space-m) var(--page-padding-hor)`, 
+      paddingLeft: leftPadding,
       paddingRight: rightPadding,
       backgroundColor: 'var(--color-bg)' 
     }}>

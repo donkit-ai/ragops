@@ -646,6 +646,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 type="button"
                 onClick={handleCopyHelpCommand}
                 aria-label="Copy help command"
+                title="Copy help command"
                 style={{
                   position: 'absolute',
                   right: '4px',

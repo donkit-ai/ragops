@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { CheckCircle2, Circle, Zap, ListTodo, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, Zap, XCircle } from 'lucide-react';
 import ArrowRightToLineIcon from '../../assets/icons/arrow-right-to-line.svg';
 import ArrowLeftToLineIcon from '../../assets/icons/arrow-left-to-line.svg';
+import ListTodoIcon from '../../assets/icons/list-todo.svg';
 
 interface ChecklistPanelProps {
   content: string | null;
@@ -97,35 +98,41 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
         <div 
           className="flex flex-col items-center cursor-pointer relative"
           style={{ 
-            padding: 'var(--space-m)', 
+            padding: 'var(--space-m) 0', 
             borderBottom: '1px solid var(--color-border)',
             width: '100%',
             backgroundColor: isHoveringHeader ? 'var(--color-action-item-hover)' : 'transparent',
             transition: 'background-color 0.2s ease'
           }}
+          title="Expand checklist"
           onClick={() => handleCollapse(false)}
           onMouseEnter={() => setIsHoveringHeader(true)}
           onMouseLeave={() => setIsHoveringHeader(false)}
         >
-          <div className="relative flex items-center justify-center" style={{ width: '100%' }}>
-            <ListTodo 
-              className="w-5 h-5 transition-opacity" 
-              style={{ 
-                color: 'var(--color-txt-icon-2)',
-                opacity: isHoveringHeader ? 0 : 1,
-                transition: 'opacity 0.2s ease'
-              }} 
+          <div className="relative flex items-center justify-center" style={{ height: '24px' }}>
+            <img
+              src={ListTodoIcon}
+              alt="TODO"
+              className="icon-txt2 transition-opacity"
+              style={{
+                width: '24px',
+                height: '24px',
+                opacity: isHoveringHeader ? 0 : 0.6,
+                transition: 'opacity 0.2s ease',
+              }}
             />
-            <img 
-              src={ArrowLeftToLineIcon} 
-              alt="Expand" 
-              className="w-5 h-5 icon-txt2 transition-opacity"
-              style={{ 
+            <img
+              src={ArrowLeftToLineIcon}
+              alt="Expand"
+              className="icon-txt2 transition-opacity"
+              style={{
+                width: '24px',
+                height: '24px',
                 position: 'absolute',
                 opacity: isHoveringHeader ? 1 : 0,
                 transition: 'opacity 0.2s ease',
                 left: '50%',
-                transform: 'translateX(-50%)'
+                transform: 'translateX(-50%)',
               }}
             />
           </div>
@@ -180,7 +187,7 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
       <div style={{ padding: 'var(--space-m)', borderBottom: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between" style={{ gap: 'var(--space-s)' }}>
           <div className="flex items-center" style={{ gap: 'var(--space-s)' }}>
-            <ListTodo className="w-5 h-5" style={{ color: 'var(--color-txt-icon-1)' }} />
+            <img src={ListTodoIcon} alt="" className="w-5 h-5 icon-txt1" />
             <h2 className="h4" style={{ fontWeight: 500 }}>TODO</h2>
           </div>
           <button

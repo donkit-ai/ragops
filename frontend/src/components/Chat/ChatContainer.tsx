@@ -19,9 +19,10 @@ interface InteractiveRequest {
 
 interface ChatContainerProps {
   sessionId: string;
+  hasProjectsSidebar?: boolean;
 }
 
-export default function ChatContainer({ sessionId }: ChatContainerProps) {
+export default function ChatContainer({ sessionId, hasProjectsSidebar = false }: ChatContainerProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [, setCurrentToolCalls] = useState<ToolCall[]>([]);
@@ -411,27 +412,36 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   }, [sendChat]);
 
   // Calculate right padding for mobile when checklist is visible (mobile only)
+  const collapsedProjectsWidth = '64px'; // w-16 = 4rem = 64px
   const collapsedChecklistWidth = '64px'; // w-16 = 4rem = 64px
+  const mobileLeftPadding = isMobile && hasProjectsSidebar
+    ? `calc(var(--page-padding-hor) + ${collapsedProjectsWidth})`
+    : 'var(--page-padding-hor)';
   const mobileRightPadding = isMobile && checklist.hasChecklist
     ? `calc(var(--page-padding-hor) + ${collapsedChecklistWidth})`
     : 'var(--page-padding-hor)';
   
   // For MessageList, use space-m as base instead of page-padding-hor
+  const mobileLeftPaddingMessages = isMobile && hasProjectsSidebar
+    ? `calc(var(--space-m) + ${collapsedProjectsWidth})`
+    : 'var(--space-m)';
   const mobileRightPaddingMessages = isMobile && checklist.hasChecklist
     ? `calc(var(--space-m) + ${collapsedChecklistWidth})`
     : 'var(--space-m)';
 
   return (
-    <div className="flex h-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="flex h-full overflow-hidden relative" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Main chat area - centered */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Header */}
         <div
           className="flex-shrink-0 flex items-center justify-between"
           style={{
-            backgroundColor: 'var(--color-action-item-selected)',
-            padding: `var(--space-xs) var(--page-padding-hor)`,
+            backgroundColor: 'var(--color-bg)',
+            padding: `var(--space-s) var(--page-padding-hor)`,
+            paddingLeft: mobileLeftPadding,
             paddingRight: mobileRightPadding,
+            borderBottom: '1px solid var(--color-border)',
           }}
         >
           <div className="flex items-center" style={{ gap: 'var(--space-m)' }}>
@@ -452,7 +462,11 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         </div>
 
         {/* Messages */}
-        <MessageList messages={messages} rightPadding={mobileRightPaddingMessages} />
+        <MessageList
+          messages={messages}
+          leftPadding={mobileLeftPaddingMessages}
+          rightPadding={mobileRightPaddingMessages}
+        />
 
         {/* Interactive dialogs */}
         {interactiveRequests.length > 0 && (
@@ -463,6 +477,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
               className="flex-shrink-0"
               style={{
                 padding: `var(--space-m) var(--page-padding-hor) 0`,
+                paddingLeft: mobileLeftPadding,
                 paddingRight: mobileRightPadding,
                 borderTop: '1px solid var(--color-border)',
                 backgroundColor: 'var(--color-bg)',
@@ -507,6 +522,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
             disabled={status !== 'connected'}
             sessionId={sessionId}
             onFilesUploaded={handleFilesUploaded}
+            leftPadding={mobileLeftPadding}
             rightPadding={mobileRightPadding}
           />
         </div>
