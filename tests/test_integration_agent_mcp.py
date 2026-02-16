@@ -220,6 +220,12 @@ async def test_agent_handles_mcp_tool_error() -> None:
         def __init__(self):
             self.identifier = "error_mcp_client"
 
+        async def connect(self) -> None:
+            pass
+
+        async def disconnect(self) -> None:
+            pass
+
         async def alist_tools(self) -> list[dict]:
             """List tools."""
             return [
@@ -297,6 +303,12 @@ async def test_agent_processes_complex_mcp_result(
 
         def __init__(self):
             self.identifier = "complex_mcp_client"
+
+        async def connect(self) -> None:
+            pass
+
+        async def disconnect(self) -> None:
+            pass
 
         async def alist_tools(self) -> list[dict]:
             """List tools."""
@@ -424,3 +436,41 @@ async def test_agent_with_local_and_mcp_tools(
     assert "local_tool" in spec_names
     assert "mcp_tool_a" in spec_names
     assert "mcp_tool_b" in spec_names
+
+
+# ============================================================================
+# Tests: MCP Init Failure Cleanup
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_ainit_disconnects_on_alist_tools_failure() -> None:
+    """Test that ainit_mcp_tools() disconnects if connect() succeeds but alist_tools() fails."""
+
+    class FailingListClient:
+        """MCP client where connect() works but alist_tools() fails."""
+
+        def __init__(self):
+            self.identifier = "failing_list_client"
+            self.connected = False
+            self.disconnected = False
+
+        async def connect(self) -> None:
+            self.connected = True
+
+        async def disconnect(self) -> None:
+            self.disconnected = True
+
+        async def alist_tools(self) -> list[dict]:
+            raise RuntimeError("Server crashed during tool listing")
+
+    failing_client = FailingListClient()
+    provider = BaseMockProvider(responses=[{"content": "ok"}])
+    agent = LLMAgent(provider=provider, mcp_clients=[failing_client])
+
+    await agent.ainit_mcp_tools()
+
+    # connect() was called, then alist_tools() failed, so disconnect() should have been called
+    assert failing_client.connected
+    assert failing_client.disconnected
+    assert len(agent.mcp_tools) == 0

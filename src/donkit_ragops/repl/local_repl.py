@@ -519,6 +519,11 @@ class LocalREPL(BaseREPL):
     async def cleanup(self) -> None:
         """Clean up REPL resources."""
         self._running = False
+        for client in self.context.mcp_clients:
+            try:
+                await client.disconnect()
+            except Exception as e:
+                logger.debug(f"Error disconnecting MCP client: {e}")
 
     def _print_welcome_message(self) -> None:
         """Print welcome message."""
