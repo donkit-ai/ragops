@@ -461,7 +461,7 @@
     border-color: var(--color-border-hover);
   }
 
-  /* Apply hover styles to all input and textarea elements */
+  /* Global form field states via design tokens */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -471,8 +471,22 @@
   input[type="tel"],
   textarea,
   select {
+    color: var(--color-txt-icon-1);
     border-color: var(--color-border);
+    caret-color: var(--color-txt-icon-1);
     transition: border-color 0.2s ease;
+  }
+
+  input[type="text"]::placeholder,
+  input[type="email"]::placeholder,
+  input[type="password"]::placeholder,
+  input[type="number"]::placeholder,
+  input[type="search"]::placeholder,
+  input[type="url"]::placeholder,
+  input[type="tel"]::placeholder,
+  textarea::placeholder {
+    color: var(--color-txt-icon-2);
+    opacity: 1;
   }
 
   input[type="text"]:hover:not(:disabled),
@@ -507,6 +521,33 @@
   select:active {
     outline: none;
     border-color: var(--color-border-hover);
+  }
+
+  input[type="text"]:focus-visible,
+  input[type="email"]:focus-visible,
+  input[type="password"]:focus-visible,
+  input[type="number"]:focus-visible,
+  input[type="search"]:focus-visible,
+  input[type="url"]:focus-visible,
+  input[type="tel"]:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    border-color: var(--color-border-hover);
+  }
+
+  input[type="text"]:disabled,
+  input[type="email"]:disabled,
+  input[type="password"]:disabled,
+  input[type="number"]:disabled,
+  input[type="search"]:disabled,
+  input[type="url"]:disabled,
+  input[type="tel"]:disabled,
+  textarea:disabled,
+  select:disabled {
+    color: var(--color-txt-icon-2);
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .card {

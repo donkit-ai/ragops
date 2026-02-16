@@ -150,7 +150,7 @@ export default function SetupWizard({ onComplete, onBack }: SetupWizardProps) {
 
         {/* Content */}
         <div style={{ 
-          backgroundColor: 'var(--color-action-item-selected)', 
+          backgroundColor: 'transparent', 
           borderRadius: 'var(--space-s)', 
           padding: 'var(--space-l)', 
           border: '1px solid var(--color-border)' 

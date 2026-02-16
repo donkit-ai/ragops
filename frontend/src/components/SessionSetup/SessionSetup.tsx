@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Copy, Key, Loader2, Plus, Settings } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Copy, Key, Loader2, Plus, Settings } from 'lucide-react';
 import DonkitIcon from '../../assets/donkit-icon-round.svg';
 import LocalModeIcon from '../../assets/icons/laptop-minimal-check.svg';
 import SaaSModeIcon from '../../assets/icons/cloud.svg';
@@ -20,11 +20,12 @@ interface SessionSetupProps {
 
 type Mode = 'local' | 'saas' | 'enterprise';
 type Theme = 'system' | 'light' | 'dark';
+type SetupStep = 'mode-select' | 'local-provider-select' | 'saas-token';
 
 export default function SessionSetup({ onStart, loading, error }: SessionSetupProps) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [apiToken, setApiToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [setupStep, setSetupStep] = useState<SetupStep>('mode-select');
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [configuredProviders, setConfiguredProviders] = useState<ProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -117,12 +118,15 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
     setShowSetupWizard(false);
 
     if (newMode === 'saas') {
-      // Immediately show API token input for SaaS mode
-      setShowTokenInput(true);
+      setSetupStep('saas-token');
     } else {
-      setShowTokenInput(false);
-      setApiToken('');
+      setSetupStep('local-provider-select');
     }
+  };
+
+  const handleStepBack = () => {
+    setSetupStep('mode-select');
+    setMode(null);
   };
 
   const handleSetupComplete = async () => {
@@ -155,36 +159,67 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
       <div className="flex-1 flex items-center justify-center">
         <div className="max-w-2xl w-full">
         {/* Header */}
-        <div className="text-center" style={{ marginBottom: 0 }}>
-          <div
-            className="flex items-center justify-center"
-            style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-l)' }}
-          >
-            <img
-              src={DonkitIcon}
-              alt="Donkit"
-              width={40}
-              height={40}
-              style={{ borderRadius: 'var(--space-s)' }}
-            />
-            <h1 className="h1" style={{ marginBottom: 0 }}>RAGOps Agent</h1>
-          </div>
-          <h3 className="h3" style={{ marginBottom: 'var(--space-m)', color: 'var(--color-txt-icon-2)' }}>
-            Choose your operating mode to get started:
-          </h3>
+        <div className="text-center" style={{ marginBottom: 'var(--space-l)' }}>
+          {setupStep === 'local-provider-select' ? (
+            <div
+              className="flex items-center justify-center"
+              style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-l)' }}
+            >
+              <img
+                src={LocalModeIcon}
+                alt="Local mode"
+                className="icon-txt1"
+                style={{ width: 48, height: 48 }}
+              />
+              <h1 className="h1" style={{ marginBottom: 0 }}>Local</h1>
+            </div>
+          ) : setupStep === 'saas-token' ? (
+            <div
+              className="flex items-center justify-center"
+              style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-l)' }}
+            >
+              <img
+                src={SaaSModeIcon}
+                alt="SaaS mode"
+                className="icon-txt1"
+                style={{ width: 48, height: 48 }}
+              />
+              <h1 className="h1" style={{ marginBottom: 0 }}>SaaS</h1>
+            </div>
+          ) : (
+            <div
+              className="flex items-center justify-center"
+              style={{ gap: 'var(--space-s)', marginBottom: 'var(--space-l)' }}
+            >
+              <img
+                src={DonkitIcon}
+                alt="Donkit"
+                width={40}
+                height={40}
+                style={{ borderRadius: 'var(--space-s)' }}
+              />
+              <h1 className="h1" style={{ marginBottom: 0 }}>RAGOps Agent</h1>
+            </div>
+          )}
+          {setupStep === 'mode-select' && (
+            <h3 className="h3" style={{ marginBottom: 0, color: 'var(--color-txt-icon-2)' }}>
+              Choose your operating mode to get started:
+            </h3>
+          )}
         </div>
 
         {/* Mode Selection */}
-        <div className="grid grid-cols-3" style={{ gap: 'var(--space-m)', marginBottom: 'var(--space-l)' }}>
+        {setupStep === 'mode-select' && (
+        <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 'var(--space-m)', marginBottom: 'var(--space-l)' }}>
           {/* Local Mode */}
           <button
             onClick={() => handleModeChange('local')}
             style={{
               padding: 'var(--space-l)',
-              borderRadius: 'var(--space-s)',
+              borderRadius: 'var(--space-xs)',
               border: '1px solid var(--color-border)',
               backgroundColor: mode === 'local' ? 'var(--color-action-item-selected)' : 'transparent',
-              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
               height: '100%'
             }}
             onMouseEnter={(e) => {
@@ -214,7 +249,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 Run everything locally with your own LLM provider
               </p>
               <div className="flex-1" />
-              <div className="pt-4 text-xs">
+              <div className="pt-0 sm:pt-4 text-xs">
                 {mode === 'local' && !checkingConfig ? (
                   configuredProviders.length > 0 ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
@@ -235,7 +270,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                     </span>
                   )
                 ) : (
-                  <span className="invisible px-2 py-1">Placeholder</span>
+                  <span className="hidden sm:inline invisible px-2 py-1">Placeholder</span>
                 )}
               </div>
             </div>
@@ -246,10 +281,10 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             onClick={() => handleModeChange('saas')}
             style={{
               padding: 'var(--space-l)',
-              borderRadius: 'var(--space-s)',
+              borderRadius: 'var(--space-xs)',
               border: '1px solid var(--color-border)',
               backgroundColor: mode === 'saas' ? 'var(--color-action-item-selected)' : 'transparent',
-              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
               height: '100%'
             }}
             onMouseEnter={(e) => {
@@ -279,7 +314,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 Connect to Donkit Cloud for managed RAG pipelines
               </p>
               <div className="flex-1" />
-              <div className="pt-4 text-xs">
+              <div className="pt-0 sm:pt-4 text-xs">
                 {mode === 'saas' && !checkingConfig ? (
                   donkitConfigured ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded">
@@ -300,7 +335,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                     </span>
                   )
                 ) : (
-                  <span className="invisible px-2 py-1">Placeholder</span>
+                  <span className="hidden sm:inline invisible px-2 py-1">Placeholder</span>
                 )}
               </div>
             </div>
@@ -310,7 +345,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           <div
             style={{
               padding: 'var(--space-l)',
-              borderRadius: 'var(--space-s)',
+              borderRadius: 'var(--space-xs)',
               border: '1px solid var(--color-border)',
               backgroundColor: 'transparent',
               opacity: 0.5,
@@ -353,17 +388,21 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             </div>
           </div>
         </div>
+        )}
 
         {/* Provider selection for Local Mode */}
-        {mode === 'local' && configuredProviders.length > 0 && !checkingConfig && (
-          <div style={{ 
-            marginBottom: 'var(--space-l)', 
-            backgroundColor: 'transparent', 
-            borderRadius: 'var(--space-s)', 
-            padding: 'var(--space-l)', 
-            border: '1px solid var(--color-border)' 
-          }}>
-            <h3 className="p2" style={{ fontWeight: 500, marginBottom: 'var(--space-m)' }}>Select Provider</h3>
+        {setupStep === 'local-provider-select' && configuredProviders.length > 0 && !checkingConfig && (
+          <>
+            <h3 className="h4" style={{ marginBottom: 'var(--space-m)', color: 'var(--color-txt-icon-2)', textAlign: 'center' }}>
+              Choose one of your configured providers for local mode:
+            </h3>
+            <div style={{ 
+              marginBottom: 'var(--space-l)', 
+              backgroundColor: 'transparent', 
+              borderRadius: 'var(--space-s)', 
+              padding: 'var(--space-l)', 
+              border: '1px solid var(--color-border)' 
+            }}>
             <div className="space-y-2">
               {configuredProviders.map((provider) => {
                 const isSelected = selectedProvider === provider.name;
@@ -409,11 +448,35 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
                 );
               })}
             </div>
-          </div>
+            <button
+              onClick={handleAddProvider}
+              disabled={loading || checkingConfig}
+              className="w-full flex items-center justify-center transition-colors"
+              style={{
+                marginTop: 'var(--space-m)',
+                padding: 'var(--space-s) 0',
+                fontSize: 'var(--font-size-p2)',
+                color: 'var(--color-txt-icon-2)',
+                gap: 'var(--space-s)'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && !checkingConfig) {
+                  e.currentTarget.style.color = 'var(--color-txt-icon-1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-txt-icon-2)';
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Add/Manage Providers
+            </button>
+            </div>
+          </>
         )}
 
         {/* Configuration hint for Local Mode */}
-        {mode === 'local' && configuredProviders.length === 0 && !checkingConfig && (
+        {setupStep === 'local-provider-select' && configuredProviders.length === 0 && !checkingConfig && (
           <div style={{ 
             marginBottom: 'var(--space-l)', 
             padding: 'var(--space-m)', 
@@ -443,63 +506,74 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
         )}
 
         {/* API Token Input (SaaS only) */}
-        {mode === 'saas' && showTokenInput && (
-          <div style={{ 
-            marginBottom: 'var(--space-l)', 
-            backgroundColor: 'transparent', 
-            borderRadius: 'var(--space-s)', 
-            padding: 'var(--space-l)', 
-            border: '1px solid var(--color-border)' 
-          }}>
-            <label className="block" style={{ marginBottom: 'var(--space-s)' }}>
-              <div className="flex items-center gap-2 p2" style={{ fontWeight: 500, marginBottom: 'var(--space-s)' }}>
-                <Key className="w-4 h-4" />
-                API Token (optional)
-              </div>
-              <input
-                type="password"
-                value={apiToken}
-                onChange={(e) => setApiToken(e.target.value)}
-                placeholder="Enter your API token or leave empty to use saved token"
-                style={{
-                  width: '100%',
-                  padding: 'var(--space-s) var(--space-m)',
-                  backgroundColor: 'transparent',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--space-s)',
-                  color: 'var(--color-txt-icon-1)',
-                  fontFamily: 'inherit',
-                  fontSize: 'var(--font-size-p1)',
-                  transition: 'border-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.matches(':focus')) {
-                    e.currentTarget.style.borderColor = 'var(--color-border-hover)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.matches(':focus')) {
-                    e.currentTarget.style.borderColor = 'var(--color-border)';
-                  }
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'var(--color-border-hover)';
-                  e.target.style.outline = 'none';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--color-border)';
-                }}
-              />
-            </label>
-            <p className="p2" style={{ marginTop: 'var(--space-s)', color: 'var(--color-txt-icon-2)' }}>
-              If you've already logged in via CLI (<code className="bg-dark-bg px-2 py-0.5 rounded">donkit-ragops login</code>), you can
-              leave this empty.
-            </p>
-          </div>
+        {setupStep === 'saas-token' && (
+          <>
+            <h3 className="h4" style={{ marginBottom: 'var(--space-m)', color: 'var(--color-txt-icon-2)', textAlign: 'center' }}>
+              Use your configured token or enter a new one:
+            </h3>
+            <div style={{ 
+              marginBottom: 'var(--space-l)', 
+              backgroundColor: 'transparent', 
+              borderRadius: 'var(--space-s)', 
+              padding: 'var(--space-l)', 
+              border: '1px solid var(--color-border)' 
+            }}>
+              <label className="block" style={{ marginBottom: 'var(--space-s)' }}>
+                <div className="flex items-center gap-2 p2" style={{ fontWeight: 500, marginBottom: 'var(--space-s)' }}>
+                  <Key className="w-4 h-4" />
+                  API Token
+                </div>
+                <input
+                  type="password"
+                  value={apiToken}
+                  onChange={(e) => setApiToken(e.target.value)}
+                  placeholder={donkitConfigured ? '********' : 'Enter your API token'}
+                  style={{
+                    width: '100%',
+                    padding: 'var(--space-s) var(--space-m)',
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--space-s)',
+                    color: 'var(--color-txt-icon-1)',
+                    fontFamily: 'inherit',
+                    fontSize: 'var(--font-size-p1)',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.matches(':focus')) {
+                      e.currentTarget.style.borderColor = 'var(--color-border-hover)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.matches(':focus')) {
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-border-hover)';
+                    e.target.style.outline = 'none';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'var(--color-border)';
+                  }}
+                />
+              </label>
+              {donkitConfigured ? (
+                <p className="p2" style={{ marginTop: 'var(--space-s)', color: 'var(--color-txt-icon-2)' }}>
+                  You already have a configured token. If you need to update it, paste a new one into the field.
+                </p>
+              ) : (
+                <p className="p2" style={{ marginTop: 'var(--space-s)', color: 'var(--color-txt-icon-2)' }}>
+                  If you've already logged in via CLI (<code className="bg-dark-bg px-2 py-0.5 rounded">donkit-ragops login</code>), you can
+                  leave this empty.
+                </p>
+              )}
+            </div>
+          </>
         )}
 
         {/* Error Message */}
-        {mode && error && (
+        {setupStep !== 'mode-select' && error && (
           <div style={{ 
             marginBottom: 'var(--space-l)', 
             padding: 'var(--space-m)', 
@@ -512,7 +586,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
         )}
 
         {/* Start Button (primary, accent red) – only after mode is selected */}
-        {mode && (
+        {setupStep !== 'mode-select' && mode && (
           <button
             onClick={handleStart}
             disabled={loading || checkingConfig}
@@ -525,7 +599,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               </>
             ) : (
               <>
-                {mode === 'local' && configuredProviders.length === 0 ? (
+                {setupStep === 'local-provider-select' && configuredProviders.length === 0 ? (
                   <>
                     <Settings className="w-5 h-5" />
                     Setup Provider
@@ -541,8 +615,8 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           </button>
         )}
 
-        {/* Add/Manage providers button for local mode */}
-        {mode === 'local' && (
+        {/* Add provider button for local mode without configured providers */}
+        {setupStep === 'local-provider-select' && configuredProviders.length === 0 && (
           <button
             onClick={handleAddProvider}
             disabled={loading || checkingConfig}
@@ -564,22 +638,20 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
             }}
           >
             <Plus className="w-4 h-4" />
-            {configuredProviders.length === 0 ? 'Add Provider' : 'Add/Manage Providers'}
+            Add Provider
           </button>
         )}
 
-        {/* Use different token button for SaaS mode */}
-        {mode === 'saas' && donkitConfigured && !showTokenInput && (
+        {/* Back button for sub-steps */}
+        {setupStep !== 'mode-select' && (
           <button
-            onClick={() => setShowTokenInput(true)}
+            onClick={handleStepBack}
             disabled={loading || checkingConfig}
-            className="w-full flex items-center justify-center transition-colors"
+            className="flex items-center transition-colors"
             style={{
               marginTop: 'var(--space-m)',
-              padding: 'var(--space-s) 0',
-              fontSize: 'var(--font-size-p2)',
+              gap: 'var(--space-s)',
               color: 'var(--color-txt-icon-2)',
-              gap: 'var(--space-s)'
             }}
             onMouseEnter={(e) => {
               if (!loading && !checkingConfig) {
@@ -590,15 +662,16 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               e.currentTarget.style.color = 'var(--color-txt-icon-2)';
             }}
           >
-            <Key className="w-4 h-4" />
-            Use a different API key
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </button>
         )}
 
         </div>
       </div>
 
-      {/* Info Footer - fixed to bottom */}
+      {/* Info Footer - only on start screen */}
+      {setupStep === 'mode-select' && (
       <div className="w-full flex justify-center">
         <div className="max-w-2xl w-full"
           style={{
@@ -631,7 +704,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
               <code
                 style={{
                   display: 'block',
-                  backgroundColor: 'var(--color-action-item-selected)',
+                  backgroundColor: 'transparent',
                   border: '1px solid var(--color-border)',
                   padding: 'var(--space-xs) var(--space-xl) var(--space-xs) var(--space-s)',
                   borderRadius: 'var(--space-xs)',
@@ -826,6 +899,7 @@ export default function SessionSetup({ onStart, loading, error }: SessionSetupPr
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

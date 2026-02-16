@@ -32,22 +32,19 @@ export default function ConnectionStatus({ status }: ConnectionStatusProps) {
     }
   };
 
-
   const colorMap = {
-    connected: { text: 'var(--color-success)', bg: 'var(--color-action-item-selected)' },
-    connecting: { text: 'var(--color-neutral)', bg: 'var(--color-action-item-selected)' },
-    disconnected: { text: 'var(--color-txt-icon-2)', bg: 'var(--color-action-item-hover)' },
-    error: { text: 'var(--color-error)', bg: 'var(--color-action-item-selected)' }
+    connected: { text: 'var(--color-success)' },
+    connecting: { text: 'var(--color-neutral)' },
+    disconnected: { text: 'var(--color-txt-icon-2)' },
+    error: { text: 'var(--color-error)' }
   };
   const colors = colorMap[status];
 
   return (
-    <div className="flex items-center rounded-full font-medium" style={{ 
+    <div className="flex items-center font-medium" style={{ 
       gap: '6px', 
-      padding: 'var(--space-xs) var(--space-s)', 
       fontSize: 'var(--font-size-p2)',
-      color: colors.text,
-      backgroundColor: colors.bg
+      color: colors.text
     }}>
       {getIcon()}
       <span>{getText()}</span>
