@@ -120,20 +120,22 @@ function App() {
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Header provider={session.provider} model={session.model} />
-      <div className="flex-1 min-h-0 overflow-hidden flex">
+      <div className="flex-1 min-h-0 overflow-hidden flex relative">
         {/* Projects Sidebar (Enterprise mode only) */}
         {isEnterpriseMode && (
-          <ProjectsSidebar
-            sessionId={session.id}
-            currentProjectId={session.project_id || null}
-            onProjectSelect={handleProjectSelect}
-            onNewProject={handleNewProject}
-          />
+          <div className="projects-panel-mobile">
+            <ProjectsSidebar
+              sessionId={session.id}
+              currentProjectId={session.project_id || null}
+              onProjectSelect={handleProjectSelect}
+              onNewProject={handleNewProject}
+            />
+          </div>
         )}
 
         {/* Main Chat Area */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <ChatContainer sessionId={session.id} />
+          <ChatContainer sessionId={session.id} hasProjectsSidebar={isEnterpriseMode} />
         </div>
       </div>
 

@@ -91,7 +91,7 @@
       --space-m: 20px;
       --space-l: 28px;
       --space-xl: 40px;
-      --page-padding-hor: 24px;
+      --page-padding-hor: 20px;
       --page-padding-vert: 48px;
       --page-header-height: 72px;
     }
@@ -102,10 +102,10 @@
     :root {
       --space-xs: 8px;
       --space-s: 16px;
-      --space-m: 16px;
+      --space-m: 24px;
       --space-l: 32px;
       --space-xl: 48px;
-      --page-padding-hor: 64px;
+      --page-padding-hor: 24px;
       --page-padding-vert: 64px;
       --page-header-height: 72px;
     }
@@ -244,12 +244,8 @@
 
   .prose p {
     color: var(--color-txt-icon-1);
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-  }
-
-  .prose p:first-child {
     margin-top: 0;
+    margin-bottom: var(--space-xs);
   }
 
   .prose.p1 p {
@@ -300,8 +296,77 @@
     font-weight: 600;
   }
 
-  .prose ul, .prose ol {
+  .prose ul,
+  .prose ol {
     color: var(--color-txt-icon-1);
+    margin-top: 0;
+    margin-bottom: var(--space-xs);
+    padding-left: var(--space-l);
+  }
+
+  .prose ul li,
+  .prose ol li {
+    font-size: var(--font-size-p1);
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--color-txt-icon-1);
+    margin-bottom: 0;
+  }
+
+  .prose ul {
+    list-style-type: disc;
+  }
+
+  .prose ol {
+    list-style-type: decimal;
+  }
+
+  /* Chat agent message typography spacing: unified small bottom margin */
+  /* Agent message base spacing */
+  .agent-message p {
+    margin-top: var(--space-s);
+    margin-bottom: 0;
+  }
+
+  .agent-message p:first-child {
+    margin-top: 0;
+  }
+
+  .agent-message ul,
+  .agent-message ol {
+    margin-top: var(--space-xs);
+    margin-bottom: 0;
+  }
+
+  .agent-message li {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* Headings in agent messages: large top, small bottom */
+  .agent-message h1,
+  .agent-message h2,
+  .agent-message h3,
+  .agent-message h4,
+  .agent-message h5,
+  .agent-message h6 {
+    margin-top: 0;
+    margin-bottom: var(--space-s);
+  }
+
+  /* Extra visual gap between list items inside agent messages */
+  .agent-message li + li {
+    margin-top: var(--space-xs);
+  }
+
+  /* Extra top gap before headings inside agent messages, except when heading is first */
+  .agent-message h1:not(:first-child),
+  .agent-message h2:not(:first-child),
+  .agent-message h3:not(:first-child),
+  .agent-message h4:not(:first-child),
+  .agent-message h5:not(:first-child),
+  .agent-message h6:not(:first-child) {
+    margin-top: var(--space-l);
   }
 
   .prose blockquote {
@@ -456,7 +521,7 @@
 
   /* Checklist panel mobile overlay */
   .checklist-panel-mobile {
-    position: fixed;
+    position: absolute;
     right: 0;
     top: 0;
     bottom: 0;
@@ -469,6 +534,28 @@
     .checklist-panel-mobile {
       position: relative;
       right: auto;
+      top: auto;
+      bottom: auto;
+      z-index: auto;
+      box-shadow: none;
+    }
+  }
+
+  /* Projects panel mobile overlay */
+  .projects-panel-mobile {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    background-color: var(--color-bg);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (min-width: 801px) {
+    .projects-panel-mobile {
+      position: relative;
+      left: auto;
       top: auto;
       bottom: auto;
       z-index: auto;

@@ -7,10 +7,15 @@ import DonkitLogo from '../../assets/donkit-logo.svg';
 
 interface MessageListProps {
   messages: ChatMessage[];
+  leftPadding?: string;
   rightPadding?: string;
 }
 
-export default function MessageList({ messages, rightPadding = 'var(--space-m)' }: MessageListProps) {
+export default function MessageList({
+  messages,
+  leftPadding = 'var(--space-m)',
+  rightPadding = 'var(--space-m)',
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,6 +37,7 @@ export default function MessageList({ messages, rightPadding = 'var(--space-m)' 
   return (
     <div className="flex-1 overflow-y-auto min-h-0" style={{ 
       padding: 'var(--space-m)', 
+      paddingLeft: leftPadding,
       paddingRight: rightPadding,
       backgroundColor: 'var(--color-bg)',
       display: 'flex',
@@ -79,7 +85,7 @@ export default function MessageList({ messages, rightPadding = 'var(--space-m)' 
                 {message.parts.map((part: ContentPart, index: number) => (
                   <div key={index} style={index === 0 ? { marginTop: 0, paddingTop: 0 } : {}}>
                     {part.type === 'text' && part.content && (
-                      <div className="prose max-w-none p1" style={{ marginTop: 0, paddingTop: 0 }}>
+                      <div className="prose max-w-none p1 agent-message" style={{ marginTop: 0, paddingTop: 0 }}>
                         <ReactMarkdown>{part.content}</ReactMarkdown>
                       </div>
                     )}
@@ -92,7 +98,7 @@ export default function MessageList({ messages, rightPadding = 'var(--space-m)' 
             ) : (
               // Fallback for messages without parts (backward compatibility)
               <>
-                <div className="prose max-w-none p1" style={{ marginTop: 0, paddingTop: 0 }}>
+                <div className="prose max-w-none p1 agent-message" style={{ marginTop: 0, paddingTop: 0 }}>
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
                 {message.toolCalls && message.toolCalls.length > 0 && (

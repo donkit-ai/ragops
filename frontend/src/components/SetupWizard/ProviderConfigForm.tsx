@@ -152,6 +152,8 @@ export default function ProviderConfigForm({
                 type="button"
                 onClick={() => togglePasswordVisibility(field.name)}
                 className="absolute top-1/2 -translate-y-1/2"
+                aria-label={showValue ? `Hide ${field.label}` : `Show ${field.label}`}
+                title={showValue ? `Hide ${field.label}` : `Show ${field.label}`}
                 style={{ right: '12px', color: 'var(--color-txt-icon-2)' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-txt-icon-1)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-txt-icon-2)'}
