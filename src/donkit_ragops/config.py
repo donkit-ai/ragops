@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings for RAGOps Agent CE."""
 
-    db_path: str = Field(default="./ragops-agent-ce/ragops.db")
+    db_path: str = Field(default="./ragops-agent/ragops.db")
 
     # LLM configuration
     llm_provider: str = Field(default="mock")

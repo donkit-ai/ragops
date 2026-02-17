@@ -20,15 +20,16 @@ from donkit_ragops.agent.local_tools.tools import (
     tool_db_get,
     tool_grep,
     tool_list_directory,
+    tool_quick_rag_build,
     tool_read_file,
     tool_time_now,
-    tool_update_rag_config_field,
 )
 from donkit_ragops.web.tools.interactive import (
+    create_web_progress_callback,
     current_web_session,
+    web_tool_get_recommended_defaults,
     web_tool_interactive_user_choice,
     web_tool_interactive_user_confirm,
-    web_tool_quick_start_rag_config,
 )
 
 
@@ -43,8 +44,8 @@ def web_default_tools() -> list[AgentTool]:
         # Web-specific interactive tools (use WebSocket dialogs)
         web_tool_interactive_user_choice(),
         web_tool_interactive_user_confirm(),
-        web_tool_quick_start_rag_config(),
-        tool_update_rag_config_field(),
+        web_tool_get_recommended_defaults(),
+        tool_quick_rag_build(progress_callback=create_web_progress_callback()),
         tool_create_project(),
         tool_get_project(),
         tool_list_projects(),
@@ -65,5 +66,5 @@ __all__ = [
     "web_default_tools",
     "web_tool_interactive_user_choice",
     "web_tool_interactive_user_confirm",
-    "web_tool_quick_start_rag_config",
+    "web_tool_get_recommended_defaults",
 ]

@@ -236,8 +236,8 @@ def web_tool_interactive_user_choice() -> AgentTool:
     )
 
 
-def web_tool_quick_start_rag_config() -> AgentTool:
-    """Web tool for quick start RAG configuration with WebSocket confirmation."""
+def web_tool_get_recommended_defaults() -> AgentTool:
+    """Web tool that returns available providers and recommended RAG defaults."""
 
     async def handler(args: dict[str, Any]) -> str:  # noqa: ARG001
         from donkit_ragops.credential_checker import (
@@ -248,74 +248,34 @@ def web_tool_quick_start_rag_config() -> AgentTool:
         available_providers = get_available_providers()
         recommended = get_recommended_config()
 
-        session = current_web_session.get()
-        if not session:
-            # Fallback: use quick start with recommended config
-            logger.warning("No web session context, using quick start defaults")
-            return json.dumps(
-                {
-                    "use_quick_start": True,
-                    "message": "Quick Start configuration selected.",
-                    "recommended_config": recommended,
-                    "available_providers": available_providers,
-                }
-            )
-
-        # Ask user if they want quick start
-        request_id = str(uuid.uuid4())
-        message = {
-            "type": "confirm_request",
-            "request_id": request_id,
-            "question": (
-                "Would you like to use Quick Start with recommended settings?\n\n"
-                f"This will configure:\n"
-                f"• {recommended.get('chunking_strategy', 'Semantic')} chunking "
-                f"({recommended.get('chunk_size', 500)} tokens)\n"
-                f"• {recommended.get('embedder_provider', 'OpenAI')} embeddings\n"
-                f"• {recommended.get('vector_db', 'Qdrant')} vector store\n"
-                f"• Standard RAG"
-            ),
-            "default": True,
-            "timestamp": time.time(),
-        }
-
-        response = await _send_and_wait_response(session, message)
-
-        if response is None:
-            return json.dumps(
-                {
-                    "cancelled": True,
-                    "use_quick_start": None,
-                    "available_providers": available_providers,
-                }
-            )
-
-        use_quick_start = response.get("confirmed", True)
-
-        if use_quick_start:
-            return json.dumps(
-                {
-                    "use_quick_start": True,
-                    "message": "Quick Start configuration selected.",
-                    "recommended_config": recommended,
-                    "available_providers": available_providers,
-                }
-            )
-        else:
-            return json.dumps(
-                {
-                    "use_quick_start": False,
-                    "message": "User chose manual config. Ask about each setting.",
-                    "available_providers": available_providers,
-                }
-            )
+        return json.dumps(
+            {
+                "available_providers": available_providers,
+                "recommended_config": {
+                    "embedder_provider": recommended["embedder_provider"],
+                    "embedder_model": recommended["embedder_model"],
+                    "generation_provider": recommended["generation_provider"],
+                    "generation_model": recommended["generation_model"],
+                    "vector_db": "qdrant",
+                    "read_format": "json",
+                    "split_type": "character",
+                    "chunk_size": 500,
+                    "chunk_overlap": 0,
+                    "ranker": False,
+                    "partial_search": True,
+                    "query_rewrite": True,
+                },
+            },
+            ensure_ascii=False,
+        )
 
     return AgentTool(
-        name="quick_start_rag_config",
+        name="get_recommended_defaults",
         description=(
-            "Offer the user a Quick Start option for RAG configuration. "
-            "If user confirms Quick Start, use the returned recommended settings. "
-            "If user declines, proceed with manual configuration using update_rag_config_field."
+            "Returns available providers and recommended RAG configuration defaults. "
+            "Call this before custom configuration to know which providers "
+            "are available and what settings to recommend. "
+            "Does NOT ask the user anything — just returns data."
         ),
         parameters={
             "type": "object",

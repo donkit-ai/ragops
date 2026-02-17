@@ -22,13 +22,7 @@ export function ConfirmDialog({
   };
 
   return (
-    <div style={{ 
-      backgroundColor: 'var(--color-action-item-selected)', 
-      border: '1px solid var(--color-border)', 
-      borderRadius: 'var(--space-s)', 
-      padding: 'var(--space-m)', 
-      margin: 'var(--space-s) 0' 
-    }}>
+    <div style={{ marginBottom: 'var(--space-m)' }}>
       <p className="p1" style={{ marginBottom: 'var(--space-m)', whiteSpace: 'pre-wrap' }}>{question}</p>
       {!responded ? (
         <div className="flex" style={{ gap: 'var(--space-s)' }}>
@@ -94,13 +88,7 @@ export function ChoiceDialog({
   };
 
   return (
-    <div style={{ 
-      backgroundColor: 'var(--color-action-item-selected)', 
-      border: '1px solid var(--color-border)', 
-      borderRadius: 'var(--space-s)', 
-      padding: 'var(--space-m)', 
-      margin: 'var(--space-s) 0' 
-    }}>
+    <div style={{ marginBottom: 'var(--space-m)' }}>
       <p className="p1" style={{ fontWeight: 500, marginBottom: 'var(--space-m)' }}>{title}</p>
       {!responded ? (
         <div className="flex flex-wrap" style={{ gap: 'var(--space-s)' }}>

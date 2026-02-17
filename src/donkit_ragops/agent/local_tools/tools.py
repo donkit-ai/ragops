@@ -4,21 +4,17 @@ import datetime as _dt
 import json
 import re
 from pathlib import Path
-from typing import Any
-from typing import Callable
+from typing import Any, Callable
+
+from donkit.llm import FunctionDefinition, Tool
 
 from donkit_ragops.credential_checker import (
-    check_provider_credentials,
     get_available_providers,
     get_recommended_config,
 )
-from donkit_ragops.db import kv_get
-from donkit_ragops.db import migrate
-from donkit_ragops.db import open_db
-from donkit_ragops.interactive_input import interactive_confirm
-from donkit_ragops.interactive_input import interactive_select
-from donkit.llm import FunctionDefinition
-from donkit.llm import Tool
+from donkit_ragops.db import kv_get, migrate, open_db
+from donkit_ragops.interactive_input import interactive_confirm, interactive_select
+from donkit_ragops.schemas.config_schemas import RagConfig
 
 
 class AgentTool:
@@ -461,80 +457,41 @@ def tool_interactive_user_confirm() -> AgentTool:
     )
 
 
-def tool_quick_start_rag_config() -> AgentTool:
-    """Tool for quickly setting up RAG with recommended settings."""
+def tool_get_recommended_defaults() -> AgentTool:
+    """Tool that returns available providers and recommended RAG defaults."""
 
-    def _handler(args) -> str:
-        # Ask user if they want to use quick start or customize
-        use_quick_start = interactive_confirm(
-            question="Use recommended Quick Start settings? (You can customize later)",
-            default=True
-        )
-
+    def _handler(args) -> str:  # noqa: ARG001
         available_providers = get_available_providers()
         recommended = get_recommended_config()
 
-        if use_quick_start is None:
-            return json.dumps(
-                {
-                    "cancelled": True,
-                    "use_quick_start": None,
-                    "message": f"Available providers in env settings - {available_providers}\n"
-                               f"You can recommend only this providers in interactive_user_choice"
-                }
-            )
-
-        if not use_quick_start:
-            return json.dumps({
-                "cancelled": False,
-                "use_quick_start": False,
-                "message":
-                    "User wants to customize. Please ask for each setting individually."
-                    f"Available providers in env settings - {available_providers}\n"
-                    f"You can recommend only this providers in interactive_user_choice"
-            })
-
-        # Get available providers and recommended config
-
-        # Quick start confirmed - return recommended config template
-        quick_config = {
-            "use_quick_start": True,
-            "message":
-                "Quick Start configuration selected. Use these recommended settings based on available providers.",
-            "recommended_config": {
-                "embedder_provider": recommended["embedder_provider"],
-                "embedder_model": recommended["embedder_model"],
-                "generation_provider": recommended["generation_provider"],
-                "generation_model": recommended["generation_model"],
-                "vector_db": "qdrant",
-                "read_format": "json",
-                "split_type": "character",
-                "chunk_size": 500,
-                "chunk_overlap": 0,
-                "ranker": False,
-                "partial_search": True,
-                "query_rewrite": True,
-                "composite_query_detection": False
+        return json.dumps(
+            {
+                "available_providers": available_providers,
+                "recommended_config": {
+                    "embedder_provider": recommended["embedder_provider"],
+                    "embedder_model": recommended["embedder_model"],
+                    "generation_provider": recommended["generation_provider"],
+                    "generation_model": recommended["generation_model"],
+                    "vector_db": "qdrant",
+                    "read_format": "json",
+                    "split_type": "character",
+                    "chunk_size": 500,
+                    "chunk_overlap": 0,
+                    "ranker": False,
+                    "partial_search": True,
+                    "query_rewrite": True,
+                },
             },
-            "available_providers": available_providers,
-            "note":
-                (
-                    "Configuration automatically selected based on available credentials. "
-                    "User can modify config later if needed."
-                )
-        }
-        return json.dumps(quick_config, ensure_ascii=False)
+            ensure_ascii=False,
+        )
 
     return AgentTool(
-        name="quick_start_rag_config",
+        name="get_recommended_defaults",
         description=(
-            "Offer Quick Start mode with recommended RAG configuration settings. "
-            "This is the PREFERRED way to configure RAG for most users - it reduces 13 questions to 1. "
-            "Use this tool FIRST before asking individual configuration questions. "
-            "If user confirms Quick Start, use the returned recommended settings. "
-            "If user declines, then proceed with asking individual configuration questions using interactive_user_choice. "
-            "Recommended defaults: OpenAI embeddings (text-embedding-3-small), GPT-4o-mini for generation, "
-            "Qdrant vector DB, JSON format with semantic splitting, 1000 chunk size, 100 overlap."
+            "Returns available providers and recommended RAG configuration defaults. "
+            "Call this before custom configuration to know which providers "
+            "are available in .env and what settings to recommend. "
+            "Does NOT ask the user anything — just returns data."
         ),
         parameters={
             "type": "object",
@@ -545,117 +502,139 @@ def tool_quick_start_rag_config() -> AgentTool:
     )
 
 
-def tool_update_rag_config_field() -> AgentTool:
-    """Tool for updating a single field in RAG configuration without re-asking all questions."""
+def _default_cli_progress(step: int, total: int, message: str) -> None:
+    """Default progress callback that prints to stdout with \\r overwrite."""
+    import sys
 
-    def _handler(args: dict[str, Any]) -> str:
-        field_name = str(args.get("field_name", ""))
+    percentage = (step / total) * 100 if total else 0
+    text = f"  ⏳ [{step}/{total}] {percentage:.0f}% — {message}"
+    sys.stdout.write(f"\r\033[K{text}")
+    sys.stdout.flush()
+    if step >= total:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
-        if not field_name:
-            return json.dumps({
-                "error": "field_name is required",
-                "available_fields": [
-                    "chunk_size", "chunk_overlap", "split_type",
-                    "vector_db (db_type)", "embedder_provider (embedder.embedder_type)",
-                    "embedder_model (embedder.model_name)", "generation_model",
-                    "ranker", "partial_search", "query_rewrite", "composite_query_detection"
-                ]
-            })
 
-        # Map user-friendly field names to config paths
-        field_mappings = {
-            "chunk_size": ("chunking_options.chunk_size", ["250", "500", "1000", "2000", "other (I will specify)"]),
-            "chunk_overlap": ("chunking_options.chunk_overlap", ["0", "50", "100", "200", "other (I will specify)"]),
-            "split_type": ("chunking_options.split_type", ["character", "sentence", "paragraph", "semantic", "markdown"]),
-            "vector_db": ("db_type", ["qdrant", "chroma", "milvus"]),
-            "db_type": ("db_type", ["qdrant", "chroma", "milvus"]),
-            "embedder_provider": ("embedder.embedder_type", ["openai", "vertex", "azure_openai", "ollama"]),
-            "embedder_model": ("embedder.model_name", None),  # Free text
-            "generation_model": ("generation_model_name", None),  # Free text
-            "ranker": ("ranker", None),  # Boolean confirm
-            "partial_search": ("retriever_options.partial_search", None),  # Boolean
-            "query_rewrite": ("retriever_options.query_rewrite", None),  # Boolean
-            "composite_query_detection": ("retriever_options.composite_query_detection", None),  # Boolean
-        }
+def tool_quick_rag_build(
+    progress_callback: Callable[[int, int, str], object] | None = None,
+) -> AgentTool:
+    """Tool for building a complete RAG pipeline in one call.
 
-        if field_name not in field_mappings:
-            return json.dumps({
-                "error": f"Unknown field: {field_name}",
-                "available_fields": list(field_mappings.keys())
-            })
+    Args:
+        progress_callback: Optional callback ``(step, total_steps, message)``
+            invoked by the pipeline orchestrator to report build progress.
+            If *None*, a default callback printing to stdout is used.
+    """
+    _progress_cb = progress_callback or _default_cli_progress
 
-        config_path, choices = field_mappings[field_name]
+    async def _handler(args: dict[str, Any]) -> str:
+        from loguru import logger
 
-        # Ask for new value
-        if choices:
-            # Multiple choice
-            selected = interactive_select(
-                choices=choices,
-                title=f"Select new value for {field_name}"
-            )
-            if selected is None:
-                return json.dumps({"cancelled": True, "field_name": field_name})
+        source_path = str(args.get("source_path", ""))
+        project_id = args.get("project_id") or None
+        config_raw = args.get("config")
 
-            new_value = selected
-            if "other" in selected.lower():
-                # User needs to specify custom value in their next message
-                return json.dumps({
-                    "cancelled": False,
-                    "field_name": field_name,
-                    "needs_custom_value": True,
-                    "message": f"User selected 'other'. Ask them to specify the custom value for {field_name}."
-                })
-        else:
-            # Boolean or free text - for now, assume boolean for these specific fields
-            if field_name in ["ranker", "partial_search", "query_rewrite", "composite_query_detection"]:
-                confirmed = interactive_confirm(
-                    question=f"Enable {field_name}?",
-                    default=False
+        logger.debug(
+            f"[quick_rag_build] Args received: source_path={source_path}, project_id={project_id}"
+        )
+        logger.debug(f"[quick_rag_build] Config raw: {config_raw}")
+
+        if not source_path:
+            return json.dumps({"error": "source_path is required"})
+
+        from donkit_ragops.rag_builder.pipeline.orchestrator import RagPipelineOrchestrator
+        from donkit_ragops.schemas.config_schemas import RagConfig
+
+        # Parse optional config
+        rag_config = None
+        if config_raw:
+            try:
+                config_dict = config_raw if isinstance(config_raw, dict) else json.loads(config_raw)
+                logger.info(f"[quick_rag_build] Config dict parsed: {config_dict}")
+                rag_config = RagConfig(**config_dict)
+                logger.info(
+                    f"[quick_rag_build] RagConfig created with db_type={rag_config.db_type}"
                 )
-                if confirmed is None:
-                    return json.dumps({"cancelled": True, "field_name": field_name})
-                new_value = confirmed
-            else:
-                # Free text fields - return instruction for agent to ask
-                return json.dumps({
-                    "cancelled": False,
-                    "field_name": field_name,
-                    "needs_custom_value": True,
-                    "message": f"Ask user to provide new value for {field_name} in their next message."
-                })
+            except Exception as e:
+                logger.error(f"[quick_rag_build] Config parsing failed: {e}")
+                return json.dumps({"status": "error", "message": f"Invalid config: {e}"})
 
-        return json.dumps({
-            "cancelled": False,
-            "field_name": field_name,
-            "config_path": config_path,
-            "new_value": new_value,
-            "message": f"User selected '{new_value}' for {field_name}. Use save_rag_config with partial update."
-        }, ensure_ascii=False)
+        try:
+            result = await RagPipelineOrchestrator.build(
+                source_path=source_path,
+                project_id=project_id,
+                rag_config=rag_config,
+                progress_callback=_progress_cb,
+            )
+            return json.dumps(
+                {
+                    "status": "success",
+                    "project_id": result.project_id,
+                    "rag_service_url": result.rag_service_url,
+                    "vectorstore_url": result.vectorstore_url,
+                    "documents_processed": result.documents_processed,
+                    "chunks_created": result.chunks_created,
+                    "chunks_loaded": result.chunks_loaded,
+                    "errors": result.errors,
+                    "message": result.to_agent_response(),
+                }
+            )
+        except RuntimeError as e:
+            return json.dumps({"status": "error", "message": str(e)})
+        except Exception as e:
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": f"Pipeline failed: {type(e).__name__}: {e}",
+                }
+            )
+
+    # Generate JSON Schema from RagConfig Pydantic model
+    rag_config_schema = RagConfig.model_json_schema()
+
+    # Build parameters schema with source_path, project_id, and optional config
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "source_path": {
+                "type": "string",
+                "description": (
+                    "Path to source documents. Can be a single file, "
+                    "directory, or comma-separated list of files."
+                ),
+            },
+            "project_id": {
+                "type": "string",
+                "description": "Project ID for this RAG pipeline",
+            },
+            "config": {
+                **rag_config_schema,
+                "description": (
+                    "Optional RagConfig for custom build. Omit entirely for automatic mode. "
+                    f"{rag_config_schema.get('description', '')}"
+                ),
+            },
+        },
+        "required": ["source_path", "project_id"],
+    }
+
+    # Include $defs if present in the schema (for nested models)
+    if "$defs" in rag_config_schema:
+        parameters_schema["$defs"] = rag_config_schema["$defs"]
 
     return AgentTool(
-        name="update_rag_config_field",
+        name="quick_rag_build",
         description=(
-            "Update a single field in RAG configuration without asking all 13 questions again. "
-            "Use this when user wants to modify one specific setting (e.g., 'change chunk size'). "
-            "This tool will ask for just that one field and return the value to update via save_rag_config. "
-            "Available fields: chunk_size, chunk_overlap, split_type, vector_db, embedder_provider, "
-            "embedder_model, generation_model, ranker, partial_search, query_rewrite, composite_query_detection. "
-            "After getting the response, use save_rag_config with the partial update shown in config_path."
+            "Build a complete RAG pipeline in one call. "
+            "Processes documents, chunks, starts vectorstore and RAG service. "
+            "Ports are auto-allocated if defaults are busy. "
+            "AUTOMATIC MODE: omit 'config' parameter - uses recommended defaults. "
+            "CUSTOM MODE: provide 'config' parameter with user's choices. "
+            "IMPORTANT: always ask the user to choose build mode "
+            "(automatic vs custom) via interactive_user_choice BEFORE "
+            "calling this tool."
         ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "field_name": {
-                    "type": "string",
-                    "description": (
-                        "The field to update. Options: chunk_size, chunk_overlap, split_type, vector_db, "
-                        "embedder_provider, embedder_model, generation_model, ranker, partial_search, "
-                        "query_rewrite, composite_query_detection"
-                    ),
-                },
-            },
-            "required": ["field_name"],
-            "additionalProperties": False,
-        },
+        parameters=parameters_schema,
         handler=_handler,
+        is_async=True,
     )

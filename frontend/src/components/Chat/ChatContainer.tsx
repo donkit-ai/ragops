@@ -444,20 +444,7 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
             borderBottom: '1px solid var(--color-border)',
           }}
         >
-          <div className="flex items-center" style={{ gap: 'var(--space-m)' }}>
-            <h1 className="h4" style={{ fontWeight: 500, margin: 0 }}>RAGOps Chat</h1>
-            {interactiveRequests.length > 0 && (
-              <span className="p2 inline-flex items-center" style={{ 
-                padding: 'var(--space-xs) var(--space-s)', 
-                borderRadius: '999px', 
-                fontWeight: 500, 
-                backgroundColor: 'var(--color-action-item-selected)', 
-                color: 'var(--color-neutral)' 
-              }}>
-                ⚠️ Action Required
-              </span>
-            )}
-          </div>
+          <h1 className="h4" style={{ fontWeight: 500, margin: 0 }}>RAGOps Chat</h1>
           <ConnectionStatus status={status} />
         </div>
 
@@ -470,47 +457,38 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
 
         {/* Interactive dialogs */}
         {interactiveRequests.length > 0 && (
-          <>
-            {console.log('[ChatContainer] Rendering interactive dialogs, count:', interactiveRequests.length)}
-            <div
-              ref={dialogsRef}
-              className="flex-shrink-0"
-              style={{
-                padding: `var(--space-m) var(--page-padding-hor) 0`,
-                paddingLeft: mobileLeftPadding,
-                paddingRight: mobileRightPadding,
-                borderTop: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-bg)',
-              }}
-            >
-              <div className="max-w-4xl mx-auto w-full">
-                <div
-                  className="p2"
-                  style={{ marginBottom: 'var(--space-s)', fontWeight: 500, color: 'var(--color-neutral)' }}
-                >
-                  ⚠️ Action Required ({interactiveRequests.length})
-                </div>
-                {interactiveRequests.map((request) =>
-                  request.type === 'confirm' ? (
-                    <ConfirmDialog
-                      key={request.id}
-                      requestId={request.id}
-                      question={request.question || 'Continue?'}
-                      onResponse={handleConfirmResponse}
-                    />
-                  ) : (
-                    <ChoiceDialog
-                      key={request.id}
-                      requestId={request.id}
-                      title={request.title || 'Select an option'}
-                      choices={request.choices || []}
-                      onResponse={handleChoiceResponse}
-                    />
-                  )
-                )}
-              </div>
+          <div
+            ref={dialogsRef}
+            className="flex-shrink-0"
+            style={{
+              padding: `var(--space-m) var(--page-padding-hor)`,
+              paddingLeft: mobileLeftPadding,
+              paddingRight: mobileRightPadding,
+              borderTop: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg)',
+            }}
+          >
+            <div className="max-w-4xl mx-auto w-full">
+              {interactiveRequests.map((request) =>
+                request.type === 'confirm' ? (
+                  <ConfirmDialog
+                    key={request.id}
+                    requestId={request.id}
+                    question={request.question || 'Continue?'}
+                    onResponse={handleConfirmResponse}
+                  />
+                ) : (
+                  <ChoiceDialog
+                    key={request.id}
+                    requestId={request.id}
+                    title={request.title || 'Select an option'}
+                    choices={request.choices || []}
+                    onResponse={handleChoiceResponse}
+                  />
+                )
+              )}
             </div>
-          </>
+          </div>
         )}
 
         {/* Input with file upload */}

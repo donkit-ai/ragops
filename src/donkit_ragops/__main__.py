@@ -19,6 +19,21 @@ import warnings
 warnings.filterwarnings("ignore", message=".*Unable to import Axes3D.*", module="matplotlib")
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib.projections")
 warnings.filterwarnings("ignore", message=".*ARC4 has been moved.*")
+
+# 3. SWIG C-extension warnings (onnxruntime / tokenizers)
+#    - Issue: SwigPyPacked, SwigPyObject, swigvarlink have no __module__ attribute
+#    - Source: importlib._bootstrap when loading C-extensions used by onnxruntime
+#    - Status: Upstream issue, safe to suppress
+warnings.filterwarnings(
+    "ignore",
+    message=".*builtin type Swig.*has no __module__ attribute.*",
+    category=DeprecationWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=".*builtin type swigvarlink has no __module__ attribute.*",
+    category=DeprecationWarning,
+)
 try:
     from cryptography.utils import CryptographyDeprecationWarning
 

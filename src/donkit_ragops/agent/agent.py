@@ -33,14 +33,14 @@ from donkit_ragops.agent.local_tools.project_tools import (
 from donkit_ragops.agent.local_tools.tools import (
     AgentTool,
     tool_db_get,
+    tool_get_recommended_defaults,
     tool_grep,
     tool_interactive_user_choice,
     tool_interactive_user_confirm,
     tool_list_directory,
-    tool_quick_start_rag_config,
+    tool_quick_rag_build,
     tool_read_file,
     tool_time_now,
-    tool_update_rag_config_field,
 )
 from donkit_ragops.history_manager import compress_history_if_needed
 from donkit_ragops.mcp.protocol import MCPClientProtocol
@@ -74,8 +74,8 @@ def default_tools() -> list[AgentTool]:
         tool_grep(),
         tool_interactive_user_choice(),
         tool_interactive_user_confirm(),
-        tool_quick_start_rag_config(),
-        tool_update_rag_config_field(),
+        tool_get_recommended_defaults(),
+        tool_quick_rag_build(),
         tool_create_project(),
         tool_get_project(),
         tool_list_projects(),
