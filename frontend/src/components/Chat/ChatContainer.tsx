@@ -7,6 +7,7 @@ import MessageInput from './MessageInput';
 import ChecklistPanel from '../Checklist/ChecklistPanel';
 import ConnectionStatus from '../Layout/ConnectionStatus';
 import { ConfirmDialog, ChoiceDialog } from '../Dialogs/InteractiveDialog';
+import { MessageSquare } from 'lucide-react';
 
 interface InteractiveRequest {
   id: string;
@@ -444,7 +445,23 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
             borderBottom: '1px solid var(--color-border)',
           }}
         >
-          <h1 className="h4" style={{ fontWeight: 500, margin: 0 }}>RAGOps Chat</h1>
+          <div className="flex items-center" style={{ gap: 'var(--space-xs)' }}>
+            <h2
+              className="p1 flex items-center"
+              style={{ fontWeight: 500, gap: 'var(--space-s)' }}
+            >
+              <MessageSquare className="w-6 h-6 block" style={{ color: 'var(--color-txt-icon-1)' }} />
+              RAGOps Chat
+            </h2>
+            {interactiveRequests.length > 0 && (
+              <span className="p2 inline-flex items-center" style={{ 
+                fontWeight: 500, 
+                color: 'var(--color-neutral)' 
+              }}>
+                ⚠️ Action Required
+              </span>
+            )}
+          </div>
           <ConnectionStatus status={status} />
         </div>
 
@@ -457,38 +474,47 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
 
         {/* Interactive dialogs */}
         {interactiveRequests.length > 0 && (
-          <div
-            ref={dialogsRef}
-            className="flex-shrink-0"
-            style={{
-              padding: `var(--space-m) var(--page-padding-hor)`,
-              paddingLeft: mobileLeftPadding,
-              paddingRight: mobileRightPadding,
-              borderTop: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-bg)',
-            }}
-          >
-            <div className="max-w-4xl mx-auto w-full">
-              {interactiveRequests.map((request) =>
-                request.type === 'confirm' ? (
-                  <ConfirmDialog
-                    key={request.id}
-                    requestId={request.id}
-                    question={request.question || 'Continue?'}
-                    onResponse={handleConfirmResponse}
-                  />
-                ) : (
-                  <ChoiceDialog
-                    key={request.id}
-                    requestId={request.id}
-                    title={request.title || 'Select an option'}
-                    choices={request.choices || []}
-                    onResponse={handleChoiceResponse}
-                  />
-                )
-              )}
+          <>
+            {console.log('[ChatContainer] Rendering interactive dialogs, count:', interactiveRequests.length)}
+            <div
+              ref={dialogsRef}
+              className="flex-shrink-0"
+              style={{
+                padding: `var(--space-m) var(--page-padding-hor) 0`,
+                paddingLeft: mobileLeftPadding,
+                paddingRight: mobileRightPadding,
+                borderTop: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-bg)',
+              }}
+            >
+              <div className="max-w-4xl mx-auto w-full">
+                <div
+                  className="p2"
+                  style={{ marginBottom: 'var(--space-s)', fontWeight: 500, color: 'var(--color-neutral)' }}
+                >
+                  ⚠️ Action Required ({interactiveRequests.length})
+                </div>
+                {interactiveRequests.map((request) =>
+                  request.type === 'confirm' ? (
+                    <ConfirmDialog
+                      key={request.id}
+                      requestId={request.id}
+                      question={request.question || 'Continue?'}
+                      onResponse={handleConfirmResponse}
+                    />
+                  ) : (
+                    <ChoiceDialog
+                      key={request.id}
+                      requestId={request.id}
+                      title={request.title || 'Select an option'}
+                      choices={request.choices || []}
+                      onResponse={handleChoiceResponse}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Input with file upload */}

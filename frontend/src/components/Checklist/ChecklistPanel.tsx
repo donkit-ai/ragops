@@ -98,7 +98,7 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
         <div 
           className="flex flex-col items-center cursor-pointer relative"
           style={{ 
-            padding: 'var(--space-m) 0', 
+            padding: 'var(--space-s) 0 var(--space-m)', 
             borderBottom: '1px solid var(--color-border)',
             width: '100%',
             backgroundColor: isHoveringHeader ? 'var(--color-action-item-hover)' : 'transparent',
@@ -113,10 +113,8 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
             <img
               src={ListTodoIcon}
               alt="TODO"
-              className="icon-txt2 transition-opacity"
+              className="w-6 h-6 block icon-txt2 transition-opacity"
               style={{
-                width: '24px',
-                height: '24px',
                 opacity: isHoveringHeader ? 0 : 0.6,
                 transition: 'opacity 0.2s ease',
               }}
@@ -124,10 +122,8 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
             <img
               src={ArrowLeftToLineIcon}
               alt="Expand"
-              className="icon-txt2 transition-opacity"
+              className="w-6 h-6 block icon-txt2 transition-opacity"
               style={{
-                width: '24px',
-                height: '24px',
                 position: 'absolute',
                 opacity: isHoveringHeader ? 1 : 0,
                 transition: 'opacity 0.2s ease',
@@ -184,17 +180,17 @@ export default function ChecklistPanel({ content, onCollapseChange }: ChecklistP
   return (
     <div className="w-72 flex flex-col">
       {/* Header */}
-      <div style={{ padding: 'var(--space-m)', borderBottom: '1px solid var(--color-border)' }}>
+      <div style={{ padding: 'var(--space-s) var(--space-m) var(--space-m)', borderBottom: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between" style={{ gap: 'var(--space-s)' }}>
           <div className="flex items-center" style={{ gap: 'var(--space-s)' }}>
-            <img src={ListTodoIcon} alt="" className="w-5 h-5 icon-txt1" />
-            <h2 className="h4" style={{ fontWeight: 500 }}>TODO</h2>
+            <img src={ListTodoIcon} alt="" className="w-6 h-6 block icon-txt1" />
+            <h2 className="p1" style={{ fontWeight: 500 }}>TODO</h2>
           </div>
           <button
             onClick={() => handleCollapse(true)}
             className="cursor-pointer"
             style={{
-              padding: 'var(--space-xs)',
+              padding: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

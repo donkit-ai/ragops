@@ -24,17 +24,20 @@ export default function ProviderSelection({ providers, onSelect }: ProviderSelec
           className="w-full text-left transition-all group"
           style={{
             padding: 'var(--space-m)',
-            borderRadius: 'var(--space-s)',
+            borderRadius: 'var(--space-xs)',
             border: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-bg)'
+            backgroundColor: 'transparent',
+            color: 'var(--color-txt-icon-1)',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-white-60)';
-            e.currentTarget.style.backgroundColor = 'rgba(14, 15, 17, 0.5)';
+            e.currentTarget.style.backgroundColor = 'var(--color-action-item-hover)';
+            e.currentTarget.style.borderColor = 'var(--color-border-hover)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'var(--color-border)';
-            e.currentTarget.style.backgroundColor = 'var(--color-bg)';
+            e.currentTarget.style.backgroundColor = 'transparent';
           }}
         >
           <div className="flex items-start justify-between">

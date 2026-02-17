@@ -313,7 +313,7 @@ export default function MessageInput({
           style={{
             gap: 'var(--space-m)',
             backgroundColor: 'transparent',
-            border: isDragging ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+            border: isDragging ? '2px solid var(--color-success)' : '1px solid var(--color-border)',
             borderRadius: 'var(--space-s)',
             padding: 'var(--space-m)',
             transform: isDragging ? 'scale(1.02)' : 'scale(1)',
@@ -337,7 +337,7 @@ export default function MessageInput({
               borderRadius: 'var(--space-s)' 
             }}>
               <div className="font-medium flex items-center" style={{ 
-                color: 'var(--color-accent)', 
+                color: 'var(--color-success)', 
                 fontSize: 'var(--font-size-h3)',
                 gap: 'var(--space-s)'
               }}>
