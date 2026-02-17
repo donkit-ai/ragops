@@ -62,7 +62,7 @@ export default function ProjectsSidebar({
         <div
           className="flex flex-col items-center cursor-pointer relative"
           style={{
-            padding: 'var(--space-m) 0',
+            padding: 'var(--space-s) 0 var(--space-m)',
             borderBottom: '1px solid var(--color-border)',
             width: '100%',
             backgroundColor: isHoveringHeader ? 'var(--color-action-item-hover)' : 'transparent',
@@ -77,10 +77,8 @@ export default function ProjectsSidebar({
             <img
               src={FolderGitIcon}
               alt="Projects"
-              className="icon-txt2 transition-opacity"
+              className="w-6 h-6 block icon-txt2 transition-opacity"
               style={{
-                width: '24px',
-                height: '24px',
                 opacity: isHoveringHeader ? 0 : 0.6,
                 transition: 'opacity 0.2s ease',
               }}
@@ -88,10 +86,8 @@ export default function ProjectsSidebar({
             <img
               src={ArrowRightToLineIcon}
               alt="Expand"
-              className="icon-txt2 transition-opacity"
+              className="w-6 h-6 block icon-txt2 transition-opacity"
               style={{
-                width: '24px',
-                height: '24px',
                 position: 'absolute',
                 opacity: isHoveringHeader ? 1 : 0,
                 transition: 'opacity 0.2s ease',
@@ -172,7 +168,7 @@ export default function ProjectsSidebar({
       <div
         className="flex-shrink-0"
         style={{
-          padding: 'var(--space-m)',
+          padding: 'var(--space-s) var(--space-m) var(--space-m)',
           borderBottom: '1px solid var(--color-border)',
         }}
       >
@@ -182,10 +178,10 @@ export default function ProjectsSidebar({
         >
           <div className="flex items-center" style={{ gap: 'var(--space-xs)' }}>
             <h2
-              className="h4 flex items-center"
+              className="p1 flex items-center"
               style={{ fontWeight: 500, gap: 'var(--space-s)' }}
             >
-              <img src={FolderGitIcon} alt="" className="w-5 h-5 icon-txt1" />
+              <img src={FolderGitIcon} alt="" className="w-6 h-6 block icon-txt1" />
               Projects
             </h2>
             <button
@@ -201,7 +197,7 @@ export default function ProjectsSidebar({
             onClick={() => handleCollapse(true)}
             className="cursor-pointer"
             style={{
-              padding: 'var(--space-xs)',
+              padding: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -269,7 +265,7 @@ export default function ProjectsSidebar({
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--space-s)',
+              gap: 'var(--space-xs)',
             }}
           >
             {projects.map((project) => (
@@ -278,7 +274,7 @@ export default function ProjectsSidebar({
                 onClick={() => onProjectSelect(project.id)}
                 style={{
                   width: '100%',
-                  padding: 'var(--space-s)',
+                  padding: 'var(--space-xs) var(--space-s)',
                   textAlign: 'left',
                   borderRadius: 'var(--space-xs)',
                   backgroundColor:
@@ -302,19 +298,21 @@ export default function ProjectsSidebar({
                   el.style.borderColor = 'var(--color-border)';
                 }}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="p2 truncate" style={{ fontWeight: 500 }}>{getProjectTitle(project)}</div>
-                    <div className="flex items-center" style={{ gap: 'var(--space-s)', marginTop: 'var(--space-xs)', fontSize: 'var(--font-size-p2)', color: 'var(--color-txt-icon-2)' }}>
+                <div className="flex-1 min-w-0">
+                  <div className="p2 truncate" style={{ fontWeight: 500 }}>{getProjectTitle(project)}</div>
+                  <div className="flex items-center" style={{ gap: 'var(--space-s)', marginTop: 'var(--space-xs)', fontSize: 'var(--font-size-p2)', color: 'var(--color-txt-icon-2)' }}>
+                    <span className="flex items-center" style={{ gap: 'var(--space-xs)' }}>
                       <MessageSquare className="w-3 h-3" />
                       <span>{project.message_count} messages</span>
-                      <span>•</span>
-                      <span>{formatDate(project.updated_at || project.created_at)}</span>
-                    </div>
+                    </span>
+                    <span className="inline-flex items-center">•</span>
+                    <span className="inline-flex items-center">{formatDate(project.updated_at || project.created_at)}</span>
+                    {currentProjectId === project.id && (
+                      <span className="inline-flex items-center self-center" style={{ marginLeft: 'auto' }}>
+                        <span className="flex-shrink-0 w-2 h-2 bg-accent-green rounded-full" />
+                      </span>
+                    )}
                   </div>
-                  {currentProjectId === project.id && (
-                    <div className="flex-shrink-0 w-2 h-2 bg-accent-green rounded-full ml-2" />
-                  )}
                 </div>
               </button>
             ))}

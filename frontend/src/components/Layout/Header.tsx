@@ -25,7 +25,7 @@ export default function Header({ provider, model }: HeaderProps) {
           height={32}
           style={{ borderRadius: 'var(--space-s)' }}
         />
-        <p className="p2" style={{ margin: 0, color: 'var(--color-txt-icon-1)' }}>
+        <p className="p2" style={{ margin: 0, color: 'var(--color-txt-icon-2)' }}>
           <span style={{ fontWeight: 600 }}>RAGOps</span>
           <span style={{ marginLeft: 'var(--space-s)', fontWeight: 300 }}>
             AI-Powered RAG Pipeline Builder

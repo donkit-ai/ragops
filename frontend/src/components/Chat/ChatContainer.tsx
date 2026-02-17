@@ -7,6 +7,7 @@ import MessageInput from './MessageInput';
 import ChecklistPanel from '../Checklist/ChecklistPanel';
 import ConnectionStatus from '../Layout/ConnectionStatus';
 import { ConfirmDialog, ChoiceDialog } from '../Dialogs/InteractiveDialog';
+import { MessageSquare } from 'lucide-react';
 
 interface InteractiveRequest {
   id: string;
@@ -444,14 +445,17 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
             borderBottom: '1px solid var(--color-border)',
           }}
         >
-          <div className="flex items-center" style={{ gap: 'var(--space-m)' }}>
-            <h1 className="h4" style={{ fontWeight: 500, margin: 0 }}>RAGOps Chat</h1>
+          <div className="flex items-center" style={{ gap: 'var(--space-xs)' }}>
+            <h2
+              className="p1 flex items-center"
+              style={{ fontWeight: 500, gap: 'var(--space-s)' }}
+            >
+              <MessageSquare className="w-6 h-6 block" style={{ color: 'var(--color-txt-icon-1)' }} />
+              RAGOps Chat
+            </h2>
             {interactiveRequests.length > 0 && (
               <span className="p2 inline-flex items-center" style={{ 
-                padding: 'var(--space-xs) var(--space-s)', 
-                borderRadius: '999px', 
                 fontWeight: 500, 
-                backgroundColor: 'var(--color-action-item-selected)', 
                 color: 'var(--color-neutral)' 
               }}>
                 ⚠️ Action Required
