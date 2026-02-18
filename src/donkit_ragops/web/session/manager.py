@@ -614,7 +614,7 @@ class SessionManager:
             client = MCPClient(
                 command=sys.executable,
                 args=["-m", "donkit_ragops.mcp.servers.donkit_ragops_mcp"],
-                timeout=120.0,
+                timeout=7200.0,
                 progress_callback=create_web_progress_callback(),
             )
             clients.append(client)

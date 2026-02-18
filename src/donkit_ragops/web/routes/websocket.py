@@ -132,6 +132,7 @@ async def websocket_endpoint(
             msg_type = data.get("type")
 
             if msg_type == "ping":
+                session.touch()
                 await send_message(
                     {
                         "type": "pong",

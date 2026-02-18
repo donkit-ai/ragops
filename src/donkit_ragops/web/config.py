@@ -18,7 +18,8 @@ class WebConfig(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     # Session settings
-    session_ttl_seconds: int = 7200  # 2 hours
+    # TTL=0 means sessions never expire (live until server shutdown or explicit deletion)
+    session_ttl_seconds: int = 0
     cleanup_interval_seconds: int = 300  # 5 minutes
 
     # File upload settings
