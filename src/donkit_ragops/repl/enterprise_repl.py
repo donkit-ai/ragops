@@ -303,7 +303,7 @@ class EnterpriseREPL(BaseREPL):
                     ui.newline()
 
         except Exception as e:
-            logger.error(f"Error generating event response: {e}", exc_info=True)
+            logger.opt(exception=True).error("Error generating event response: {}", repr(e))
             ui.print_error(f"Failed to process event: {e}")
 
     def _on_backend_progress(
@@ -642,7 +642,7 @@ class EnterpriseREPL(BaseREPL):
                 self.context.transcript[response_index] = error_msg
             else:
                 self.context.transcript.append(error_msg)
-            logger.error(f"Error during streaming: {e}", exc_info=True)
+            logger.opt(exception=True).error("Error during streaming: {}", repr(e))
             self.context.ui.print_error(str(e))
             if self.context.mcp_handler:
                 self.context.mcp_handler.clear_progress()
@@ -715,7 +715,7 @@ class EnterpriseREPL(BaseREPL):
             error_msg = f"{format_timestamp()}[bold red]Error:[/bold red] {e}"
             if response_index is not None:
                 self.context.transcript[response_index] = error_msg
-            logger.error(f"Error during agent response: {e}", exc_info=True)
+            logger.opt(exception=True).error("Error during agent response: {}", repr(e))
             self.context.ui.print_error(str(e))
 
         if self.context.mcp_handler:
@@ -849,7 +849,7 @@ class EnterpriseREPL(BaseREPL):
                 await self._switch_to_project(selected_project_id)
 
         except Exception as e:
-            logger.error(f"Failed to list projects: {e}", exc_info=True)
+            logger.opt(exception=True).error("Failed to list projects: {}", repr(e))
             ui.print_error(f"Failed to list projects: {e}")
 
         ui.newline()
@@ -873,7 +873,7 @@ class EnterpriseREPL(BaseREPL):
                 await self._switch_to_project(new_project_id)
 
         except Exception as e:
-            logger.error(f"Failed to create new project: {e}", exc_info=True)
+            logger.opt(exception=True).error("Failed to create new project: {}", repr(e))
             ui.print_error(f"Failed to create new project: {e}")
 
         ui.newline()
@@ -1034,5 +1034,5 @@ class EnterpriseREPL(BaseREPL):
                 logger.debug(f"Loaded {len(messages)} messages from project {project_id}")
                 return messages
         except Exception as e:
-            logger.warning(f"Failed to load project messages: {e}")
+            logger.warning("Failed to load project messages: {}", repr(e))
             return []
