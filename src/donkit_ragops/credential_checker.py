@@ -28,7 +28,7 @@ PROVIDER_DEFAULTS: dict[str, ProviderConfig] = {
     },
     "openai": {
         "embedder_model": "text-embedding-3-small",
-        "generation_model": "gpt-4.1-mini",
+        "generation_model": "gpt-5.2",
     },
     "vertex": {
         "embedder_model": "text-multilingual-embedding-002",
@@ -36,7 +36,7 @@ PROVIDER_DEFAULTS: dict[str, ProviderConfig] = {
     },
     "azure_openai": {
         "embedder_model": "text-embedding-ada-002",
-        "generation_model": "gpt-4.1-mini",
+        "generation_model": "gpt-5.2",
     },
     "ollama": {
         "embedder_model": "embeddinggemma",
@@ -48,7 +48,7 @@ PROVIDER_DEFAULTS: dict[str, ProviderConfig] = {
     },
     "openrouter": {
         "embedder_model": None,
-        "generation_model": "gpt-4.1-mini",
+        "generation_model": "gpt-5.2",
     },
 }
 

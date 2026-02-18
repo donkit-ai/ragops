@@ -328,7 +328,7 @@ MODEL_USING_DEFAULT = "[dim]Using default model for this provider[/dim]"
 # ============================================================================
 
 # Plain text versions
-TOOL_EXECUTING_PLAIN = "Executing tool: {tool}({args})"
+TOOL_EXECUTING_PLAIN = "Executing tool: {tool}({args})\n"
 TOOL_DONE_PLAIN = "Tool done: {tool}"
 TOOL_ERROR_PLAIN = "Tool failed: {tool} - {error}"
 
@@ -338,7 +338,7 @@ def styled_tool_executing(tool: str, args: str) -> StyledText:
     return styled_text(
         (StyleName.DIM, "Executing tool: "),
         (StyleName.TOOL_NAME, tool),
-        (StyleName.TOOL_ARGS, f"({args})"),
+        (StyleName.TOOL_ARGS, f"({args})\n"),
     )
 
 
@@ -355,20 +355,20 @@ def styled_tool_error(tool: str, error: str) -> StyledText:
     return styled_text(
         (StyleName.DIM, "Tool failed: "),
         (StyleName.ERROR, tool),
-        (None, f" - {error}"),
+        (None, f" - {error}\n"),
     )
 
 
 # Legacy Rich markup versions
-TOOL_EXECUTING = "[dim]Executing tool:[/dim] [yellow]{tool}[/yellow]({args})"
-TOOL_DONE = "[dim]Tool:[/dim] [green]{tool}[/green]"
-TOOL_ERROR = "[dim]Tool failed:[/dim] [red]{tool}[/red] - {error}"
+TOOL_EXECUTING = "[dim]Executing tool:[/dim] [yellow]{tool}[/yellow]({args})\n"
+TOOL_DONE = "[dim]Tool:[/dim] [green]{tool}[/green]\n"
+TOOL_ERROR = "[dim]Tool failed:[/dim] [red]{tool}[/red] - {error}\n"
 
 # ============================================================================
 # History Compression Messages
 # ============================================================================
 
-HISTORY_COMPRESSED_PLAIN = "History compressed to fit context window"
+HISTORY_COMPRESSED_PLAIN = "History compressed to fit context window\n"
 
 
 def styled_history_compressed() -> StyledText:

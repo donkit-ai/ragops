@@ -210,12 +210,13 @@ class RagConfig(BaseModel):
     Unified RAG configuration schema.
     """
 
-    files_path: str = Field(
+    files_path: str | None = Field(
+        default=None,
         description=(
             "Path to the folder with processed documents. "
             "This directory is created after document processing (process_documents tool). "
             "Format: projects/<project_id>/processed/"
-        )
+        ),
     )
     generation_prompt: str = Field(
         default=DEFAULT_PROMPT,
@@ -234,10 +235,27 @@ class RagConfig(BaseModel):
         default=None,
         description="Generation model name. must be model of selected generation model type",
     )
-    database_uri: str = Field(description="Vector database URI inside DOCKER")
+    database_uri: str | None = Field(
+        default=None,
+        description=(
+            "Vector database URI inside DOCKER. Auto-generated from db_type if not provided."
+        ),
+    )
 
     @model_validator(mode="after")
-    def validate_database_uri(self) -> "RagConfig":
-        if "localhost" in self.database_uri:
+    def validate_and_set_database_uri(self) -> "RagConfig":
+        # Auto-generate database_uri from db_type if not provided
+        docker_internal_uris = {
+            "qdrant": "http://qdrant:6333",
+            "chroma": "http://chroma:8000",
+            "milvus": "http://milvus:19530",
+        }
+
+        if not self.database_uri:
+            self.database_uri = docker_internal_uris.get(
+                self.db_type, docker_internal_uris["qdrant"]
+            )
+        elif "localhost" in self.database_uri:
             raise ValueError("Database URI must be inside DOCKER")
+
         return self
