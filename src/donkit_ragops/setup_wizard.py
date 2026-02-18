@@ -56,7 +56,7 @@ class SetupWizard:
         welcome_lines = [
             styled_text(
                 (None, "Welcome to "),
-                (StyleName.INFO, "RAGOps Agent CE"),
+                (StyleName.INFO, "RAGOps Agent"),
                 (None, " Setup Wizard!"),
             ),
             styled_text((None, "")),

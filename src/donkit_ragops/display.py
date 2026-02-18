@@ -131,7 +131,7 @@ class ScreenRenderer:
         ui = get_ui()
         ui.newline()
         ui.print_styled(styled_text((StyleName.INFO, "👋 Goodbye!")))
-        ui.print("Thanks for using RAGOps Agent CE", StyleName.DIM)
+        ui.print("Thanks for using RAGOps Agent", StyleName.DIM)
         ui.newline()
 
 

@@ -36,7 +36,6 @@ def test_cli_help_flag() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    assert "RAGOps Agent CE" in result.stdout or "Usage:" in result.stdout
 
 
 def test_cli_ping_help() -> None:

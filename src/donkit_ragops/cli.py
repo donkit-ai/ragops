@@ -1,4 +1,4 @@
-"""CLI entry point for RAGOps Agent CE.
+"""CLI entry point for RAGOps Agent.
 
 Follows Single Responsibility Principle - only handles CLI commands and routing.
 REPL logic is delegated to dedicated REPL classes.
