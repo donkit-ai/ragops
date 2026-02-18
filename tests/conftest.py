@@ -227,6 +227,12 @@ class BaseMockMCPClient:
         self.tools = tools
         self.call_count = 0
 
+    async def connect(self) -> None:
+        """No-op for tests."""
+
+    async def disconnect(self) -> None:
+        """No-op for tests."""
+
     async def alist_tools(self) -> list[dict]:
         """List available tools."""
         return [

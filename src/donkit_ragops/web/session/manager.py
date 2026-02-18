@@ -644,6 +644,13 @@ class SessionManager:
             except Exception:
                 pass
 
+        # Disconnect MCP clients
+        for client in session.mcp_clients:
+            try:
+                await client.disconnect()
+            except Exception as e:
+                logger.warning(f"Failed to disconnect MCP client: {e}")
+
         # Clean up enterprise resources
         if session.enterprise_mode:
             # Stop event listener

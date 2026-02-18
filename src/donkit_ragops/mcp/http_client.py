@@ -102,53 +102,16 @@ class MCPHttpClient(MCPClientProtocol):
                 logger.debug(f"[MCP HTTP] Got {len(tools_resp)} tools from server")
                 tools = []
                 for t in tools_resp:
-                    # FastMCP returns Tool objects with name, description, and inputSchema
-                    # Default schema matches stdio MCPClient behavior
-                    schema: dict[str, Any] = {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": True,  # Match stdio client default
-                    }
                     raw_schema = getattr(t, "inputSchema", None) or getattr(t, "input_schema", None)
-                    if raw_schema and isinstance(raw_schema, dict):
-                        try:
-                            # Handle FastMCP schema wrapping - match stdio client behavior
-                            if "properties" in raw_schema:
-                                if "args" in raw_schema["properties"] and "$defs" in raw_schema:
-                                    args_ref = raw_schema["properties"]["args"].get("$ref")
-                                    if args_ref and args_ref.startswith("#/$defs/"):
-                                        def_name = args_ref.split("/")[-1]
-                                        if def_name in raw_schema["$defs"]:
-                                            # Use the unwrapped model schema
-                                            schema = raw_schema["$defs"][def_name].copy()
-                                            # Preserve $defs for nested refs (like stdio client)
-                                            if "$defs" in raw_schema:
-                                                schema["$defs"] = raw_schema["$defs"]
-                                else:
-                                    # No args wrapper, use as is
-                                    schema = raw_schema.copy()
-                        except Exception as e:
-                            logger.warning(f"Failed to parse schema for tool {t.name}: {e}")
-                    tool_dict = {
-                        "name": t.name,
-                        "description": t.description or "",
-                        "parameters": schema,
-                    }
-                    tools.append(tool_dict)
-                # Log total size of tools for debugging
-                try:
-                    tools_json = json.dumps(tools, ensure_ascii=True)
-                    logger.debug(
-                        f"[MCP HTTP] Tools loaded: count={len(tools)}, "
-                        f"total_size_bytes={len(tools_json)}"
+                    schema = self._parse_tool_schema(raw_schema, t.name)
+                    tools.append(
+                        {
+                            "name": t.name,
+                            "description": t.description or "",
+                            "parameters": schema,
+                        }
                     )
-                    # Log first tool's full schema for debugging
-                    if tools:
-                        logger.debug(
-                            f"[MCP HTTP] Sample tool schema: {json.dumps(tools[0], indent=2)}"
-                        )
-                except Exception as e:
-                    logger.warning(f"[MCP HTTP] Failed to serialize tools for size check: {e}")
+                logger.debug(f"[MCP HTTP] Tools loaded: count={len(tools)}")
                 return tools
         except asyncio.CancelledError:
             logger.warning("Tool listing was cancelled")

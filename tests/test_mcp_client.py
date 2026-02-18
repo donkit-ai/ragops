@@ -360,3 +360,207 @@ def test_mcp_client_timeout_configuration() -> None:
     client = MCPClient(command="python", args=["server.py"], timeout=5.0)
 
     assert client.timeout == 5.0
+
+
+# ============================================================================
+# Tests: Persistent Connection Lifecycle
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_connect_opens_persistent_connection(mocked_mcp_client) -> None:
+    """Test that connect() opens and stores a persistent connection."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    assert client._client is None
+    assert client._transport is None
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        await client.connect()
+
+    assert client._client is not None
+    assert client._transport is not None
+
+
+@pytest.mark.asyncio
+async def test_connect_is_idempotent(mocked_mcp_client) -> None:
+    """Test that calling connect() twice does not create a second connection."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        await client.connect()
+        first_client = client._client
+
+        # Second call should be a no-op
+        await client.connect()
+        assert client._client is first_client
+
+
+@pytest.mark.asyncio
+async def test_disconnect_clears_state(mocked_mcp_client) -> None:
+    """Test that disconnect() clears transport and client state."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        await client.connect()
+        assert client._client is not None
+
+        await client.disconnect()
+
+    assert client._client is None
+    assert client._transport is None
+
+
+@pytest.mark.asyncio
+async def test_disconnect_without_connect() -> None:
+    """Test that disconnect() is safe to call without connect()."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    # Should not raise
+    await client.disconnect()
+    assert client._client is None
+
+
+@pytest.mark.asyncio
+async def test_persistent_alist_tools(mocked_mcp_client) -> None:
+    """Test that alist_tools() reuses persistent connection when connected."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    mock_tool = MagicMock()
+    mock_tool.name = "persistent_tool"
+    mock_tool.description = "A tool"
+    mock_tool.inputSchema = {"type": "object", "properties": {}}
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        mock_instance.list_tools = AsyncMock(return_value=[mock_tool])
+        await client.connect()
+
+        # alist_tools should use the persistent client (no new Client created)
+        initial_call_count = mock_class.call_count
+        tools = await client.alist_tools()
+        assert mock_class.call_count == initial_call_count  # no new Client
+
+    assert len(tools) == 1
+    assert tools[0]["name"] == "persistent_tool"
+
+
+@pytest.mark.asyncio
+async def test_persistent_acall_tool(mocked_mcp_client) -> None:
+    """Test that acall_tool() reuses persistent connection when connected."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    mock_content = MagicMock()
+    mock_content.text = "Persistent result"
+    mock_result = MagicMock()
+    mock_result.content = [mock_content]
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        mock_instance.call_tool = AsyncMock(return_value=mock_result)
+        await client.connect()
+
+        initial_call_count = mock_class.call_count
+        result = await client.acall_tool("test_tool", {"key": "val"})
+        assert mock_class.call_count == initial_call_count  # no new Client
+
+    assert result == "Persistent result"
+
+
+@pytest.mark.asyncio
+async def test_persistent_alist_tools_recovers_on_failure(mocked_mcp_client) -> None:
+    """Test that alist_tools() falls back to temp connection when persistent client dies."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    mock_tool = MagicMock()
+    mock_tool.name = "recovered_tool"
+    mock_tool.description = "A tool"
+    mock_tool.inputSchema = {"type": "object", "properties": {}}
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        # First: connect successfully
+        await client.connect()
+        assert client._client is not None
+
+        # Simulate subprocess death: list_tools raises on persistent client
+        call_count = 0
+
+        async def list_tools_side_effect():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("subprocess died")
+            return [mock_tool]
+
+        mock_instance.list_tools = list_tools_side_effect
+
+        # Should recover via temp connection fallback
+        tools = await client.alist_tools()
+
+    # Persistent connection should have been torn down
+    assert client._client is None
+    assert len(tools) == 1
+    assert tools[0]["name"] == "recovered_tool"
+
+
+@pytest.mark.asyncio
+async def test_persistent_acall_tool_recovers_on_failure(mocked_mcp_client) -> None:
+    """Test that acall_tool() falls back to temp connection when persistent client dies."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    mock_content = MagicMock()
+    mock_content.text = "Recovered result"
+    mock_result = MagicMock()
+    mock_result.content = [mock_content]
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        await client.connect()
+        assert client._client is not None
+
+        call_count = 0
+
+        async def call_tool_side_effect(name, args):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("subprocess died")
+            return mock_result
+
+        mock_instance.call_tool = call_tool_side_effect
+
+        result = await client.acall_tool("test_tool", {"key": "val"})
+
+    assert client._client is None
+    assert result == "Recovered result"
+
+
+@pytest.mark.asyncio
+async def test_persistent_acall_tool_propagates_non_transport_error(mocked_mcp_client) -> None:
+    """Test that non-transport errors on persistent path propagate without retry."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        mock_instance.call_tool = AsyncMock(side_effect=ValueError("bad tool argument"))
+        await client.connect()
+        assert client._client is not None
+
+        with pytest.raises(ValueError, match="bad tool argument"):
+            await client.acall_tool("test_tool", {"key": "val"})
+
+        # Persistent connection should still be intact (not torn down)
+        assert client._client is not None
+
+
+@pytest.mark.asyncio
+async def test_persistent_alist_tools_propagates_non_transport_error(mocked_mcp_client) -> None:
+    """Test that non-transport errors on persistent path propagate without retry."""
+    client = MCPClient(command="python", args=["server.py"])
+
+    with mocked_mcp_client() as (mock_class, mock_instance):
+        mock_instance.list_tools = AsyncMock(side_effect=ValueError("bad schema"))
+        await client.connect()
+        assert client._client is not None
+
+        with pytest.raises(ValueError, match="bad schema"):
+            await client.alist_tools()
+
+        # Persistent connection should still be intact (not torn down)
+        assert client._client is not None

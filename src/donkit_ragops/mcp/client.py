@@ -63,9 +63,11 @@ def _load_env_for_mcp() -> dict[str, str | None]:
 class MCPClient(MCPClientProtocol):
     """Client for connecting to an MCP server using FastMCP over stdio.
 
-    Uses the new FastMCP Client API which handles connection lifecycle
-    and protocol operations automatically. Implements MCPClientProtocol
-    for compatibility with the agent's MCP client abstraction.
+    Supports two usage modes:
+    - Persistent: call connect() once, then reuse the subprocess across
+      alist_tools()/acall_tool() calls. Call disconnect() when done.
+    - Temporary (fallback): each call spawns its own subprocess.
+      Used by sync callers and when connect() was not called.
     """
 
     def __init__(
@@ -89,6 +91,9 @@ class MCPClient(MCPClientProtocol):
         self._progress_callback = progress_callback
         # Load environment variables for the server
         self._env = _load_env_for_mcp()
+        # Persistent connection state (populated by connect())
+        self._transport: StdioTransport | None = None
+        self._client: Client | None = None
 
     @property
     def identifier(self) -> str:
@@ -114,6 +119,40 @@ class MCPClient(MCPClientProtocol):
     def progress_callback(self) -> ProgressCallback | None:
         """Return the progress callback if set."""
         return self._progress_callback
+
+    # -- Persistent connection lifecycle -----------------------------------
+
+    async def connect(self) -> None:
+        """Open a persistent stdio connection for reuse across calls."""
+        if self._client is not None:
+            return  # already connected
+        transport = StdioTransport(
+            command=self.command,
+            args=self.args,
+            env=self._env,
+        )
+        client = Client(transport, progress_handler=self.__progress_handler)
+        await client.__aenter__()
+        self._transport = transport
+        self._client = client
+        logger.debug(f"Persistent MCP connection opened: {self.identifier}")
+
+    async def disconnect(self) -> None:
+        """Close the persistent connection and terminate the subprocess."""
+        client = self._client
+        transport = self._transport
+        self._client = None
+        self._transport = None
+        if client is not None:
+            try:
+                await client.__aexit__(None, None, None)
+            except Exception as e:
+                logger.debug(f"Error closing MCP client: {e}")
+        if transport is not None:
+            await self._terminate_transport(transport)
+        logger.debug(f"Persistent MCP connection closed: {self.identifier}")
+
+    # -- Progress handling -------------------------------------------------
 
     async def __progress_handler(
         self,
@@ -141,9 +180,82 @@ class MCPClient(MCPClientProtocol):
                 sys.stdout.write("\n")
                 sys.stdout.flush()
 
+    # -- Shared helpers ----------------------------------------------------
+
+    @staticmethod
+    async def _list_tools_from(client: Client) -> list[dict[str, Any]]:
+        """List tools using the given client and parse their schemas."""
+        tools_resp = await client.list_tools()
+        tools: list[dict[str, Any]] = []
+        for t in tools_resp:
+            raw_schema = getattr(t, "inputSchema", None) or getattr(t, "input_schema", None)
+            schema = MCPClient._parse_tool_schema(raw_schema, t.name)
+            tools.append(
+                {
+                    "name": t.name,
+                    "description": t.description or "",
+                    "parameters": schema,
+                }
+            )
+        return tools
+
+    @staticmethod
+    async def _call_tool_with(client: Client, name: str, arguments: dict[str, Any]) -> str:
+        """Call a tool using the given client and extract the result string."""
+        # FastMCP wraps Pydantic models in {"args": <model>}, so wrap arguments
+        wrapped_args = {"args": arguments} if arguments else None
+        logger.debug(f"Wrapped arguments for {name}: {wrapped_args}")
+        result = await client.call_tool(name, wrapped_args)
+        # Try to extract text content first
+        if hasattr(result, "content") and result.content:
+            texts: list[str] = []
+            for content_item in result.content:
+                if hasattr(content_item, "text"):
+                    texts.append(content_item.text)
+            if texts:
+                return "\n".join(texts)
+        # Fall back to structured data if available
+        if hasattr(result, "data") and result.data is not None:
+            if isinstance(result.data, str):
+                return result.data
+            return json.dumps(result.data)
+        # Last resort: stringify the whole result
+        return str(result)
+
+    @staticmethod
+    async def _terminate_transport(transport: StdioTransport) -> None:
+        """Terminate the subprocess owned by a StdioTransport."""
+        if hasattr(transport, "_process") and transport._process:
+            try:
+                transport._process.terminate()
+                try:
+                    await asyncio.sleep(0.1)
+                except asyncio.CancelledError:
+                    pass
+                if transport._process.poll() is None:
+                    transport._process.kill()
+            except Exception as e:
+                logger.debug(f"Error during transport cleanup: {e}")
+
+    # I/O errors that signal a dead transport/subprocess.
+    # ConnectionError covers BrokenPipeError, ConnectionResetError, etc.
+    # Intentionally excludes TimeoutError (subprocess may still be running)
+    # and other OSError subclasses (FileNotFoundError, PermissionError).
+    _TRANSPORT_ERRORS = (ConnectionError, EOFError)
+
+    # -- Public async API --------------------------------------------------
+
     async def alist_tools(self) -> list[dict[str, Any]]:
         """List available tools from the MCP server."""
-        # Create StdioTransport with explicit command, args, and environment
+        # Fast path: reuse persistent connection
+        if self._client is not None:
+            try:
+                return await self._list_tools_from(self._client)
+            except self._TRANSPORT_ERRORS as e:
+                logger.warning(f"Persistent MCP connection failed, reconnecting: {e}")
+                await self.disconnect()
+
+        # Fallback: temporary connection per call
         transport = StdioTransport(
             command=self.command,
             args=self.args,
@@ -152,60 +264,12 @@ class MCPClient(MCPClientProtocol):
         client = Client(transport)
         try:
             async with client:
-                tools_resp = await client.list_tools()
-                tools = []
-                for t in tools_resp:
-                    # FastMCP returns Tool objects with name, description, and inputSchema (dict)
-                    schema: dict[str, Any] = {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": True,
-                    }
-                    # Access inputSchema attribute
-                    # (note: lowercase 's' in input_schema or inputSchema)
-                    raw_schema = getattr(t, "inputSchema", None) or getattr(t, "input_schema", None)
-                    if raw_schema and isinstance(raw_schema, dict):
-                        try:
-                            # FastMCP wraps Pydantic models in {"args": <model>}
-                            # Unwrap by following $ref to get actual model schema
-                            if "properties" in raw_schema:
-                                if "args" in raw_schema["properties"] and "$defs" in raw_schema:
-                                    # Get the ref target
-                                    args_ref = raw_schema["properties"]["args"].get("$ref")
-                                    if args_ref and args_ref.startswith("#/$defs/"):
-                                        def_name = args_ref.split("/")[-1]
-                                        if def_name in raw_schema["$defs"]:
-                                            # Use the unwrapped model schema
-                                            schema = raw_schema["$defs"][def_name].copy()
-                                            # Preserve $defs for nested refs
-                                            if "$defs" in raw_schema:
-                                                schema["$defs"] = raw_schema["$defs"]
-                                else:
-                                    # No args wrapper, use as is
-                                    schema = raw_schema
-                        except Exception as e:
-                            logger.warning(f"Failed to parse schema for tool {t.name}: {e}")
-                    tools.append(
-                        {
-                            "name": t.name,
-                            "description": t.description or "",
-                            "parameters": schema,
-                        }
-                    )
-                return tools
+                return await self._list_tools_from(client)
         except asyncio.CancelledError:
             logger.warning("Tool listing was cancelled")
             raise
         finally:
-            # Ensure transport cleanup even on interruption
-            if hasattr(transport, "_process") and transport._process:
-                try:
-                    transport._process.terminate()
-                    await asyncio.sleep(0.1)  # Give it time to terminate
-                    if transport._process.poll() is None:
-                        transport._process.kill()
-                except Exception as e:
-                    logger.debug(f"Error during transport cleanup: {e}")
+            await self._terminate_transport(transport)
 
     def list_tools(self) -> list[dict[str, Any]]:
         """Synchronously list available tools."""
@@ -228,51 +292,29 @@ class MCPClient(MCPClientProtocol):
     async def acall_tool(self, name: str, arguments: dict[str, Any]) -> str:
         """Call a tool on the MCP server."""
         logger.debug(f"Calling tool {name} with arguments {arguments}")
-        # Create StdioTransport with explicit command, args, and environment
+
+        # Fast path: reuse persistent connection
+        if self._client is not None:
+            try:
+                return await self._call_tool_with(self._client, name, arguments)
+            except self._TRANSPORT_ERRORS as e:
+                logger.warning(f"Persistent MCP connection failed, reconnecting: {e}")
+                await self.disconnect()
+
+        # Fallback: temporary connection per call
         transport = StdioTransport(command=self.command, args=self.args, env=self._env)
         client = Client(transport, progress_handler=self.__progress_handler)
         try:
             async with client:
-                # FastMCP wraps Pydantic models in {"args": <model>}, so wrap arguments
-                wrapped_args = {"args": arguments} if arguments else None
-                logger.debug(f"Wrapped arguments for {name}: {wrapped_args}")
-                result = await client.call_tool(name, wrapped_args)
-                # FastMCP returns ToolResult with content and optional data
-                # Try to extract text content first
-                if hasattr(result, "content") and result.content:
-                    texts: list[str] = []
-                    for content_item in result.content:
-                        if hasattr(content_item, "text"):
-                            texts.append(content_item.text)
-                    if texts:
-                        return "\n".join(texts)
-                # Fall back to structured data if available
-                if hasattr(result, "data") and result.data is not None:
-                    if isinstance(result.data, str):
-                        return result.data
-                    return json.dumps(result.data)
-                # Last resort: stringify the whole result
-                return str(result)
+                return await self._call_tool_with(client, name, arguments)
         except asyncio.CancelledError:
-            # Handle cancellation gracefully
             logger.warning(f"Tool {name} execution was cancelled")
             raise
         except KeyboardInterrupt:
             logger.warning(f"Tool {name} execution interrupted by user")
             raise
         finally:
-            # Ensure transport cleanup even on interruption
-            if hasattr(transport, "_process") and transport._process:
-                try:
-                    transport._process.terminate()
-                    try:
-                        await asyncio.sleep(0.1)  # Give it time to terminate
-                    except asyncio.CancelledError:
-                        pass
-                    if transport._process.poll() is None:
-                        transport._process.kill()
-                except Exception as e:
-                    logger.debug(f"Error during transport cleanup: {e}")
+            await self._terminate_transport(transport)
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
         """Synchronously call a tool."""

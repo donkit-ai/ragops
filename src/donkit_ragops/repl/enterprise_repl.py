@@ -725,6 +725,13 @@ class EnterpriseREPL(BaseREPL):
         """Clean up REPL resources."""
         self._running = False
 
+        # Disconnect MCP clients
+        for client in self.context.mcp_clients:
+            try:
+                await client.disconnect()
+            except Exception as e:
+                logger.debug(f"Error disconnecting MCP client: {e}")
+
         # Stop event listener
         if self.event_listener:
             await self.event_listener.stop()

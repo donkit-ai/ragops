@@ -117,6 +117,7 @@ class LLMAgent:
         """
         for client in self.mcp_clients:
             try:
+                await client.connect()
                 logger.debug(f"[MCP] Loading tools from {client.identifier}...")
                 discovered = await client.alist_tools()
                 logger.debug(f"[MCP] Discovered {len(discovered)} tools from {client.identifier}")
@@ -152,7 +153,11 @@ class LLMAgent:
                     f"Failed to list tools from MCP client {client.identifier}\n {ex}",
                     exc_info=True,
                 )
-                pass
+                # Clean up connection if connect() succeeded but alist_tools() failed
+                try:
+                    await client.disconnect()
+                except Exception as dc_err:
+                    logger.debug(f"Error disconnecting MCP client: {dc_err}")
         logger.debug(f"[MCP] Total MCP tools registered: {len(self.mcp_tools)}")
 
     def _tool_specs(self) -> list[Tool]:
