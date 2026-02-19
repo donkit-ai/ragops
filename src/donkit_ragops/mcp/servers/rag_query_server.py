@@ -16,22 +16,13 @@ import json
 import os
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
 
 from donkit_ragops.rag_builder.query import RagQueryClient
+from donkit_ragops.schemas.tool_schemas import SearchQueryArgs
 
 server = FastMCP(
     "rag-query",
 )
-
-
-class SearchQueryArgs(BaseModel):
-    query: str = Field(description="Search query text")
-    k: int = Field(default=10, description="Number of top results to return")
-    rag_service_url: str = Field(
-        default="http://localhost:8000",
-        description="RAG service base URL (e.g., http://localhost:8000)",
-    )
 
 
 @server.tool(

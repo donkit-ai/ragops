@@ -15,28 +15,14 @@ warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
 
-from donkit.chunker import ChunkerConfig
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
 
 from donkit_ragops.rag_builder.chunking import ChunkingService
+from donkit_ragops.schemas.tool_schemas import ChunkDocumentsArgs
 
 server = FastMCP(
     "rag-chunker",
 )
-
-
-class ChunkDocumentsArgs(BaseModel):
-    source_path: str = Field(description="Path to the source directory with processed documents")
-    project_id: str = Field(
-        description="Project ID to store chunked documents "
-        "in projects/<project_id>/processed/chunked/"
-    )
-    params: ChunkerConfig
-    incremental: bool = Field(
-        default=True,
-        description="If True, only process new/modified files. If False, reprocess all files.",
-    )
 
 
 @server.tool(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
 import aiofiles
@@ -51,10 +50,21 @@ class FileService:
                 f"(max {self._max_size_bytes / 1024 / 1024:.0f}MB)"
             )
 
-        # Generate unique filename to avoid collisions
+        # Use original filename
         original_name = file.filename or "unnamed_file"
-        unique_name = f"{uuid.uuid4().hex[:8]}_{original_name}"
-        file_path = session.files_dir / unique_name
+        file_path = session.files_dir / original_name
+
+        # Skip if file already exists
+        if file_path.exists():
+            logger.debug(f"File {original_name} already exists, skipping upload")
+            stat = file_path.stat()
+            return {
+                "name": original_name,
+                "path": str(file_path),
+                "size": stat.st_size,
+                "content_type": file.content_type,
+                "skipped": True,
+            }
 
         # Write file
         async with aiofiles.open(file_path, "wb") as f:

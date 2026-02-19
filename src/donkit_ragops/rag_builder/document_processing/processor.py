@@ -7,9 +7,12 @@ and manages output directories.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from donkit.read_engine.read_engine import DonkitReader
+
+if TYPE_CHECKING:
+    from donkit.llm import LLMModelAbstract
 from loguru import logger
 
 from donkit_ragops.rag_builder.document_processing.path_utils import PathNormalizer
@@ -170,6 +173,7 @@ class DocumentProcessor:
         use_llm: bool = True,
         reader_progress_callback: SyncProgressCallback | None = None,
         file_progress_callback: AsyncProgressCallback | None = None,
+        llm_model: LLMModelAbstract | None = None,
     ) -> dict:
         """Process documents and save to project directory.
 
@@ -180,6 +184,9 @@ class DocumentProcessor:
             use_llm: Use LLM for document processing.
             reader_progress_callback: Sync callback for DonkitReader page progress.
             file_progress_callback: Async callback for file-level progress.
+            llm_model: Optional LLM model instance (LLMModelAbstract) to pass to
+                DonkitReader. When provided, the reader uses this model instead of
+                creating one from environment variables.
 
         Returns:
             Dict with status, output_directory, processed/failed counts.
@@ -188,6 +195,7 @@ class DocumentProcessor:
             output_format=reading_format,
             use_llm=use_llm,
             progress_callback=reader_progress_callback,
+            llm_model=llm_model,
         )
         supported_extensions = set(reader.readers.keys())
         supported_extensions.add(".pdf")

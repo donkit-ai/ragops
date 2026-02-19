@@ -48,3 +48,5 @@ docs/
 /poetry.lock
 .claude/
 uploads/
+vertex*.json
+

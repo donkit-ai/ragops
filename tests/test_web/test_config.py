@@ -10,7 +10,7 @@ def test_web_config_defaults():
     assert config.host == "0.0.0.0"
     assert config.port == 8067
     assert config.reload is False
-    assert config.session_ttl_seconds == 7200
+    assert config.session_ttl_seconds == 0
     assert config.cleanup_interval_seconds == 300
     assert config.max_upload_size_mb == 100
     assert config.upload_dir == "./uploads"

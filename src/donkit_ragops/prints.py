@@ -5,7 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 from donkit_ragops.ui.styles import StyledText, StyleName, styled_text
 
 try:
-    pkg_version = version("donkit-ragops-ce")
+    pkg_version = version("donkit-ragops")
 except PackageNotFoundError:
     pkg_version = None
 

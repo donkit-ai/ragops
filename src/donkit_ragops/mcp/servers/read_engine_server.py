@@ -15,35 +15,13 @@ import json
 import os
 
 from fastmcp import Context, FastMCP
-from pydantic import BaseModel, Field
 
 from donkit_ragops.rag_builder.document_processing import DocumentProcessor
-from donkit_ragops.schemas.config_schemas import ReadingFormat
+from donkit_ragops.schemas.tool_schemas import ProcessDocumentsArgs
 
 server = FastMCP(
     "rag-read-engine",
 )
-
-
-class ProcessDocumentsArgs(BaseModel):
-    source_path: str = Field(
-        description=(
-            "Path to source: directory, single file, or comma-separated list of files. "
-            "Examples: '/path/to/folder', '/path/to/file.pdf', "
-            "'/path/file1.pdf,/path/file2.docx'"
-        )
-    )
-    project_id: str = Field(
-        description="Project ID to store processed documents in projects/<project_id>/processed/"
-    )
-    reading_format: ReadingFormat = Field(
-        default=ReadingFormat.JSON,
-        description="Format in which documents will be read by LLM",
-    )
-    use_llm: bool = Field(
-        default=True,
-        description="Use LLM to process pdf, pptx, docx documents with tables, images, etc.",
-    )
 
 
 @server.tool(

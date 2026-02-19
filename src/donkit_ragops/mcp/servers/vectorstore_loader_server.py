@@ -11,45 +11,11 @@ warnings.filterwarnings("ignore")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="importlib._bootstrap")
 warnings.simplefilter("ignore", DeprecationWarning)
 import os
-from typing import Literal
 
 from fastmcp import Context, FastMCP
-from pydantic import BaseModel, Field
 
 from donkit_ragops.rag_builder.vectorstore import VectorstoreService
-
-
-class VectorstoreParams(BaseModel):
-    backend: Literal["qdrant", "chroma", "milvus"] = Field(default="qdrant")
-    embedder_type: str = Field(
-        description="Embedder provider (openai, vertex, azure_openai, ollama)"
-    )
-    collection_name: str = Field(description="Use collection name from rag config")
-    database_uri: str = Field(
-        default="http://localhost:6333", description="local vectorstore database URI outside docker"
-    )
-
-
-class VectorstoreLoadArgs(BaseModel):
-    chunks_path: str = Field(
-        description=(
-            "Path to chunked files: directory, single JSON file, or comma-separated list. "
-            "Examples: '/path/to/chunked/', '/path/file.json', "
-            "'/path/file1.json,/path/file2.json'"
-        )
-    )
-    params: VectorstoreParams
-
-
-class VectorstoreDeleteArgs(BaseModel):
-    filename: str | None = Field(
-        default=None, description="Filename to delete from vectorstore (e.g., 'document.pdf')"
-    )
-    document_id: str | None = Field(
-        default=None, description="Document ID to delete from vectorstore (alternative to filename)"
-    )
-    params: VectorstoreParams
-
+from donkit_ragops.schemas.tool_schemas import VectorstoreDeleteArgs, VectorstoreLoadArgs
 
 server = FastMCP(
     "rag-vectorstore-loader",

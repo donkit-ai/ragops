@@ -9,32 +9,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="importlib
 # Suppress all DeprecationWarnings globally
 warnings.simplefilter("ignore", DeprecationWarning)
 import os
-from typing import Self
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field, model_validator
 
-from donkit_ragops.rag_builder.config import RagConfigValidator
-from donkit_ragops.schemas.config_schemas import RagConfig
-
-
-class RagConfigPlanArgs(BaseModel):
-    project_id: str
-    rag_config: RagConfig = Field(default_factory=RagConfig)
-
-    @model_validator(mode="after")
-    def _set_default_collection_name(self) -> Self:
-        """Ensure retriever_options.collection_name is set.
-        If missing/empty, use project_id as a sensible default.
-        For Milvus, ensure collection name starts with underscore or letter.
-        """
-        RagConfigValidator.validate_and_fix(self.rag_config, self.project_id)
-
-        # Ensure embedder.embedder_type is preserved if explicitly set
-        # If embedder was passed but embedder_type is default (vertex),
-        # check if we should preserve it. This prevents overwriting user's choice
-        return self
-
+from donkit_ragops.schemas.tool_schemas import RagConfigPlanArgs
 
 server = FastMCP(
     "rag-config-planner",

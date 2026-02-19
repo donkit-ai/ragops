@@ -118,7 +118,7 @@ class LocalREPL(BaseREPL):
             except Exception as e:
                 if self.context.render_helper:
                     self.context.render_helper.append_error(str(e))
-                logger.error(f"Error in main loop: {e}", exc_info=True)
+                logger.opt(exception=True).error("Error in main loop: {}", repr(e))
 
         await self.cleanup()
 
@@ -442,7 +442,7 @@ class LocalREPL(BaseREPL):
                 self.context.transcript[response_index] = error_msg
             else:
                 self.context.transcript.append(error_msg)
-            logger.error(f"Error during streaming: {e}", exc_info=True)
+            logger.opt(exception=True).error("Error during streaming: {}", repr(e))
             self.context.ui.print_error(str(e))
             if self.context.mcp_handler:
                 self.context.mcp_handler.clear_progress()
@@ -510,7 +510,7 @@ class LocalREPL(BaseREPL):
             error_msg = f"{format_timestamp()}[bold red]Error:[/bold red] {e}"
             if response_index is not None:
                 self.context.transcript[response_index] = error_msg
-            logger.error(f"Error during agent response: {e}", exc_info=True)
+            logger.opt(exception=True).error("Error during agent response: {}", repr(e))
             self.context.ui.print_error(str(e))
 
         if self.context.mcp_handler:

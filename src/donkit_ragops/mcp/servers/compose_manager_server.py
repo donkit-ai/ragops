@@ -12,79 +12,22 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="importlib
 warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
-from typing import Literal, Self
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field, model_validator
 
-from donkit_ragops.rag_builder.config import RagConfigValidator
 from donkit_ragops.rag_builder.deployment import ComposeManager
-from donkit_ragops.schemas.config_schemas import RagConfig
+from donkit_ragops.schemas.tool_schemas import (
+    GetLogsArgs,
+    InitProjectComposeArgs,
+    ServiceStatusArgs,
+    StartServiceArgs,
+    StopContainerArgs,
+    StopServiceArgs,
+)
 
 server = FastMCP(
     "ragops-compose-manager",
 )
-
-
-# --- Pydantic models for MCP tool arguments ---
-
-
-class InitProjectComposeArgs(BaseModel):
-    project_id: str = Field(description="Project ID")
-    rag_config: RagConfig = Field(description="RAG service configuration")
-
-    @model_validator(mode="after")
-    def _set_default_collection_name(self) -> Self:
-        RagConfigValidator.validate_and_fix(self.rag_config, self.project_id)
-        return self
-
-
-class StopContainerArgs(BaseModel):
-    container_id: str = Field(description="Container ID or name")
-
-
-class ServicePort(BaseModel):
-    service: Literal["qdrant", "chroma", "milvus", "rag-service"] = Field(
-        description="Service name"
-    )
-    port: str = Field(
-        description="Host port mapping in format 'host_port:container_port' (e.g., '6335:6333') "
-        "or just host port (e.g., '6335')"
-    )
-
-
-class StartServiceArgs(BaseModel):
-    service: Literal["qdrant", "chroma", "milvus", "rag-service"] = Field(
-        description="Service name (qdrant, chroma, milvus, rag-service)"
-    )
-    project_id: str = Field(description="Project ID")
-    detach: bool = Field(True, description="Run in detached mode")
-    build: bool = Field(False, description="Build images before starting")
-    custom_ports: list[ServicePort] | None = Field(
-        None,
-        description=(
-            "Custom port mappings for services. "
-            "Example: [{'service': 'qdrant', 'port': '6335:6333'}, "
-            "{'service': 'rag-service', 'port': '8001:8000'}]"
-        ),
-    )
-
-
-class StopServiceArgs(BaseModel):
-    service: str = Field(description="Service name")
-    project_id: str = Field(description="Project ID")
-    remove_volumes: bool = Field(False, description="Remove volumes")
-
-
-class ServiceStatusArgs(BaseModel):
-    service: str | None = Field(None, description="Service name (optional, default: all)")
-    project_id: str = Field(description="Project ID")
-
-
-class GetLogsArgs(BaseModel):
-    service: str = Field(description="Service name")
-    tail: int = Field(100, description="Number of lines to show")
-    project_id: str = Field(description="Project ID")
 
 
 # --- MCP Tools (thin wrappers) ---

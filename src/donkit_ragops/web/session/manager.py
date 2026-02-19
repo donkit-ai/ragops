@@ -15,7 +15,6 @@ from donkit_ragops.agent.agent import LLMAgent
 from donkit_ragops.agent.prompts import get_prompt
 from donkit_ragops.config import load_settings
 from donkit_ragops.llm.provider_factory import get_provider
-from donkit_ragops.mcp.client import MCPClient
 from donkit_ragops.schemas.agent_schemas import AgentSettings
 from donkit_ragops.web.config import WebConfig
 from donkit_ragops.web.session.models import SessionInfo, WebSession
@@ -99,18 +98,14 @@ class SessionManager:
             model=model_name,
         )
 
-        # Create MCP clients
-        mcp_clients = self._create_mcp_clients()
-
-        # Create agent with project_id provider for tool calls
+        # Create agent with project_id provider for tool calls (no MCP clients needed)
         def get_project_id() -> str | None:
             session = self._sessions.get(session_id)
             return session.project_id if session else None
 
         agent = LLMAgent(
             provider=llm_provider,
-            tools=web_default_tools(),
-            mcp_clients=mcp_clients,
+            tools=web_default_tools(llm_model=llm_provider),
             project_id_provider=get_project_id,
         )
 
@@ -128,7 +123,6 @@ class SessionManager:
             model=model_name,
             agent=agent,
             agent_settings=agent_settings,
-            mcp_clients=mcp_clients,
             system_prompt=system_prompt,
             files_dir=files_dir,
         )
@@ -599,29 +593,6 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Failed to initialize MCP tools for session {session_id}: {e}")
             return False
-
-    def _create_mcp_clients(self) -> list[MCPClient]:
-        """Create MCP clients for the session with progress callback."""
-        from donkit_ragops.web.tools.interactive import create_web_progress_callback
-
-        clients = []
-
-        # Create the unified donkit-ragops-mcp client with progress callback
-        try:
-            # Use the same approach as CLI
-            import sys
-
-            client = MCPClient(
-                command=sys.executable,
-                args=["-m", "donkit_ragops.mcp.servers.donkit_ragops_mcp"],
-                timeout=7200.0,
-                progress_callback=create_web_progress_callback(),
-            )
-            clients.append(client)
-        except Exception as e:
-            logger.warning(f"Failed to create MCP client: {e}")
-
-        return clients
 
     async def _cleanup_session(self, session_id: str) -> None:
         """Clean up a single session's resources."""

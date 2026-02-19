@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import shlex
 import time
 from pathlib import Path
 
@@ -24,7 +23,6 @@ from donkit_ragops.display import print_startup_header
 from donkit_ragops.enterprise.event_listener import EventListener
 from donkit_ragops.llm.provider_factory import get_provider
 from donkit_ragops.logging_config import setup_logging
-from donkit_ragops.mcp.client import MCPClient
 from donkit_ragops.mode import Mode, detect_mode
 from donkit_ragops.model_selector import save_model_selection, select_model_at_startup
 from donkit_ragops.repl.base import ReplContext
@@ -39,12 +37,10 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-DEFAULT_MCP_COMMANDS = ["donkit-ragops-mcp"]
-
 # Default models for providers
 DEFAULT_MODELS = {
-    "openai": "gpt-4o-mini",
-    "azure_openai": "gpt-4o-mini",
+    "openai": "gpt-5.2",
+    "azure_openai": "gpt-5.2",
     "vertex": "gemini-2.5-flash",
     "ollama": "llama3.1",
     "openrouter": "openai/gpt-4o-mini",
@@ -341,16 +337,10 @@ def _run_local_mode(
         ui.print_error(texts.ERROR_CREDENTIALS_REQUIRED)
         raise typer.Exit(code=1)
 
-    tools = default_tools()
+    tools = default_tools(llm_model=prov)
 
-    # Create MCP clients
-    mcp_clients = []
-    for cmd_str in DEFAULT_MCP_COMMANDS:
-        cmd_parts = shlex.split(cmd_str)
-        mcp_clients.append(MCPClient(cmd_parts[0], cmd_parts[1:]))
-
-    # Create agent
-    agent = LLMAgent(prov, tools=tools, mcp_clients=mcp_clients)
+    # Create agent (pipeline tools are local, no MCP clients needed)
+    agent = LLMAgent(prov, tools=tools)
 
     # Create agent settings
     agent_settings = AgentSettings(llm_provider=prov, model=model)
@@ -369,7 +359,6 @@ def _run_local_mode(
         provider_name=provider,
         model=model,
         agent=agent,
-        mcp_clients=mcp_clients,
         agent_settings=agent_settings,
         system_prompt=system_prompt,
     )
@@ -430,8 +419,8 @@ def status() -> None:
             )
             ui.print_styled(
                 styled_text(
-                    (StyleName.BOLD, "MCP Servers: "),
-                    (None, ", ".join(DEFAULT_MCP_COMMANDS)),
+                    (StyleName.BOLD, "Pipeline tools: "),
+                    (None, "local (built-in)"),
                 )
             )
         except Exception:
