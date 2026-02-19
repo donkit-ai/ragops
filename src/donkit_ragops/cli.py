@@ -39,15 +39,15 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-DEFAULT_MCP_COMMANDS = ["donkit-ragops-mcp"]
+DEFAULT_MCP_COMMANDS = []
 
 # Default models for providers
 DEFAULT_MODELS = {
-    "openai": "gpt-4o-mini",
-    "azure_openai": "gpt-4o-mini",
+    "openai": "gpt-5.2",
+    "azure_openai": "gpt-5.2",
     "vertex": "gemini-2.5-flash",
     "ollama": "llama3.1",
-    "openrouter": "openai/gpt-4o-mini",
+    "openrouter": "openai/gpt-5.2",
     "donkit": "donkit-fast",
     "anthropic": "claude-3-5-sonnet-20241022",
     "mock": "gpt-4o-mini",
@@ -111,21 +111,12 @@ def main(
 ) -> None:
     """donkit-ragops LLM-powered CLI agent for automated RAG pipeline creation.
 
-    Start an interactive REPL session where the agent orchestrates built-in MCP servers
-    to plan, chunk, read, evaluate, and load document into vector stores
+    Start an interactive REPL session where the agent uses cloud tools
+    to plan, chunk, read, evaluate, and load documents into vector stores
 
     MODES:
       Local mode (default)    - Build RAG pipelines locally using Docker
       Enterprise mode         - Connect to Donkit cloud (requires 'login')
-
-    MCP SERVERS (built-in):
-      • rag-planner           - RAG configuration planning
-      • chunker               - Document chunking strategies
-      • read-engine           - Document parsing (PDF, Office, images)
-      • vectorstore-loader    - Vector DB operations (Qdrant, Milvus, Chroma)
-      • compose-manager       - Docker Compose orchestration
-      • rag-query             - RAG querying
-      • rag-evaluation        - RAG pipeline evaluation
 
     REPL COMMANDS:
       /help                   - Show available commands
@@ -318,8 +309,8 @@ def _run_local_mode(
         save_model_selection(provider, model)
 
     # Ensure model is set
-    if model is None:
-        model = DEFAULT_MODELS.get((provider or "").lower(), "gpt-4o-mini")
+    if model is None and provider != "donkit":
+        model = DEFAULT_MODELS.get((provider or "").lower(), "gpt-5.2")
         ui.print_styled(
             styled_text(
                 (StyleName.WARNING, "No model selected. Using default: "),
@@ -426,12 +417,6 @@ def status() -> None:
                 styled_text(
                     (StyleName.BOLD, "Model: "),
                     (None, local_settings.llm_model or "default"),
-                )
-            )
-            ui.print_styled(
-                styled_text(
-                    (StyleName.BOLD, "MCP Servers: "),
-                    (None, ", ".join(DEFAULT_MCP_COMMANDS)),
                 )
             )
         except Exception:
