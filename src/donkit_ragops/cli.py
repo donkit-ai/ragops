@@ -1,4 +1,4 @@
-"""CLI entry point for RAGOps Agent.
+"""CLI entry point for RAGOps Agent CE.
 
 Follows Single Responsibility Principle - only handles CLI commands and routing.
 REPL logic is delegated to dedicated REPL classes.
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shlex
 import time
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from donkit_ragops.display import print_startup_header
 from donkit_ragops.enterprise.event_listener import EventListener
 from donkit_ragops.llm.provider_factory import get_provider
 from donkit_ragops.logging_config import setup_logging
+from donkit_ragops.mcp.client import MCPClient
 from donkit_ragops.mode import Mode, detect_mode
 from donkit_ragops.model_selector import save_model_selection, select_model_at_startup
 from donkit_ragops.repl.base import ReplContext
@@ -37,13 +39,15 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
+DEFAULT_MCP_COMMANDS = []
+
 # Default models for providers
 DEFAULT_MODELS = {
     "openai": "gpt-5.2",
     "azure_openai": "gpt-5.2",
     "vertex": "gemini-2.5-flash",
     "ollama": "llama3.1",
-    "openrouter": "openai/gpt-4o-mini",
+    "openrouter": "openai/gpt-5.2",
     "donkit": "donkit-fast",
     "anthropic": "claude-3-5-sonnet-20241022",
     "mock": "gpt-4o-mini",
@@ -107,21 +111,12 @@ def main(
 ) -> None:
     """donkit-ragops LLM-powered CLI agent for automated RAG pipeline creation.
 
-    Start an interactive REPL session where the agent orchestrates built-in MCP servers
-    to plan, chunk, read, evaluate, and load document into vector stores
+    Start an interactive REPL session where the agent uses cloud tools
+    to plan, chunk, read, evaluate, and load documents into vector stores
 
     MODES:
       Local mode (default)    - Build RAG pipelines locally using Docker
       Enterprise mode         - Connect to Donkit cloud (requires 'login')
-
-    MCP SERVERS (built-in):
-      • rag-planner           - RAG configuration planning
-      • chunker               - Document chunking strategies
-      • read-engine           - Document parsing (PDF, Office, images)
-      • vectorstore-loader    - Vector DB operations (Qdrant, Milvus, Chroma)
-      • compose-manager       - Docker Compose orchestration
-      • rag-query             - RAG querying
-      • rag-evaluation        - RAG pipeline evaluation
 
     REPL COMMANDS:
       /help                   - Show available commands
@@ -314,8 +309,8 @@ def _run_local_mode(
         save_model_selection(provider, model)
 
     # Ensure model is set
-    if model is None:
-        model = DEFAULT_MODELS.get((provider or "").lower(), "gpt-4o-mini")
+    if model is None and provider != "donkit":
+        model = DEFAULT_MODELS.get((provider or "").lower(), "gpt-5.2")
         ui.print_styled(
             styled_text(
                 (StyleName.WARNING, "No model selected. Using default: "),
@@ -337,10 +332,16 @@ def _run_local_mode(
         ui.print_error(texts.ERROR_CREDENTIALS_REQUIRED)
         raise typer.Exit(code=1)
 
-    tools = default_tools(llm_model=prov)
+    tools = default_tools()
 
-    # Create agent (pipeline tools are local, no MCP clients needed)
-    agent = LLMAgent(prov, tools=tools)
+    # Create MCP clients
+    mcp_clients = []
+    for cmd_str in DEFAULT_MCP_COMMANDS:
+        cmd_parts = shlex.split(cmd_str)
+        mcp_clients.append(MCPClient(cmd_parts[0], cmd_parts[1:]))
+
+    # Create agent
+    agent = LLMAgent(prov, tools=tools, mcp_clients=mcp_clients)
 
     # Create agent settings
     agent_settings = AgentSettings(llm_provider=prov, model=model)
@@ -359,6 +360,7 @@ def _run_local_mode(
         provider_name=provider,
         model=model,
         agent=agent,
+        mcp_clients=mcp_clients,
         agent_settings=agent_settings,
         system_prompt=system_prompt,
     )
@@ -415,12 +417,6 @@ def status() -> None:
                 styled_text(
                     (StyleName.BOLD, "Model: "),
                     (None, local_settings.llm_model or "default"),
-                )
-            )
-            ui.print_styled(
-                styled_text(
-                    (StyleName.BOLD, "Pipeline tools: "),
-                    (None, "local (built-in)"),
                 )
             )
         except Exception:

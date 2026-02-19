@@ -242,7 +242,7 @@ class LocalREPL(BaseREPL):
                 default=False,
             )
             if want_to_change:
-                models = get_available_models(result.prov, result.provider)
+                models = await get_available_models(result.prov, result.provider)
                 if models:
                     choices = format_model_choices(models, self.context.model)
                     choices.append(texts.MODEL_SELECT_SKIP)
@@ -297,7 +297,7 @@ class LocalREPL(BaseREPL):
             self.context.agent_settings.model if self.context.agent_settings else None
         ) or self.context.model
 
-        models = get_available_models(self.context.provider, current_provider)
+        models = await get_available_models(self.context.provider, current_provider)
         if not models:
             self.context.transcript.append(
                 texts.MODEL_NO_PREDEFINED.format(current_model_name=current_model or "not set")
