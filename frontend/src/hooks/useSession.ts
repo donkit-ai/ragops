@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Session } from '../types/protocol';
 
 const API_BASE = '/api/v1';
+const SESSION_STORAGE_KEY = 'ragops_session_id';
 
 interface CreateSessionOptions {
   provider?: string;
@@ -13,9 +14,41 @@ interface CreateSessionOptions {
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const creatingRef = useRef(false);
+  const restoredRef = useRef(false);
+
+  // Restore session from sessionStorage on mount
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    const savedSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!savedSessionId) {
+      setLoading(false);
+      return;
+    }
+
+    fetch(`${API_BASE}/sessions/${savedSessionId}`)
+      .then((response) => {
+        if (response.ok) return response.json();
+        // Session expired or invalid — clean up
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+        return null;
+      })
+      .then((data) => {
+        if (data) {
+          setSession(data);
+        }
+      })
+      .catch(() => {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   const createSession = useCallback(async (options?: CreateSessionOptions) => {
     // Prevent double creation
@@ -40,6 +73,8 @@ export function useSession() {
       }
 
       const data = await response.json();
+
+      sessionStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
 
       // Fetch full session info
       const sessionResponse = await fetch(`${API_BASE}/sessions/${data.session_id}`);
@@ -88,6 +123,7 @@ export function useSession() {
         throw new Error(data.detail || 'Failed to delete session');
       }
 
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
       setSession(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error';

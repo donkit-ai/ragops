@@ -28,7 +28,7 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
   const [isStreaming, setIsStreaming] = useState(false);
   const [, setCurrentToolCalls] = useState<ToolCall[]>([]);
   const [interactiveRequests, setInteractiveRequests] = useState<InteractiveRequest[]>([]);
-  const { checklist, updateFromMessage } = useChecklist(sessionId);
+  const { checklist, fetchChecklist, updateFromMessage } = useChecklist(sessionId);
   const [, setIsChecklistCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const dialogsRef = useRef<HTMLDivElement>(null);
@@ -84,11 +84,12 @@ export default function ChatContainer({ sessionId, hasProjectsSidebar = false }:
     };
 
     loadHistory();
+    fetchChecklist();
 
     return () => {
       mounted = false;
     };
-  }, [sessionId]);
+  }, [sessionId, fetchChecklist]);
 
   // Auto-scroll to dialogs when they appear
   useEffect(() => {

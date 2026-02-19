@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 
 import httpx
 from donkit.chunker import ChunkerConfig
+from donkit.llm import LLMModelAbstract
 from loguru import logger
 
 from donkit_ragops.credential_checker import get_recommended_config
@@ -267,6 +268,7 @@ class RagPipelineOrchestrator:
         db_type: str = "qdrant",
         health_check_timeout: int = 60,
         rag_config: RagConfig | None = None,
+        llm_model: LLMModelAbstract | None = None,
     ) -> PipelineBuildResult:
         """Build a complete RAG pipeline from source documents.
 
@@ -289,6 +291,8 @@ class RagPipelineOrchestrator:
             health_check_timeout: Seconds to wait for services to become healthy.
             rag_config: Optional pre-built RagConfig. When provided, skips
                 auto-detection and uses this config directly.
+            llm_model: Optional LLM model instance (LLMModelAbstract) to use
+                for document processing instead of creating one from env vars.
 
         Returns:
             PipelineBuildResult with URLs and statistics.
@@ -324,11 +328,28 @@ class RagPipelineOrchestrator:
         try:
             # Step 3: Process documents
             await _progress(3, "Processing documents")
+
+            def _reader_progress(current: int, total: int, message: str | None = None) -> None:
+                if progress_callback:
+                    msg = message or f"Processing page {current}/{total}"
+                    cb = progress_callback(current, total, msg)
+                    if asyncio.iscoroutine(cb):
+                        asyncio.ensure_future(cb)
+
+            async def _file_progress(current: int, total: int, message: str) -> None:
+                if progress_callback:
+                    cb = progress_callback(current, total, message)
+                    if asyncio.iscoroutine(cb):
+                        await cb
+
             doc_result = await DocumentProcessor.process_documents(
                 source_path=source_path,
                 project_id=project_id,
                 reading_format=rag_config.reading_format,
                 use_llm=True,
+                llm_model=llm_model,
+                reader_progress_callback=_reader_progress if progress_callback else None,
+                file_progress_callback=_file_progress if progress_callback else None,
             )
 
             if isinstance(doc_result, dict) and doc_result.get("status") == "error":
@@ -404,12 +425,19 @@ class RagPipelineOrchestrator:
             embedder_type = rag_config.embedder.embedder_type.value
             collection_name = rag_config.retriever_options.collection_name or project_id
 
+            async def _vs_progress(current: int, total: int, message: str) -> None:
+                if progress_callback:
+                    cb = progress_callback(current, total, message)
+                    if asyncio.iscoroutine(cb):
+                        await cb
+
             load_summary = await VectorstoreService.load(
                 chunks_path=chunks_path,
                 embedder_type=embedder_type,
                 backend=db_type,
                 collection_name=collection_name,
                 database_uri=vs_url,
+                progress_callback=_vs_progress if progress_callback else None,
             )
 
             # Parse chunks loaded count from summary

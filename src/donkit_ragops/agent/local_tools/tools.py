@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from donkit.llm import FunctionDefinition, Tool
+from donkit.llm import FunctionDefinition, LLMModelAbstract, Tool
 
 from donkit_ragops.credential_checker import (
     get_available_providers,
@@ -517,6 +517,7 @@ def _default_cli_progress(step: int, total: int, message: str) -> None:
 
 def tool_quick_rag_build(
     progress_callback: Callable[[int, int, str], object] | None = None,
+    llm_model: LLMModelAbstract | None = None,
 ) -> AgentTool:
     """Tool for building a complete RAG pipeline in one call.
 
@@ -524,6 +525,8 @@ def tool_quick_rag_build(
         progress_callback: Optional callback ``(step, total_steps, message)``
             invoked by the pipeline orchestrator to report build progress.
             If *None*, a default callback printing to stdout is used.
+        llm_model: Optional LLM model instance (LLMModelAbstract) to pass
+            to the document processor for reading files with LLM.
     """
     _progress_cb = progress_callback or _default_cli_progress
 
@@ -565,6 +568,7 @@ def tool_quick_rag_build(
                 project_id=project_id,
                 rag_config=rag_config,
                 progress_callback=_progress_cb,
+                llm_model=llm_model,
             )
             return json.dumps(
                 {

@@ -69,7 +69,7 @@ def save_provider_config(config: dict[str, str], env_path: Path | None = None) -
     return wizard.save_config()
 
 
-def get_available_models(prov: object, provider_key: str) -> list[str]:
+async def get_available_models(prov: LLMModelAbstract, provider_key: str) -> list[str]:
     """
     Collect available chat models for provider.
 
@@ -85,9 +85,9 @@ def get_available_models(prov: object, provider_key: str) -> list[str]:
     if prov is not None:
         try:
             if hasattr(prov, "list_chat_models"):
-                fetched_models = prov.list_chat_models()
+                fetched_models = await prov.list_chat_models()
             elif hasattr(prov, "list_models"):
-                fetched_models = prov.list_models()
+                fetched_models = await prov.list_models()
         except Exception as exc:
             logger.warning(f"Failed to list models for provider '{provider_key}': {exc}")
 

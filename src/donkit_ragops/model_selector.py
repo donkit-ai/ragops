@@ -283,16 +283,18 @@ def select_model_at_startup(
 
         # Try to get models from provider
         models = []
-        try:
-            settings = load_settings()
-            # Temporarily set provider in settings for model listing
-            temp_settings = settings.model_copy(update={"llm_provider": selected_provider})
-            provider_instance = get_provider(temp_settings, llm_provider=selected_provider)
+        settings = load_settings()
+        # Temporarily set provider in settings for model listing
+        temp_settings = settings.model_copy(update={"llm_provider": selected_provider})
 
-            if hasattr(provider_instance, "list_chat_models"):
-                models = provider_instance.list_chat_models()
-            elif hasattr(provider_instance, "list_models"):
-                models = provider_instance.list_models()
+        try:
+            provider_instance = get_provider(temp_settings, llm_provider=selected_provider)
+            if not provider_instance.name == "donkit":
+                if hasattr(provider_instance, "list_chat_models"):
+                    models = asyncio.run(provider_instance.list_chat_models())
+                    print(models)
+                elif hasattr(provider_instance, "list_models"):
+                    models = asyncio.run(provider_instance.list_models())
         except Exception:
             # If we can't get provider instance, use fallback
             ui.print(
@@ -304,11 +306,7 @@ def select_model_at_startup(
         # Apply supported models filter logic
         supported = SUPPORTED_MODELS.get(selected_provider, [])
 
-        if models:
-            if supported:
-                # Intersection: Keep supported models that exist in fetched list
-                models = [m for m in supported if m in models]
-        else:
+        if not models:
             # Fallback if fetch failed or returned empty
             models = supported
 
@@ -343,14 +341,18 @@ def select_model_at_startup(
                 # Extract model name (remove "← Last used" if present)
                 model = selected_model_choice.split(" [")[0].strip()
 
-                # Validate model by trying to use it
-                try:
-                    # Test if model is actually available
-                    test_messages = [Message(role="user", content="test")]
-                    request = GenerateRequest(messages=test_messages)
+                # Validate model in a loop until it passes or user skips/forces
+                from donkit_ragops.interactive_input import interactive_confirm
+
+                while model is not None:
                     try:
-                        asyncio.run(provider_instance.generate(request))
-                        # If successful, model is available
+                        test_provider = get_provider(
+                            temp_settings, llm_provider=selected_provider, model_name=model
+                        )
+                        test_messages = [Message(role="user", content="test")]
+                        request = GenerateRequest(messages=test_messages, max_tokens=1)
+                        asyncio.run(test_provider.generate(request))
+                        # Success
                         ui.print_styled(
                             styled_text(
                                 (None, "Model selected: "),
@@ -358,8 +360,8 @@ def select_model_at_startup(
                             )
                         )
                         ui.newline()
+                        break
                     except Exception as model_error:
-                        # Model is not available
                         error_msg = str(model_error)
                         if "model" in error_msg.lower() and (
                             "not found" in error_msg.lower()
@@ -367,15 +369,12 @@ def select_model_at_startup(
                             or "not available" in error_msg.lower()
                         ):
                             friendly_msg = (
-                                f"Model '{model}' is not available or not accessible "
-                                "with your API key."
+                                f"Model '{model}' is not available "
+                                "or not accessible with your API key."
                             )
                         else:
                             friendly_msg = f"Model '{model}' is not available: {error_msg}"
                         ui.print_error(friendly_msg)
-
-                        # Ask if user wants to force use the model anyway
-                        from donkit_ragops.interactive_input import interactive_confirm
 
                         if interactive_confirm("Use this model anyway?", default=False):
                             ui.print_styled(
@@ -385,47 +384,18 @@ def select_model_at_startup(
                                 )
                             )
                             ui.newline()
+                            break
+
+                        ui.print_warning("Please select a different model.")
+                        ui.newline()
+                        retry_model = interactive_select(
+                            choices, title=title, default_index=default_index
+                        )
+                        if retry_model and retry_model != "Skip (use default)":
+                            model = retry_model.split(" [")[0].strip()
+                            # Loop continues — validate again
                         else:
-                            ui.print_warning("Please select a different model.")
-                            ui.newline()
-                            # Ask user to select again
-                            retry_model = interactive_select(
-                                choices, title=title, default_index=default_index
-                            )
-                            if retry_model and retry_model != "Skip (use default)":
-                                model = retry_model.split(" [")[0].strip()
-                                # Try validation again (but don't loop forever)
-                                try:
-                                    provider_instance.generate(
-                                        [Message(role="user", content="test")],
-                                        model=model,
-                                        max_tokens=1,
-                                    )
-                                    ui.print_styled(
-                                        styled_text(
-                                            (None, "Model selected: "),
-                                            (StyleName.SUCCESS, model),
-                                        )
-                                    )
-                                    ui.newline()
-                                except Exception:
-                                    # If still fails, set it anyway but warn
-                                    ui.print_warning(
-                                        "Model validation failed, but it will be set anyway."
-                                    )
-                                    ui.newline()
-                                    # Keep the model even if validation fails on retry
-                            else:
-                                model = None  # User skipped or cancelled
-                except Exception as e:
-                    # If validation itself fails, still set the model but warn
-                    ui.print_warning(f"Could not validate model '{model}': {e}")
-                    ui.print(
-                        f"Model '{model}' will be set, but may not be available.",
-                        StyleName.DIM,
-                    )
-                    ui.newline()
-                    model = None  # Set to None to be safe
+                            model = None  # User skipped or cancelled
 
             elif selected_model_choice == "Skip (use default)":
                 ui.print("Using default model for this provider", StyleName.DIM)
@@ -436,8 +406,7 @@ def select_model_at_startup(
                 model = None
         else:
             ui.print_warning(
-                "No models available for selection. "
-                "Model can be specified later via CLI flags or in .env file."
+                "No model choice available for selection. "
             )
             ui.newline()
 

@@ -78,7 +78,9 @@ class WebSession:
         self.last_activity = time.time()
 
     def is_expired(self, ttl_seconds: int) -> bool:
-        """Check if session has expired."""
+        """Check if session has expired. TTL of 0 means never expires."""
+        if ttl_seconds <= 0:
+            return False
         return time.time() - self.last_activity > ttl_seconds
 
     @property

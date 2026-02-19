@@ -103,6 +103,15 @@ function App() {
     }
   };
 
+  // Show loading while restoring session from sessionStorage
+  if (loading && !session) {
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div style={{ color: 'var(--color-text-secondary)' }}>Восстановление сессии...</div>
+      </div>
+    );
+  }
+
   // Show setup screen if no session yet
   if (!session) {
     return (

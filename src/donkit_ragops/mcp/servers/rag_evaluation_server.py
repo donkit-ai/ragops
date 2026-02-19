@@ -17,41 +17,13 @@ import json
 import os
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
 
 from donkit_ragops.rag_builder.evaluation import RagEvaluator
+from donkit_ragops.schemas.tool_schemas import BatchEvaluationArgs
 
 server = FastMCP(
     "rag-evaluation",
 )
-
-
-class BatchEvaluationArgs(BaseModel):
-    input_path: str = Field(
-        description=(
-            "Path to input file (CSV or JSON) with fields: "
-            "question, answer, relevant_passage/document"
-        )
-    )
-    project_id: str = Field(description="Project ID for organizing results")
-    output_csv_path: str | None = Field(
-        default=None,
-        description=(
-            "Path to save results CSV. Defaults to projects/<project_id>/evaluation/results.csv"
-        ),
-    )
-    rag_service_url: str = Field(
-        default="http://localhost:8000",
-        description="RAG service base URL (e.g., http://localhost:8000)",
-    )
-    evaluation_service_url: str | None = Field(
-        default=None,
-        description="Optional URL for external evaluation service (for generation metrics)",
-    )
-    max_concurrent: int = Field(default=5, description="Max concurrent requests to RAG service")
-    max_questions: int | None = Field(
-        default=None, description="Limit number of questions to process (for debugging)"
-    )
 
 
 @server.tool(
