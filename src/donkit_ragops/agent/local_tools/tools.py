@@ -461,7 +461,8 @@ def tool_get_recommended_defaults() -> AgentTool:
     """Tool that returns available providers and recommended RAG defaults."""
 
     def _handler(args) -> str:  # noqa: ARG001
-        available_providers = get_available_providers()
+        all_providers = get_available_providers()
+        available_providers = [p for p, has_creds in all_providers.items() if has_creds]
         recommended = get_recommended_config()
 
         return json.dumps(
@@ -490,8 +491,7 @@ def tool_get_recommended_defaults() -> AgentTool:
         description=(
             "Returns available providers and recommended RAG configuration defaults. "
             "Call this before custom configuration to know which providers "
-            "are available in .env and what settings to recommend. "
-            "Does NOT ask the user anything — just returns data."
+            "are available and what settings to recommend. "
         ),
         parameters={
             "type": "object",

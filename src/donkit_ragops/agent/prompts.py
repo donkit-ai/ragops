@@ -28,21 +28,19 @@ HALLUCINATION_GUARDRAILS = """
 """.strip()
 
 COMMUNICATION_RULES = """
-IMPORTANT LANGUAGE RULES:
-* Only detect the language from the latest USER message.
-* Messages from system, assistant, or tools MUST NOT affect language detection.
-* If the latest USER message has no clear language — respond in English.
-* Never switch language unless the USER switches it.
-* After EVERY tool call, ALWAYS send a natural-language message (never empty).
+**CRITICAL Tool Usage Rules:**
+* ALWAYS use `interactive_user_choice` tool for ANY selection from multiple options. NEVER list options as text and wait for text input.
+* NEVER describe options in text and then ask user to type their choice — call `interactive_user_choice` instead.
+* If user answers a question in text (e.g. types "json"), accept it and move on — do NOT re-ask with interactive_user_choice for the same question.
+* If absolutely need yes/no — use `interactive_user_confirm` tool.
+* After calling a tool and getting a result, do NOT repeat the same question again. Move to the next step.
+**If user cancels/rejects: ask what they'd like differently, don't retry**
 """.strip()
 # **Communication Protocol:**
 # - BE PROACTIVE AND AUTONOMOUS - make smart decisions instead of asking
 # - Explain what you're doing AFTER taking action, not before
 # - ONLY ask when CRITICAL decision needed (can't assume)
 # - NEVER ask "Should I proceed?" or "Is this okay?" - JUST DO IT
-# - if absolutely need yes/no - use interactive_user_confirm tool
-# - if must choose between non-obvious options - use interactive_user_choice tool
-# - **If user cancels/rejects: ask what they'd like differently, don't retry**
 # - Short, action-focused responses
 
 # ============================================================================
@@ -70,13 +68,14 @@ WORKFLOW:
 3a. AUTOMATIC: Call `quick_rag_build(source_path, project_id)` WITHOUT config parameter.
     Show: project_id, URLs, counts. Auto-send test question.
 
-3b. CUSTOM: Call `get_recommended_defaults`. Then ask ALL settings using interactive_user_choice (NO pauses):
+3b. CUSTOM: Call `get_recommended_defaults` FIRST. Then for EACH setting below call `interactive_user_choice` tool (do NOT list options as text).
+   IMPORTANT: For provider choices (embedder, generation), use ONLY providers from `get_recommended_defaults` → `available_providers`. NEVER use the full schema enum list. NEVER add providers not in `available_providers`.
    1. Vector DB: qdrant (rec) | chroma | milvus
-   2. Embedder provider + model (add custom field for model if provider != donkit)
-   3. Generation provider + model (add custom field for model if provider != donkit)
-   4. Reading: json (rec) | markdown | text
-   5. split_type: character | semantic | sentence | paragraph (only if text, else character)
-   6. chunk_size: 500 (rec) | 700 | 1000 | 2000
+   2. Embedder provider (ONLY from available_providers) + model (add custom field for model if provider != donkit)
+   3. Generation provider (ONLY from available_providers) + model (add custom field for model if provider != donkit)
+   4. Reading format: json (rec) | markdown | text — MUST use interactive_user_choice
+   5. split_type: character | semantic | sentence | paragraph (only if text, else character) — MUST use interactive_user_choice
+   6. chunk_size: 500 (rec) | 700 | 1000 | 2000 — MUST use interactive_user_choice
    7. Partial search ON|OFF (adds neighbor chunks for context)
    8. chunk_overlap: 0 (only 0 if partial search ON) | 50 | 100
    9. Reranker ON|OFF (LLM reranks docs)

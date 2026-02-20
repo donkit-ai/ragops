@@ -28,7 +28,7 @@ PROVIDER_DEFAULTS: dict[str, ProviderConfig] = {
     },
     "openai": {
         "embedder_model": "text-embedding-3-small",
-        "generation_model": "gpt-5.2",
+        "generation_model": "gpt-5.2-mini",
     },
     "vertex": {
         "embedder_model": "text-multilingual-embedding-002",
@@ -44,11 +44,11 @@ PROVIDER_DEFAULTS: dict[str, ProviderConfig] = {
     },
     "anthropic": {
         "embedder_model": None,
-        "generation_model": "claude-4-0-sonnet",
+        "generation_model": "claude-4-5-sonnet",
     },
     "openrouter": {
         "embedder_model": None,
-        "generation_model": "gpt-5.2",
+        "generation_model": "gpt-5.2-mini",
     },
 }
 
