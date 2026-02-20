@@ -260,12 +260,14 @@ class LLMAgent:
             self.provider.supports_capability(ModelCapability.TOOL_CALLING) and resp.tool_calls
         )
 
-    def _append_synthetic_assistant_turn(self, messages: list[Message], tool_calls) -> None:
-        """Append a single assistant message with tool_calls."""
+    def _append_synthetic_assistant_turn(
+        self, messages: list[Message], tool_calls, content: str | None = None
+    ) -> None:
+        """Append a single assistant message with tool_calls and optional text content."""
         messages.append(
             Message(
                 role="assistant",
-                content=None,  # No text content when calling tools
+                content=content or None,
                 tool_calls=tool_calls,
             )
         )
@@ -333,11 +335,14 @@ class LLMAgent:
             logger.error(f"Failed to serialize tool result to JSON: {e}")
             return str(result)
 
-    async def _ahandle_tool_calls(self, messages: list[Message], tool_calls) -> None:
+    async def _ahandle_tool_calls(
+        self, messages: list[Message], tool_calls, content: str | None = None
+    ) -> None:
         """Full tool call handling: synthetic assistant turn, execute, and append tool messages."""
         logger.debug(f"Processing {len(tool_calls)} tool calls")
-        # 1) synthetic assistant turns
-        self._append_synthetic_assistant_turn(messages, tool_calls)
+        # 1) synthetic assistant turn
+        # (preserve text content if model returned it alongside tool calls)
+        self._append_synthetic_assistant_turn(messages, tool_calls, content=content)
         # 2) execute and append responses
         for tc in tool_calls:
             args = self._parse_tool_args(tc)
@@ -392,7 +397,7 @@ class LLMAgent:
 
             # Handle tool calls if requested
             if self._should_execute_tools(resp):
-                await self._ahandle_tool_calls(messages, resp.tool_calls)
+                await self._ahandle_tool_calls(messages, resp.tool_calls, content=resp.content)
                 # continue loop to give tool results back to the model
                 continue
 
@@ -443,8 +448,10 @@ class LLMAgent:
                     ModelCapability.TOOL_CALLING
                 ):
                     saw_tool_calls = True
-                    # Append synthetic assistant turn
-                    self._append_synthetic_assistant_turn(messages, chunk.tool_calls)
+                    # Append synthetic assistant turn (preserve streamed text content)
+                    self._append_synthetic_assistant_turn(
+                        messages, chunk.tool_calls, content=streamed_content or None
+                    )
                     # Execute each tool and yield events
                     for tc in chunk.tool_calls:
                         args = self._parse_tool_args(tc)

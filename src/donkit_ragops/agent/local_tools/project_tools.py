@@ -4,7 +4,7 @@ import json
 import shutil
 import uuid
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from donkit_ragops.db import close
 from donkit_ragops.db import kv_all_by_prefix
@@ -13,6 +13,7 @@ from donkit_ragops.db import kv_get
 from donkit_ragops.db import kv_set
 from donkit_ragops.db import open_db
 from donkit_ragops.schemas.config_schemas import RagConfig
+from .checklist_tools import _checklist_key
 from .tools import AgentTool
 
 

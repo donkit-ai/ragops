@@ -292,7 +292,6 @@ def select_model_at_startup(
             if not provider_instance.name == "donkit":
                 if hasattr(provider_instance, "list_chat_models"):
                     models = asyncio.run(provider_instance.list_chat_models())
-                    print(models)
                 elif hasattr(provider_instance, "list_models"):
                     models = asyncio.run(provider_instance.list_models())
         except Exception:
@@ -329,6 +328,13 @@ def select_model_at_startup(
             choices.append("Skip (use default)")
 
             title = f"Select Model for {PROVIDERS[selected_provider]['display']}"
+            ui.print(
+                "\n\n⚡ Larger models handle tool calling best. "
+                "Smaller models (nano/lite/mini/flash) "
+                "may struggle with complex multi-step workflows.\n",
+                StyleName.WARNING,
+            )
+            ui.newline()
             # Set default to latest model if available
             default_index = None
             if latest_model and latest_model in models:
@@ -405,9 +411,7 @@ def select_model_at_startup(
                 # Cancelled - use None model
                 model = None
         else:
-            ui.print_warning(
-                "No model choice available for selection. "
-            )
+            ui.print_warning("No model choice available for selection. ")
             ui.newline()
 
         # Save selection
