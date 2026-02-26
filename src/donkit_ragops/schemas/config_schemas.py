@@ -61,6 +61,14 @@ class GenerationModelType(StrEnum):
     DONKIT = auto()
 
 
+class ReadingPipeline(StrEnum):
+    """Reading pipeline selection."""
+
+    DOCLING_LLM = auto()  # Docling + LLM for image descriptions (default)
+    LLM = auto()  # Pure LLM: every page rasterized and sent to LLM vision
+    DOCLING = auto()  # Docling only, no LLM (built-in VLM for images)
+
+
 class ReadingFormat(StrEnum):
     """Supported reading formats."""
 
@@ -226,6 +234,7 @@ class RagConfig(BaseModel):
     ranker: bool = Field(default=False)
     db_type: Literal["qdrant", "chroma", "milvus"] = Field(default="qdrant")
     retriever_options: RetrieverOptions = Field(default_factory=RetrieverOptions)
+    reading_pipeline: ReadingPipeline = Field(default=ReadingPipeline.DOCLING_LLM)
     reading_format: ReadingFormat = Field(default=ReadingFormat.JSON)
     chunking_options: ChunkingConfig = Field(default_factory=ChunkingConfig)
     generation_model_type: GenerationModelType = Field(

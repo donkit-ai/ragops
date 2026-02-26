@@ -76,6 +76,7 @@ class PipelineBuildResult:
     documents_processed: int = 0
     chunks_created: int = 0
     chunks_loaded: int = 0
+    skipped_files: list[dict[str, str]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
     def to_agent_response(self) -> str:
@@ -86,17 +87,25 @@ class PipelineBuildResult:
             f"Documents processed: {self.documents_processed}",
             f"Chunks created: {self.chunks_created}",
             f"Chunks loaded to vectorstore: {self.chunks_loaded}",
-            "",
-            f"RAG Service: {self.rag_service_url}",
-            f"Vectorstore: {self.vectorstore_url}",
-            "",
-            "API Endpoints:",
-            f"  POST {self.rag_service_url}/api/query/stream - streaming response",
-            f"  POST {self.rag_service_url}/api/query/search - document search",
-            f"  POST {self.rag_service_url}/api/query/evaluation - evaluation response",
-            "",
-            'Request body: {"query": "your question"}',
         ]
+        if self.skipped_files:
+            lines.append(f"Skipped files: {len(self.skipped_files)}")
+            for sf in self.skipped_files:
+                lines.append(f"  - {sf['file']}: {sf['reason']}")
+        lines.extend(
+            [
+                "",
+                f"RAG Service: {self.rag_service_url}",
+                f"Vectorstore: {self.vectorstore_url}",
+                "",
+                "API Endpoints:",
+                f"  POST {self.rag_service_url}/api/query/stream - streaming response",
+                f"  POST {self.rag_service_url}/api/query/search - document search",
+                f"  POST {self.rag_service_url}/api/query/evaluation - evaluation response",
+                "",
+                'Request body: {"query": "your question"}',
+            ]
+        )
         if self.errors:
             lines.append("")
             lines.append(f"Warnings ({len(self.errors)}):")
@@ -346,16 +355,18 @@ class RagPipelineOrchestrator:
                 source_path=source_path,
                 project_id=project_id,
                 reading_format=rag_config.reading_format,
-                use_llm=True,
+                use_llm=rag_config.reading_pipeline != "docling",
                 llm_model=llm_model,
                 reader_progress_callback=_reader_progress if progress_callback else None,
                 file_progress_callback=_file_progress if progress_callback else None,
+                reading_pipeline=rag_config.reading_pipeline,
             )
 
             if isinstance(doc_result, dict) and doc_result.get("status") == "error":
                 raise RuntimeError(f"Document processing failed: {doc_result.get('message')}")
 
             result.documents_processed = doc_result.get("processed_count", 0)
+            result.skipped_files = doc_result.get("skipped_files", [])
             output_dir = doc_result.get("output_directory", f"projects/{project_id}/processed")
 
             # Step 4: Chunk documents

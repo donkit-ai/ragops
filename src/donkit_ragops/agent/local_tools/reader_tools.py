@@ -31,10 +31,11 @@ def tool_process_documents(
             source_path=parsed.source_path,
             project_id=parsed.project_id,
             reading_format=parsed.reading_format.value,
-            use_llm=parsed.use_llm,
+            use_llm=parsed.reading_pipeline.value != "docling",
             llm_model=llm_model,
             reader_progress_callback=progress_callback,
             file_progress_callback=file_progress if progress_callback else None,
+            reading_pipeline=parsed.reading_pipeline.value,
         )
         return json.dumps(result, indent=2, ensure_ascii=False)
 

@@ -54,9 +54,10 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
         source_path=args.source_path,
         project_id=args.project_id,
         reading_format=args.reading_format.value,
-        use_llm=args.use_llm,
+        use_llm=args.reading_pipeline.value != "docling",
         reader_progress_callback=reader_progress,
         file_progress_callback=file_progress,
+        reading_pipeline=args.reading_pipeline.value,
     )
     return json.dumps(result, indent=2, ensure_ascii=False)
 
