@@ -6,6 +6,7 @@ and manages output directories.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
@@ -30,6 +31,7 @@ class DocumentProcessResult:
     def __init__(self) -> None:
         self.processed_files: list[str] = []
         self.failed_files: list[dict[str, str]] = []
+        self.skipped_files: list[dict[str, str]] = []
 
     @property
     def processed_count(self) -> int:
@@ -38,6 +40,10 @@ class DocumentProcessResult:
     @property
     def failed_count(self) -> int:
         return len(self.failed_files)
+
+    @property
+    def skipped_count(self) -> int:
+        return len(self.skipped_files)
 
     @property
     def status(self) -> str:
@@ -49,7 +55,7 @@ class DocumentProcessResult:
 
     def to_dict(self, output_dir: str) -> dict:
         """Convert to result dict for serialization."""
-        return {
+        result: dict = {
             "status": self.status,
             "output_directory": output_dir,
             "processed_count": self.processed_count,
@@ -59,15 +65,32 @@ class DocumentProcessResult:
             "message": (
                 f"Processed {self.processed_count} files successfully. "
                 + (f"Failed: {self.failed_count} files. " if self.failed_files else "")
+                + (
+                    f"Skipped: {self.skipped_count} files (unsupported format). "
+                    if self.skipped_files
+                    else ""
+                )
                 + f"Output saved to: {output_dir}"
             ),
         }
+        if self.skipped_files:
+            result["skipped_count"] = self.skipped_count
+            result["skipped_files"] = self.skipped_files[:10]
+        return result
+
+
+@dataclass
+class ResolvedFiles:
+    """Result of resolving source paths into files."""
+
+    supported: list[Path]
+    skipped: list[Path]
 
 
 def resolve_source_files(
     source_path_raw: str,
     supported_extensions: set[str],
-) -> list[Path] | dict:
+) -> ResolvedFiles | dict:
     """Resolve source path(s) into a list of files to process.
 
     Supports: single file, directory (recursive), comma-separated list.
@@ -78,18 +101,16 @@ def resolve_source_files(
         supported_extensions: Set of supported file extensions (e.g. {".pdf", ".docx"}).
 
     Returns:
-        List of resolved Path objects, or a dict with "status": "error" on failure.
+        ResolvedFiles with supported and skipped lists, or a dict with "status": "error".
     """
     source_path_str = source_path_raw.strip()
     source_path_str = PathNormalizer.normalize_unicode(source_path_str)
     source_path = Path(source_path_str)
 
-    files_to_process: list[Path] = []
-
     # Single file
     if source_path.is_file():
         if source_path.suffix.lower() in supported_extensions:
-            return [source_path]
+            return ResolvedFiles(supported=[source_path], skipped=[])
         return {
             "status": "error",
             "message": (
@@ -100,14 +121,21 @@ def resolve_source_files(
 
     # Directory
     if source_path.is_dir():
-        return [
-            f
-            for f in source_path.rglob("*")
-            if f.is_file() and f.suffix.lower() in supported_extensions
-        ]
+        supported: list[Path] = []
+        skipped: list[Path] = []
+        for f in source_path.rglob("*"):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() in supported_extensions:
+                supported.append(f)
+            else:
+                skipped.append(f)
+        return ResolvedFiles(supported=supported, skipped=skipped)
 
     # Comma-separated list
     if "," in source_path_raw:
+        supported = []
+        skipped = []
         for raw in source_path_raw.split(","):
             fp_str = PathNormalizer.normalize_unicode(raw.strip())
             fp = Path(fp_str)
@@ -115,10 +143,10 @@ def resolve_source_files(
                 logger.warning(f"File not found: {fp}")
                 continue
             if fp.is_file() and fp.suffix.lower() in supported_extensions:
-                files_to_process.append(fp)
-            else:
-                logger.warning(f"File not supported or not found: {fp}")
-        return files_to_process
+                supported.append(fp)
+            elif fp.is_file():
+                skipped.append(fp)
+        return ResolvedFiles(supported=supported, skipped=skipped)
 
     # Fuzzy match
     if source_path.parent.exists():
@@ -148,22 +176,27 @@ class DocumentProcessor:
     """Processes documents from various formats into text/json/markdown."""
 
     @staticmethod
-    def get_supported_extensions(reading_format: str, use_llm: bool = True) -> set[str]:
+    def get_supported_extensions(
+        reading_format: str,
+        use_llm: bool = True,
+        reading_pipeline: str = "docling_llm",
+    ) -> set[str]:
         """Get supported file extensions for a given reading format.
 
         Args:
             reading_format: Output format (json, md, text).
             use_llm: Whether to use LLM for processing.
+            reading_pipeline: Reading pipeline selection.
 
         Returns:
             Set of supported extensions.
         """
-        reader = DonkitReader(output_format=reading_format, use_llm=use_llm)
-        extensions = set(reader.readers.keys())
-        extensions.add(".pdf")
-        extensions.add(".pptx")
-        extensions.add(".docx")
-        return extensions
+        reader = DonkitReader(
+            output_format=reading_format,
+            use_llm=use_llm,
+            reading_pipeline=reading_pipeline,
+        )
+        return set(reader.supported_extensions())
 
     @staticmethod
     async def process_documents(
@@ -174,6 +207,7 @@ class DocumentProcessor:
         reader_progress_callback: SyncProgressCallback | None = None,
         file_progress_callback: AsyncProgressCallback | None = None,
         llm_model: LLMModelAbstract | None = None,
+        reading_pipeline: str = "docling_llm",
     ) -> dict:
         """Process documents and save to project directory.
 
@@ -187,6 +221,7 @@ class DocumentProcessor:
             llm_model: Optional LLM model instance (LLMModelAbstract) to pass to
                 DonkitReader. When provided, the reader uses this model instead of
                 creating one from environment variables.
+            reading_pipeline: Reading pipeline selection (docling_llm, llm, docling).
 
         Returns:
             Dict with status, output_directory, processed/failed counts.
@@ -196,29 +231,36 @@ class DocumentProcessor:
             use_llm=use_llm,
             progress_callback=reader_progress_callback,
             llm_model=llm_model,
+            reading_pipeline=reading_pipeline,
         )
-        supported_extensions = set(reader.readers.keys())
-        supported_extensions.add(".pdf")
-        supported_extensions.add(".pptx")
-        supported_extensions.add(".docx")
+        supported_extensions = set(reader.supported_extensions())
 
         # Resolve files
         resolved = resolve_source_files(source_path, supported_extensions)
         if isinstance(resolved, dict):
             return resolved
-        files_to_process = resolved
+        files_to_process = resolved.supported
 
         if not files_to_process:
-            return {
-                "status": "error",
-                "message": f"No supported files found. Supported: {sorted(supported_extensions)}",
-            }
+            skipped_names = [f.name for f in resolved.skipped]
+            msg = f"No supported files found. Supported: {sorted(supported_extensions)}"
+            if skipped_names:
+                msg += f"\nSkipped unsupported files: {', '.join(skipped_names)}"
+            return {"status": "error", "message": msg}
 
         # Create output directory
         project_output_dir = Path(f"projects/{project_id}/processed").resolve()
         project_output_dir.mkdir(parents=True, exist_ok=True)
 
         result = DocumentProcessResult()
+        for skipped in resolved.skipped:
+            result.skipped_files.append(
+                {
+                    "file": str(skipped),
+                    "reason": f"Unsupported format: {skipped.suffix}",
+                }
+            )
+            logger.warning(f"Skipped unsupported file: {skipped.name} ({skipped.suffix})")
         total_files = len(files_to_process)
 
         for idx, file_path in enumerate(files_to_process):

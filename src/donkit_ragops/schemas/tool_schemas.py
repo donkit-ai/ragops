@@ -11,7 +11,7 @@ from donkit.chunker import ChunkerConfig
 from pydantic import BaseModel, Field, model_validator
 
 from donkit_ragops.rag_builder.config import RagConfigValidator
-from donkit_ragops.schemas.config_schemas import RagConfig, ReadingFormat
+from donkit_ragops.schemas.config_schemas import RagConfig, ReadingFormat, ReadingPipeline
 
 # ============================================================================
 # Reader (process_documents)
@@ -29,13 +29,16 @@ class ProcessDocumentsArgs(BaseModel):
     project_id: str = Field(
         description="Project ID to store processed documents in projects/<project_id>/processed/"
     )
+    reading_pipeline: ReadingPipeline = Field(
+        default=ReadingPipeline.DOCLING_LLM,
+        description=(
+            "Reading pipeline: docling_llm (Docling + LLM for images), "
+            "llm (pure LLM for every page), docling (Docling only, no LLM)"
+        ),
+    )
     reading_format: ReadingFormat = Field(
         default=ReadingFormat.JSON,
         description="Format in which documents will be read by LLM",
-    )
-    use_llm: bool = Field(
-        default=True,
-        description="Use LLM to process pdf, pptx, docx documents with tables, images, etc.",
     )
 
 

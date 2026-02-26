@@ -4,6 +4,7 @@ from pathlib import Path
 
 from donkit_ragops.rag_builder.document_processing.processor import (
     DocumentProcessResult,
+    ResolvedFiles,
     resolve_source_files,
 )
 
@@ -47,15 +48,25 @@ class TestDocumentProcessResult:
         d = r.to_dict("/out")
         assert len(d["processed_files"]) == 10
 
+    def test_to_dict_with_skipped(self):
+        r = DocumentProcessResult()
+        r.processed_files = ["a.json"]
+        r.skipped_files = [{"file": "b.epub", "reason": "Unsupported format: .epub"}]
+        d = r.to_dict("/out")
+        assert d["skipped_count"] == 1
+        assert d["skipped_files"] == [{"file": "b.epub", "reason": "Unsupported format: .epub"}]
+        assert "Skipped: 1 files" in d["message"]
+
 
 class TestResolveSourceFiles:
     def test_single_supported_file(self, tmp_path):
         f = tmp_path / "doc.pdf"
         f.touch()
         result = resolve_source_files(str(f), {".pdf"})
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0].name == "doc.pdf"
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 1
+        assert result.supported[0].name == "doc.pdf"
+        assert len(result.skipped) == 0
 
     def test_single_unsupported_file(self, tmp_path):
         f = tmp_path / "doc.xyz"
@@ -70,8 +81,10 @@ class TestResolveSourceFiles:
         (tmp_path / "b.pdf").touch()
         (tmp_path / "c.txt").touch()
         result = resolve_source_files(str(tmp_path), {".pdf"})
-        assert isinstance(result, list)
-        assert len(result) == 2
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 2
+        assert len(result.skipped) == 1
+        assert result.skipped[0].name == "c.txt"
 
     def test_comma_separated(self, tmp_path):
         f1 = tmp_path / "a.pdf"
@@ -79,15 +92,26 @@ class TestResolveSourceFiles:
         f1.touch()
         f2.touch()
         result = resolve_source_files(f"{f1},{f2}", {".pdf"})
-        assert isinstance(result, list)
-        assert len(result) == 2
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 2
 
     def test_comma_separated_with_missing(self, tmp_path):
         f1 = tmp_path / "a.pdf"
         f1.touch()
         result = resolve_source_files(f"{f1},{tmp_path / 'missing.pdf'}", {".pdf"})
-        assert isinstance(result, list)
-        assert len(result) == 1
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 1
+
+    def test_comma_separated_with_unsupported(self, tmp_path):
+        f1 = tmp_path / "a.pdf"
+        f2 = tmp_path / "b.epub"
+        f1.touch()
+        f2.touch()
+        result = resolve_source_files(f"{f1},{f2}", {".pdf"})
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 1
+        assert len(result.skipped) == 1
+        assert result.skipped[0].name == "b.epub"
 
     def test_nonexistent_path(self):
         result = resolve_source_files("/nonexistent/path/file.pdf", {".pdf"})
@@ -103,5 +127,6 @@ class TestResolveSourceFiles:
 
     def test_empty_directory(self, tmp_path):
         result = resolve_source_files(str(tmp_path), {".pdf"})
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert isinstance(result, ResolvedFiles)
+        assert len(result.supported) == 0
+        assert len(result.skipped) == 0
