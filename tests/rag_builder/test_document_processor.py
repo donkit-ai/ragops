@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from donkit.read_engine.read_engine import ReadDocumentResult
+
 from donkit_ragops.rag_builder.document_processing.processor import (
     DocumentProcessResult,
     ResolvedFiles,
@@ -9,15 +11,19 @@ from donkit_ragops.rag_builder.document_processing.processor import (
 )
 
 
+def _make_read_result(output_path: str = "a.json", **kwargs) -> ReadDocumentResult:
+    return ReadDocumentResult(output_path=output_path, **kwargs)
+
+
 class TestDocumentProcessResult:
     def test_status_success(self):
         r = DocumentProcessResult()
-        r.processed_files = ["a.json"]
+        r.read_results = [_make_read_result()]
         assert r.status == "success"
 
     def test_status_partial_success(self):
         r = DocumentProcessResult()
-        r.processed_files = ["a.json"]
+        r.read_results = [_make_read_result()]
         r.failed_files = [{"file": "b.pdf", "error": "fail"}]
         assert r.status == "partial_success"
 
@@ -27,35 +33,52 @@ class TestDocumentProcessResult:
 
     def test_counts(self):
         r = DocumentProcessResult()
-        r.processed_files = ["a", "b", "c"]
+        r.read_results = [_make_read_result("a"), _make_read_result("b"), _make_read_result("c")]
         r.failed_files = [{"file": "d", "error": "x"}]
         assert r.processed_count == 3
         assert r.failed_count == 1
 
     def test_to_dict(self):
         r = DocumentProcessResult()
-        r.processed_files = ["a.json"]
+        r.read_results = [_make_read_result("a.json", page_count=5, total_llm_requests=3, total_prompt_tokens=100, total_completion_tokens=200)]
         d = r.to_dict("/out")
         assert d["status"] == "success"
         assert d["output_directory"] == "/out"
         assert d["processed_count"] == 1
         assert d["failed_count"] == 0
+        assert d["total_pages"] == 5
+        assert d["total_llm_requests"] == 3
+        assert d["total_prompt_tokens"] == 100
+        assert d["total_completion_tokens"] == 200
         assert "Output saved to: /out" in d["message"]
+        assert d["processed_files"][0]["output_path"] == "a.json"
 
     def test_to_dict_truncates_at_10(self):
         r = DocumentProcessResult()
-        r.processed_files = [f"f{i}.json" for i in range(20)]
+        r.read_results = [_make_read_result(f"f{i}.json") for i in range(20)]
         d = r.to_dict("/out")
         assert len(d["processed_files"]) == 10
 
     def test_to_dict_with_skipped(self):
         r = DocumentProcessResult()
-        r.processed_files = ["a.json"]
+        r.read_results = [_make_read_result()]
         r.skipped_files = [{"file": "b.epub", "reason": "Unsupported format: .epub"}]
         d = r.to_dict("/out")
         assert d["skipped_count"] == 1
         assert d["skipped_files"] == [{"file": "b.epub", "reason": "Unsupported format: .epub"}]
         assert "Skipped: 1 files" in d["message"]
+
+    def test_to_dict_aggregates_totals(self):
+        r = DocumentProcessResult()
+        r.read_results = [
+            _make_read_result("a.json", page_count=10, total_llm_requests=5, total_prompt_tokens=500, total_completion_tokens=1000),
+            _make_read_result("b.json", page_count=20, total_llm_requests=10, total_prompt_tokens=1500, total_completion_tokens=3000),
+        ]
+        d = r.to_dict("/out")
+        assert d["total_pages"] == 30
+        assert d["total_llm_requests"] == 15
+        assert d["total_prompt_tokens"] == 2000
+        assert d["total_completion_tokens"] == 4000
 
 
 class TestResolveSourceFiles:

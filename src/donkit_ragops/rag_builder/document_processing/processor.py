@@ -6,11 +6,11 @@ and manages output directories.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
-from donkit.read_engine.read_engine import DonkitReader
+from donkit.read_engine.read_engine import DonkitReader, ReadDocumentResult
 
 if TYPE_CHECKING:
     from donkit.llm import LLMModelAbstract
@@ -29,13 +29,13 @@ class DocumentProcessResult:
     """Result of a document processing operation."""
 
     def __init__(self) -> None:
-        self.processed_files: list[str] = []
+        self.read_results: list[ReadDocumentResult] = []
         self.failed_files: list[dict[str, str]] = []
         self.skipped_files: list[dict[str, str]] = []
 
     @property
     def processed_count(self) -> int:
-        return len(self.processed_files)
+        return len(self.read_results)
 
     @property
     def failed_count(self) -> int:
@@ -47,29 +47,44 @@ class DocumentProcessResult:
 
     @property
     def status(self) -> str:
-        if self.processed_files and not self.failed_files:
+        if self.read_results and not self.failed_files:
             return "success"
-        elif self.processed_files and self.failed_files:
+        elif self.read_results and self.failed_files:
             return "partial_success"
         return "error"
 
     def to_dict(self, output_dir: str) -> dict:
         """Convert to result dict for serialization."""
+        total_pages = sum(r.page_count for r in self.read_results)
+        total_llm_requests = sum(r.total_llm_requests for r in self.read_results)
+        total_prompt_tokens = sum(r.total_prompt_tokens for r in self.read_results)
+        total_completion_tokens = sum(r.total_completion_tokens for r in self.read_results)
+
+        processed_files = [asdict(r) for r in self.read_results[:10]]
+
         result: dict = {
             "status": self.status,
             "output_directory": output_dir,
             "processed_count": self.processed_count,
             "failed_count": self.failed_count,
-            "processed_files": self.processed_files[:10],
+            "total_pages": total_pages,
+            "total_llm_requests": total_llm_requests,
+            "total_prompt_tokens": total_prompt_tokens,
+            "total_completion_tokens": total_completion_tokens,
+            "processed_files": processed_files,
             "failed_files": self.failed_files[:10] if self.failed_files else [],
             "message": (
-                f"Processed {self.processed_count} files successfully. "
+                f"Processed {self.processed_count} files successfully"
+                f" ({total_pages} pages). "
                 + (f"Failed: {self.failed_count} files. " if self.failed_files else "")
                 + (
                     f"Skipped: {self.skipped_count} files (unsupported format). "
                     if self.skipped_files
                     else ""
                 )
+                + f"LLM usage: {total_llm_requests} requests, "
+                f"{total_prompt_tokens} prompt tokens, "
+                f"{total_completion_tokens} completion tokens. "
                 + f"Output saved to: {output_dir}"
             ),
         }
@@ -272,12 +287,12 @@ class DocumentProcessor:
                         f"Processing file {file_path.name} - {idx}/{total_files}",
                     )
 
-                output_path = await reader.aread_document(
+                read_result = await reader.aread_document(
                     str(file_path),
                     output_dir=str(project_output_dir),
                 )
-                result.processed_files.append(output_path)
-                logger.debug(f"Processed: {file_path.name} -> {output_path}")
+                result.read_results.append(read_result)
+                logger.debug(f"Processed: {file_path.name} -> {read_result.output_path}")
             except Exception as e:
                 result.failed_files.append({"file": str(file_path), "error": str(e)})
                 logger.error(f"Failed to process {file_path.name}: {e}", exc_info=True)
