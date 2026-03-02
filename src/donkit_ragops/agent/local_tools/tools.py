@@ -14,7 +14,7 @@ from donkit_ragops.credential_checker import (
 )
 from donkit_ragops.db import kv_get, migrate, open_db
 from donkit_ragops.interactive_input import interactive_confirm, interactive_select
-from donkit_ragops.schemas.config_schemas import RagConfig
+from donkit.rag_toolkit.schemas.config import RagConfig
 
 
 class AgentTool:
@@ -536,6 +536,7 @@ def tool_quick_rag_build(
         source_path = str(args.get("source_path", ""))
         project_id = args.get("project_id") or None
         config_raw = args.get("config")
+        database_uri_arg = args.get("database_uri") or None
 
         logger.debug(
             f"[quick_rag_build] Args received: source_path={source_path}, project_id={project_id}"
@@ -545,10 +546,13 @@ def tool_quick_rag_build(
         if not source_path:
             return json.dumps({"error": "source_path is required"})
 
-        from donkit_ragops.rag_builder.pipeline.orchestrator import RagPipelineOrchestrator
-        from donkit_ragops.schemas.config_schemas import RagConfig
+        from donkit.rag_toolkit.pipeline.orchestrator import RagPipelineOrchestrator
+        from donkit.rag_toolkit.schemas.config import RagConfig
 
-        # Parse optional config
+        from donkit_ragops.rag_builder.embeddings import create_embedder
+        from donkit_ragops.rag_builder.quick_config import build_quick_rag_config
+
+        # Parse optional config or auto-detect
         rag_config = None
         if config_raw:
             try:
@@ -562,11 +566,35 @@ def tool_quick_rag_build(
                 logger.error(f"[quick_rag_build] Config parsing failed: {e}")
                 return json.dumps({"status": "error", "message": f"Invalid config: {e}"})
 
+        if rag_config is None:
+            rag_config = build_quick_rag_config(project_id or "auto")
+
+        # Create embeddings from config
+        embedder_type = rag_config.embedder.embedder_type.value
+        try:
+            embeddings = create_embedder(embedder_type)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": f"Failed to create embedder: {e}"})
+
+        # Resolve vectorstore URI: use provided URL or fall back to localhost defaults
+        if database_uri_arg:
+            database_uri = database_uri_arg
+        else:
+            localhost_uris = {
+                "qdrant": "http://localhost:6333",
+                "chroma": "http://localhost:8015",
+                "milvus": "http://localhost:19530",
+            }
+            db_type = rag_config.db_type
+            database_uri = localhost_uris.get(db_type, localhost_uris["qdrant"])
+
         try:
             result = await RagPipelineOrchestrator.build(
                 source_path=source_path,
-                project_id=project_id,
                 rag_config=rag_config,
+                embeddings=embeddings,
+                database_uri=database_uri,
+                project_id=project_id,
                 progress_callback=_progress_cb,
                 llm_model=llm_model,
             )
@@ -574,7 +602,6 @@ def tool_quick_rag_build(
                 {
                     "status": "success",
                     "project_id": result.project_id,
-                    "rag_service_url": result.rag_service_url,
                     "vectorstore_url": result.vectorstore_url,
                     "documents_processed": result.documents_processed,
                     "chunks_created": result.chunks_created,
@@ -618,6 +645,14 @@ def tool_quick_rag_build(
                     f"{rag_config_schema.get('description', '')}"
                 ),
             },
+            "database_uri": {
+                "type": "string",
+                "description": (
+                    "Vectorstore URL returned by start_service tool. "
+                    "Example: http://localhost:6333. "
+                    "If omitted, uses default localhost URI based on db_type."
+                ),
+            },
         },
         "required": ["source_path", "project_id"],
     }
@@ -629,9 +664,11 @@ def tool_quick_rag_build(
     return AgentTool(
         name="quick_rag_build",
         description=(
-            "Build a complete RAG pipeline in one call. "
-            "Processes documents, chunks, starts vectorstore and RAG service. "
-            "Ports are auto-allocated if defaults are busy. "
+            "Build a complete RAG pipeline in one call: processes documents, chunks them, "
+            "and loads to vectorstore. "
+            "PREREQUISITE: vectorstore MUST be running before calling this tool. "
+            "Call init_project_compose + start_service(db_type) first. "
+            "After this tool completes, call start_service('rag-service') to start the query service. "
             "AUTOMATIC MODE: omit 'config' parameter - uses recommended defaults. "
             "CUSTOM MODE: provide 'config' parameter with user's choices. "
             "IMPORTANT: always ask the user to choose build mode "

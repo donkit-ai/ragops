@@ -4,8 +4,8 @@ import base64
 
 import pytest
 
-from donkit_ragops.rag_builder.deployment import EnvFileGenerator, LLMProviderCredentials
-from donkit_ragops.schemas.config_schemas import RagConfig
+from donkit.rag_toolkit.deployment import EnvFileGenerator, LLMProviderCredentials
+from donkit.rag_toolkit.schemas.config import RagConfig
 
 
 def _make_rag_config(**kwargs) -> RagConfig:

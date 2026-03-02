@@ -13,9 +13,9 @@ warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
 
+from donkit.rag_toolkit.deployment import ComposeManager
 from fastmcp import FastMCP
 
-from donkit_ragops.rag_builder.deployment import ComposeManager
 from donkit_ragops.schemas.tool_schemas import (
     GetLogsArgs,
     InitProjectComposeArgs,

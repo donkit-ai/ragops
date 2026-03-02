@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from donkit_ragops.rag_builder.vectorstore.loader import VectorstoreLoadResult, VectorstoreLoader
+from donkit.rag_toolkit.vectorstore.loader import VectorstoreLoadResult, VectorstoreLoader
 
 
 class TestVectorstoreLoadResult:

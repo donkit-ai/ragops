@@ -12,7 +12,7 @@ from donkit_ragops.db import kv_delete
 from donkit_ragops.db import kv_get
 from donkit_ragops.db import kv_set
 from donkit_ragops.db import open_db
-from donkit_ragops.schemas.config_schemas import RagConfig
+from donkit.rag_toolkit.schemas.config import RagConfig
 from .checklist_tools import _checklist_key
 from .tools import AgentTool
 

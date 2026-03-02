@@ -3,7 +3,7 @@
 import unicodedata
 from pathlib import Path
 
-from donkit_ragops.rag_builder.document_processing import PathNormalizer
+from donkit.rag_toolkit.document_processing import PathNormalizer
 
 
 class TestPathNormalizer:

@@ -15,9 +15,9 @@ warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
 
+from donkit.rag_toolkit.query import RagQueryClient
 from fastmcp import FastMCP
 
-from donkit_ragops.rag_builder.query import RagQueryClient
 from donkit_ragops.schemas.tool_schemas import SearchQueryArgs
 
 server = FastMCP(

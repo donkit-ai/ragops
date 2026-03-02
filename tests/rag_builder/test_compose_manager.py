@@ -3,7 +3,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from donkit_ragops.rag_builder.deployment.compose_manager import (
+from donkit.rag_toolkit.deployment.compose_manager import (
     AVAILABLE_SERVICES,
     ComposeManager,
     _apply_custom_port_env,
@@ -122,10 +122,10 @@ class TestComposeManager:
 
     def test_start_service_unknown_service(self):
         with patch(
-            "donkit_ragops.rag_builder.deployment.compose_manager.DockerEnvironment.check_docker",
+            "donkit.rag_toolkit.deployment.compose_manager.DockerEnvironment.check_docker",
             return_value=(True, "ok"),
         ), patch(
-            "donkit_ragops.rag_builder.deployment.compose_manager.DockerEnvironment.check_docker_compose",
+            "donkit.rag_toolkit.deployment.compose_manager.DockerEnvironment.check_docker_compose",
             return_value=(True, "ok"),
         ):
             result = ComposeManager.start_service("nonexistent", "test-project")

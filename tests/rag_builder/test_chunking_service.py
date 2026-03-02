@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from donkit_ragops.rag_builder.chunking import ChunkingService
+from donkit.rag_toolkit.chunking import ChunkingService
 
 
 def _make_chunker_config():
@@ -90,7 +90,7 @@ class TestChunkingService:
         mock_chunk.metadata = {}
 
         with patch(
-            "donkit_ragops.rag_builder.chunking.service.DonkitChunker"
+            "donkit.rag_toolkit.chunking.service.DonkitChunker"
         ) as MockChunker:
             MockChunker.return_value.chunk_file.return_value = [mock_chunk]
 
@@ -117,7 +117,7 @@ class TestChunkingService:
         (src_dir / "bad.json").write_text("not valid json for chunker")
 
         with patch(
-            "donkit_ragops.rag_builder.chunking.service.DonkitChunker"
+            "donkit.rag_toolkit.chunking.service.DonkitChunker"
         ) as MockChunker:
             MockChunker.return_value.chunk_file.side_effect = Exception("parse error")
 

@@ -13,7 +13,7 @@ def tool_evaluate_batch() -> AgentTool:
     """Tool for running batch RAG evaluation."""
 
     async def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.evaluation import RagEvaluator
+        from donkit.rag_toolkit.evaluation import RagEvaluator
 
         parsed = BatchEvaluationArgs(**args)
         result = await RagEvaluator.evaluate_batch(

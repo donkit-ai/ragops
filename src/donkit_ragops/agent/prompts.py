@@ -30,10 +30,7 @@ HALLUCINATION_GUARDRAILS = """
 COMMUNICATION_RULES = """
 **CRITICAL Tool Usage Rules:**
 * ALWAYS use `interactive_user_choice` tool for ANY selection from multiple options. NEVER list options as text and wait for text input.
-* NEVER describe options in text and then ask user to type their choice — call `interactive_user_choice` instead.
-* If user answers a question in text (e.g. types "json"), accept it and move on — do NOT re-ask with interactive_user_choice for the same question.
 * If absolutely need yes/no — use `interactive_user_confirm` tool.
-* After calling a tool and getting a result, do NOT repeat the same question again. Move to the next step.
 **If user cancels/rejects: ask what they'd like differently, don't retry**
 """.strip()
 # **Communication Protocol:**
@@ -65,11 +62,15 @@ WORKFLOW:
 
 3. Create new project: call create_project tool
 
-3a. AUTOMATIC: Call `quick_rag_build(source_path, project_id)` WITHOUT config parameter.
+3a. AUTOMATIC:
+    1. Call `init_project_compose(project_id)` WITHOUT rag_config — auto-detected defaults will be used.
+    2. Call `start_service(service="qdrant", project_id=project_id)` — start vectorstore container. Use the returned URL.
+    3. Call `quick_rag_build(source_path, project_id)` WITHOUT config parameter — processes docs, chunks, loads to vectorstore.
+    4. Call `start_service(service="rag-service", project_id=project_id)` — start RAG query service.
     Show: project_id, URLs, counts. Auto-send test question.
 
 3b. CUSTOM: Call `get_recommended_defaults` FIRST. Then for EACH setting below call `interactive_user_choice` tool (do NOT list options as text).
-   IMPORTANT: For provider choices (embedder, generation), use ONLY providers from `get_recommended_defaults` → `available_providers`. NEVER use the full schema enum list. NEVER add providers not in `available_providers`.
+   IMPORTANT: For provider choices (embedder, generation), use ONLY providers from `get_recommended_defaults` → `available_providers`.
    1. Vector DB: qdrant (rec) | chroma | milvus
    2. Embedder provider (ONLY from available_providers) + model (add custom field for model if provider != donkit)
    3. Generation provider (ONLY from available_providers) + model (add custom field for model if provider != donkit)
@@ -79,21 +80,24 @@ WORKFLOW:
       - "Docling + LLM (recommended)" — Docling parses structure, LLM describes images. Good balance of quality and cost
       - "Docling only (cheapest, text-focused)" — no LLM at all. Good when files are mostly plain text without complex visuals
       If no PDF/PPTX files → default to docling_llm silently, do NOT ask.
-   5. Reading format (ONLY if reading pipeline is "llm"): json (rec) | md | text — MUST use interactive_user_choice
+   5. Reading format (ONLY if reading pipeline is "llm"): json (rec) | markdown | text — MUST use interactive_user_choice
       If pipeline is docling_llm or docling → reading format is always "text", do NOT ask.
-   6. split_type: character | semantic | sentence | paragraph (only if text, else character) — MUST use interactive_user_choice
+   6. split_type: character | semantic | sentence | paragraph (ASK only if text, else use character silently)
    7. chunk_size: 500 (rec) | 700 | 1000 | 2000 — MUST use interactive_user_choice
    8. Partial search ON|OFF (adds neighbor chunks for context)
-   9. chunk_overlap: 0 (only 0 if partial search ON) | 50 | 100
+   9. chunk_overlap: 0 (only 0 if partial search ON, do NOT ask) | 50 | 100
    10. Reranker ON|OFF (LLM reranks docs)
    11. Composite query ON|OFF (splits complex queries)
 
    After collecting answers → call `rag_config_plan` with full RagConfig object to validate.
-   Then call `quick_rag_build(source_path, project_id, config=<validated_config>)`
+   Then:
+   1. Call `init_project_compose(project_id, rag_config=<validated_config>)` — initialize docker-compose files
+   2. Call `start_service(service=<db_type>, project_id=project_id)` — start vectorstore container
+   3. Call `quick_rag_build(source_path, project_id, config=<validated_config>)` — processes docs, chunks, loads to vectorstore
+   4. Call `start_service(service="rag-service", project_id=project_id)` — start RAG query service
 
 POST-BUILD:
-- Config: `save_rag_config` (modify RagConfig fields directly)
-- Rebuild: delete containers → `quick_rag_build` with new config
+- Update config: stop rag-service → compose init with new config -> start rag-service
 - Query: MCP rag_query tools
 - Services: compose_manager (start/stop/status/logs)
 - Docs: process/chunk/load

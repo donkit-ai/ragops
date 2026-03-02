@@ -14,9 +14,9 @@ import asyncio
 import json
 import os
 
+from donkit.rag_toolkit.document_processing import DocumentProcessor
 from fastmcp import Context, FastMCP
 
-from donkit_ragops.rag_builder.document_processing import DocumentProcessor
 from donkit_ragops.schemas.tool_schemas import ProcessDocumentsArgs
 
 server = FastMCP(
@@ -54,7 +54,6 @@ async def process_documents(args: ProcessDocumentsArgs, ctx: Context) -> str:
         source_path=args.source_path,
         project_id=args.project_id,
         reading_format=args.reading_format.value,
-        use_llm=args.reading_pipeline.value != "docling",
         reader_progress_callback=reader_progress,
         file_progress_callback=file_progress,
         reading_pipeline=args.reading_pipeline.value,

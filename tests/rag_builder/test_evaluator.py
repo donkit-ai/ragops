@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from donkit_ragops.rag_builder.evaluation.evaluator import (
+from donkit.rag_toolkit.evaluation.evaluator import (
     _has_real_value,
     compute_aggregate_metrics,
     extract_answer_and_sources,

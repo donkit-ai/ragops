@@ -12,9 +12,9 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="importlib
 warnings.simplefilter("ignore", DeprecationWarning)
 import os
 
+from donkit.rag_toolkit.vectorstore import VectorstoreService
 from fastmcp import Context, FastMCP
 
-from donkit_ragops.rag_builder.vectorstore import VectorstoreService
 from donkit_ragops.schemas.tool_schemas import VectorstoreDeleteArgs, VectorstoreLoadArgs
 
 server = FastMCP(

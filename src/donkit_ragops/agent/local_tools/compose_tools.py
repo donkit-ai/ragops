@@ -20,12 +20,18 @@ def tool_init_project_compose() -> AgentTool:
     """Tool to initialize docker-compose for a project."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
+
+        from donkit_ragops.rag_builder.quick_config import build_quick_rag_config
 
         parsed = InitProjectComposeArgs(**args)
+        rag_config = parsed.rag_config
+        if rag_config is None:
+            rag_config = build_quick_rag_config(parsed.project_id)
+
         result = ComposeManager.init_project(
             project_id=parsed.project_id,
-            rag_config=parsed.rag_config,
+            rag_config=rag_config,
         )
         return json.dumps(result, indent=2)
 
@@ -33,7 +39,10 @@ def tool_init_project_compose() -> AgentTool:
 
     return AgentTool(
         name="init_project_compose",
-        description="Initialize docker-compose file in the project directory with RAG configuration",
+        description=(
+            "Initialize docker-compose file in the project directory. "
+            "If rag_config is omitted, auto-detected defaults are used (automatic mode)."
+        ),
         parameters=schema,
         handler=_handler,
     )
@@ -43,7 +52,7 @@ def tool_start_service() -> AgentTool:
     """Tool to start a Docker Compose service."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         parsed = StartServiceArgs(**args)
         custom_ports = None
@@ -76,7 +85,7 @@ def tool_stop_service() -> AgentTool:
     """Tool to stop a Docker Compose service."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         parsed = StopServiceArgs(**args)
         result = ComposeManager.stop_service(
@@ -100,7 +109,7 @@ def tool_service_status() -> AgentTool:
     """Tool to check status of Docker Compose services."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         parsed = ServiceStatusArgs(**args)
         result = ComposeManager.service_status(
@@ -123,7 +132,7 @@ def tool_get_logs() -> AgentTool:
     """Tool to get logs from a Docker Compose service."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         parsed = GetLogsArgs(**args)
         result = ComposeManager.get_logs(
@@ -147,7 +156,7 @@ def tool_list_containers() -> AgentTool:
     """Tool to list Docker containers."""
 
     def _handler(args: dict[str, Any]) -> str:  # noqa: ARG001
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         return json.dumps(ComposeManager.list_containers(), indent=2)
 
@@ -166,7 +175,7 @@ def tool_list_available_services() -> AgentTool:
     """Tool to list available Docker Compose services."""
 
     def _handler(args: dict[str, Any]) -> str:  # noqa: ARG001
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         return json.dumps(ComposeManager.list_available_services(), indent=2)
 
@@ -182,7 +191,7 @@ def tool_stop_container() -> AgentTool:
     """Tool to stop a Docker container."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.deployment import ComposeManager
+        from donkit.rag_toolkit.deployment import ComposeManager
 
         parsed = StopContainerArgs(**args)
         return json.dumps(ComposeManager.stop_container(parsed.container_id))

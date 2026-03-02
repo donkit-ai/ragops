@@ -1,6 +1,6 @@
 """Tests for rag_builder.evaluation.metrics."""
 
-from donkit_ragops.rag_builder.evaluation import DocumentNormalizer, RAGMetrics
+from donkit.rag_toolkit.evaluation import DocumentNormalizer, RAGMetrics
 
 
 class TestDocumentNormalizer:

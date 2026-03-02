@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from donkit_ragops.rag_builder.deployment.port_utils import (
+from donkit.rag_toolkit.deployment.port_utils import (
     find_free_port,
     is_port_available,
     resolve_service_ports,
@@ -15,19 +15,19 @@ from donkit_ragops.rag_builder.deployment.port_utils import (
 class TestIsPortAvailable:
     def test_free_port(self):
         # Use a high port unlikely to be in use
-        with patch("donkit_ragops.rag_builder.deployment.port_utils.socket.socket") as mock_sock_cls:
+        with patch("donkit.rag_toolkit.deployment.port_utils.socket.socket") as mock_sock_cls:
             mock_sock = mock_sock_cls.return_value.__enter__.return_value
             mock_sock.connect_ex.return_value = 1  # non-zero = port free
             assert is_port_available(59999) is True
 
     def test_occupied_port(self):
-        with patch("donkit_ragops.rag_builder.deployment.port_utils.socket.socket") as mock_sock_cls:
+        with patch("donkit.rag_toolkit.deployment.port_utils.socket.socket") as mock_sock_cls:
             mock_sock = mock_sock_cls.return_value.__enter__.return_value
             mock_sock.connect_ex.return_value = 0  # zero = port in use
             assert is_port_available(8080) is False
 
     def test_custom_host(self):
-        with patch("donkit_ragops.rag_builder.deployment.port_utils.socket.socket") as mock_sock_cls:
+        with patch("donkit.rag_toolkit.deployment.port_utils.socket.socket") as mock_sock_cls:
             mock_sock = mock_sock_cls.return_value.__enter__.return_value
             mock_sock.connect_ex.return_value = 1
             assert is_port_available(9999, host="127.0.0.1") is True
@@ -38,21 +38,21 @@ class TestFindFreePort:
     def test_finds_first_available(self):
         # Port 8000 busy, 8001 busy, 8002 free
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=[False, False, True],
         ):
             assert find_free_port(8000) == 8002
 
     def test_returns_start_if_free(self):
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             return_value=True,
         ):
             assert find_free_port(6333) == 6333
 
     def test_raises_when_all_occupied(self):
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             return_value=False,
         ):
             with pytest.raises(ValueError, match="No free port found"):
@@ -67,7 +67,7 @@ class TestFindFreePort:
             return False
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             with pytest.raises(ValueError):
@@ -78,7 +78,7 @@ class TestFindFreePort:
 class TestResolveServicePorts:
     def test_all_free_returns_none(self):
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             return_value=True,
         ):
             result = resolve_service_ports("qdrant")
@@ -90,7 +90,7 @@ class TestResolveServicePorts:
             return port >= 6335
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             result = resolve_service_ports("qdrant")
@@ -105,7 +105,7 @@ class TestResolveServicePorts:
             return port != 8015
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             result = resolve_service_ports("chroma")
@@ -119,7 +119,7 @@ class TestResolveServicePorts:
             return port != 8000
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             result = resolve_service_ports("rag-service")
@@ -133,7 +133,7 @@ class TestResolveServicePorts:
             return port >= 19532
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             result = resolve_service_ports("milvus")
@@ -158,7 +158,7 @@ class TestResolveServicePorts:
             return port not in busy
 
         with patch(
-            "donkit_ragops.rag_builder.deployment.port_utils.is_port_available",
+            "donkit.rag_toolkit.deployment.port_utils.is_port_available",
             side_effect=_mock_available,
         ):
             result = resolve_service_ports("milvus")
