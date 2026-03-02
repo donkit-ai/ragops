@@ -8,9 +8,9 @@ from __future__ import annotations
 from typing import Literal, Self
 
 from donkit.chunker import ChunkerConfig
+from donkit.rag_toolkit.config import RagConfigValidator
 from pydantic import BaseModel, Field, model_validator
 
-from donkit_ragops.rag_builder.config import RagConfigValidator
 from donkit_ragops.schemas.config_schemas import RagConfig, ReadingFormat, ReadingPipeline
 
 # ============================================================================
@@ -104,11 +104,15 @@ class VectorstoreDeleteArgs(BaseModel):
 
 class InitProjectComposeArgs(BaseModel):
     project_id: str = Field(description="Project ID")
-    rag_config: RagConfig = Field(description="RAG service configuration")
+    rag_config: RagConfig | None = Field(
+        default=None,
+        description="RAG service configuration. If omitted, auto-detected defaults are used.",
+    )
 
     @model_validator(mode="after")
     def _set_default_collection_name(self) -> Self:
-        RagConfigValidator.validate_and_fix(self.rag_config, self.project_id)
+        if self.rag_config is not None:
+            RagConfigValidator.validate_and_fix(self.rag_config, self.project_id)
         return self
 
 

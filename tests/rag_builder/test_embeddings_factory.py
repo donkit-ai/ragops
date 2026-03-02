@@ -17,7 +17,7 @@ class TestEmbedderFactory:
             EmbedderFactory.create("openai")
 
     def test_openai_with_override_api_key(self):
-        embedder = EmbedderFactory.create("openai", api_key="test-key-123")
+        embedder = EmbedderFactory.create("openai", api_key="test-key-123", vector_size=768)
         assert embedder is not None
 
     def test_azure_missing_credentials_raises(self, monkeypatch):
@@ -35,6 +35,7 @@ class TestEmbedderFactory:
             endpoint="https://test.openai.azure.com",
             api_version="2024-02-15",
             deployment="text-embedding-ada-002",
+            vector_size=1536,
         )
         assert embedder is not None
 
@@ -48,5 +49,5 @@ class TestEmbedderFactory:
             create_embedder("invalid_type")
 
     def test_create_embedder_openai_with_override(self):
-        embedder = create_embedder("openai", api_key="test-key-456")
+        embedder = create_embedder("openai", api_key="test-key-456", vector_size=768)
         assert embedder is not None

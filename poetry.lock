@@ -1601,6 +1601,30 @@ openai = ">=2.1.0,<3.0.0"
 pydantic = ">=2.8.0,<3.0.0"
 
 [[package]]
+name = "donkit-rag-toolkit"
+version = "0.1.0"
+description = "RAG toolkit - standalone library for building, searching, and evaluating RAG pipelines"
+optional = false
+python-versions = "<3.14,>=3.12"
+groups = ["main"]
+markers = "python_version == \"3.12\" or python_version == \"3.13\""
+files = [
+    {file = "donkit_rag_toolkit-0.1.0-py3-none-any.whl", hash = "sha256:63bed9f5a376d710aa2e5f278c119838a5ce31b46e2aa17ec01202aaf19f60d0"},
+    {file = "donkit_rag_toolkit-0.1.0.tar.gz", hash = "sha256:68667013785170632995505bca3b1c42eec8aaf384c88faf3acf5d3e327cd7d1"},
+]
+
+[package.dependencies]
+donkit-chunker = ">=0.1.9,<0.2.0"
+donkit-read-engine = ">=0.3.1,<0.4.0"
+donkit-retriever = ">=0.1.10,<0.2.0"
+donkit-vectorstore-loader = ">=0.1.10,<0.2.0"
+httpx = ">=0.28.1,<0.29.0"
+langchain-core = ">=0.3.27,<0.4.0"
+loguru = ">=0.7.3,<0.8.0"
+pydantic = ">=2.7.4,<3.0.0"
+python-dotenv = ">=1.1.0,<2.0.0"
+
+[[package]]
 name = "donkit-ragops-api-gateway-client"
 version = "0.2.1"
 description = "Async HTTP client for interacting with the Donkit ragops-api-gateway"
@@ -1645,6 +1669,29 @@ python-docx = ">=1.1.0,<2.0.0"
 python-dotenv = ">=1.1.0,<2.0.0"
 python-pptx = ">=1.0.2,<2.0.0"
 unstructured = {version = ">=0.18.15,<0.19.0", extras = ["pdf"]}
+
+[[package]]
+name = "donkit-retriever"
+version = "0.1.10"
+description = "Unified retrieval module for RAG system with multiple vector database support"
+optional = false
+python-versions = "<4.0,>=3.12"
+groups = ["main"]
+markers = "python_version == \"3.12\" or python_version == \"3.13\""
+files = [
+    {file = "donkit_retriever-0.1.10-py3-none-any.whl", hash = "sha256:fd6d929b0e89dd8aab61f4aa8e80804fb808b1f257b3db63513624f208abfd49"},
+    {file = "donkit_retriever-0.1.10.tar.gz", hash = "sha256:e4985967dc067045ee32b70fcab6290a1819099df04f92251bf7a6eae86f79a0"},
+]
+
+[package.dependencies]
+chromadb = "1.3.4"
+langchain = ">=0.3.27,<0.4.0"
+langchain-core = ">=0.3.79,<0.4.0"
+loguru = ">=0.7.3,<0.8.0"
+protobuf = "6.33.0"
+pydantic = ">=2.7.4,<3.0.0"
+pymilvus = "2.6.0"
+qdrant-client = {version = "1.15.1", extras = ["fastembed"]}
 
 [[package]]
 name = "donkit-vectorstore-loader"
@@ -6121,23 +6168,23 @@ testing = ["google-api-core (>=1.31.5)"]
 
 [[package]]
 name = "protobuf"
-version = "6.33.4"
+version = "6.33.0"
 description = ""
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "protobuf-6.33.4-cp310-abi3-win32.whl", hash = "sha256:918966612c8232fc6c24c78e1cd89784307f5814ad7506c308ee3cf86662850d"},
-    {file = "protobuf-6.33.4-cp310-abi3-win_amd64.whl", hash = "sha256:8f11ffae31ec67fc2554c2ef891dcb561dae9a2a3ed941f9e134c2db06657dbc"},
-    {file = "protobuf-6.33.4-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:2fe67f6c014c84f655ee06f6f66213f9254b3a8b6bda6cda0ccd4232c73c06f0"},
-    {file = "protobuf-6.33.4-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:757c978f82e74d75cba88eddec479df9b99a42b31193313b75e492c06a51764e"},
-    {file = "protobuf-6.33.4-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:c7c64f259c618f0bef7bee042075e390debbf9682334be2b67408ec7c1c09ee6"},
-    {file = "protobuf-6.33.4-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:3df850c2f8db9934de4cf8f9152f8dc2558f49f298f37f90c517e8e5c84c30e9"},
-    {file = "protobuf-6.33.4-cp39-cp39-win32.whl", hash = "sha256:955478a89559fa4568f5a81dce77260eabc5c686f9e8366219ebd30debf06aa6"},
-    {file = "protobuf-6.33.4-cp39-cp39-win_amd64.whl", hash = "sha256:0f12ddbf96912690c3582f9dffb55530ef32015ad8e678cd494312bd78314c4f"},
-    {file = "protobuf-6.33.4-py3-none-any.whl", hash = "sha256:1fe3730068fcf2e595816a6c34fe66eeedd37d51d0400b72fabc848811fdc1bc"},
-    {file = "protobuf-6.33.4.tar.gz", hash = "sha256:dc2e61bca3b10470c1912d166fe0af67bfc20eb55971dcef8dfa48ce14f0ed91"},
+    {file = "protobuf-6.33.0-cp310-abi3-win32.whl", hash = "sha256:d6101ded078042a8f17959eccd9236fb7a9ca20d3b0098bbcb91533a5680d035"},
+    {file = "protobuf-6.33.0-cp310-abi3-win_amd64.whl", hash = "sha256:9a031d10f703f03768f2743a1c403af050b6ae1f3480e9c140f39c45f81b13ee"},
+    {file = "protobuf-6.33.0-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:905b07a65f1a4b72412314082c7dbfae91a9e8b68a0cc1577515f8df58ecf455"},
+    {file = "protobuf-6.33.0-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:e0697ece353e6239b90ee43a9231318302ad8353c70e6e45499fa52396debf90"},
+    {file = "protobuf-6.33.0-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:e0a1715e4f27355afd9570f3ea369735afc853a6c3951a6afe1f80d8569ad298"},
+    {file = "protobuf-6.33.0-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:35be49fd3f4fefa4e6e2aacc35e8b837d6703c37a2168a55ac21e9b1bc7559ef"},
+    {file = "protobuf-6.33.0-cp39-cp39-win32.whl", hash = "sha256:cd33a8e38ea3e39df66e1bbc462b076d6e5ba3a4ebbde58219d777223a7873d3"},
+    {file = "protobuf-6.33.0-cp39-cp39-win_amd64.whl", hash = "sha256:c963e86c3655af3a917962c9619e1a6b9670540351d7af9439d06064e3317cc9"},
+    {file = "protobuf-6.33.0-py3-none-any.whl", hash = "sha256:25c9e1963c6734448ea2d308cfa610e692b801304ba0908d7bfa564ac5132995"},
+    {file = "protobuf-6.33.0.tar.gz", hash = "sha256:140303d5c8d2037730c548f8c7b93b20bb1dc301be280c378b82b8894589c954"},
 ]
 
 [[package]]
@@ -7412,7 +7459,7 @@ description = "Python for Window Extensions"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "(platform_system == \"Windows\" or sys_platform == \"win32\") and (python_version == \"3.12\" or python_version == \"3.13\")"
+markers = "(sys_platform == \"win32\" or platform_system == \"Windows\") and (python_version == \"3.12\" or python_version == \"3.13\")"
 files = [
     {file = "pywin32-311-cp310-cp310-win32.whl", hash = "sha256:d03ff496d2a0cd4a5893504789d4a15399133fe82517455e78bad62efbb7f0a3"},
     {file = "pywin32-311-cp310-cp310-win_amd64.whl", hash = "sha256:797c2772017851984b97180b0bebe4b620bb86328e8a884bb626156295a63b3b"},
@@ -10356,4 +10403,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "34b607978b0b09fd0c6562671e3e93c58ef461087d99f00b730b55eef2ea9db5"
+content-hash = "a257cce368c339123153eab69eca687f9e6a5aa4477416575d49d8137c1350ea"

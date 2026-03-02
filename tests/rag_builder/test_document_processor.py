@@ -4,7 +4,7 @@ from pathlib import Path
 
 from donkit.read_engine.read_engine import ReadDocumentResult
 
-from donkit_ragops.rag_builder.document_processing.processor import (
+from donkit.rag_toolkit.document_processing.processor import (
     DocumentProcessResult,
     ResolvedFiles,
     resolve_source_files,

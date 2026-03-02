@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
-from donkit_ragops.rag_builder.config import RagConfigValidator, validate_rag_config
-from donkit_ragops.schemas.config_schemas import RagConfig
+from donkit.rag_toolkit.config import RagConfigValidator, validate_rag_config
+from donkit.rag_toolkit.schemas.config import RagConfig
 
 
 def _make_rag_config(**kwargs) -> RagConfig:

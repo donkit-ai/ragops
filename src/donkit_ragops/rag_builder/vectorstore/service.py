@@ -1,15 +1,20 @@
-"""High-level vectorstore service.
+"""High-level vectorstore service — CLI compatibility shim.
 
-Orchestrates embedder creation, URI validation, and vectorstore operations.
+Provides backward-compatible API that accepts embedder_type (string)
+and creates embeddings internally using EmbedderFactory.
+
+For the standalone API that accepts Embeddings directly,
+use donkit.rag_toolkit.vectorstore.service.
 """
 
 from __future__ import annotations
 
-from donkit_ragops.rag_builder.embeddings import create_embedder
-from donkit_ragops.rag_builder.vectorstore.loader import (
+from donkit.rag_toolkit.vectorstore.loader import (
     ProgressCallback,
     VectorstoreLoader,
 )
+
+from donkit_ragops.rag_builder.embeddings import create_embedder
 
 
 def _validate_localhost_uri(database_uri: str) -> str | None:
@@ -19,7 +24,7 @@ def _validate_localhost_uri(database_uri: str) -> str | None:
     """
     if "localhost" not in database_uri:
         return (
-            "Error: database URI arg must be outside "
+            "Error: database URI arg for loader must be outside "
             "docker like 'localhost' or '127.0.0.1' or '0.0.0.0'"
             "don`t update it in rag config, use `localhost` only in args."
         )
@@ -29,7 +34,7 @@ def _validate_localhost_uri(database_uri: str) -> str | None:
 class VectorstoreService:
     """High-level service for vectorstore load/delete operations.
 
-    Handles embedder creation, URI validation, and delegates to VectorstoreLoader.
+    CLI-compatible version that handles embedder creation from embedder_type string.
     """
 
     @staticmethod

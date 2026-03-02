@@ -14,7 +14,7 @@ import os
 
 from fastmcp import Context, FastMCP
 
-from donkit_ragops.rag_builder.vectorstore import VectorstoreService
+from donkit_ragops.rag_builder.vectorstore.service import VectorstoreService
 from donkit_ragops.schemas.tool_schemas import VectorstoreDeleteArgs, VectorstoreLoadArgs
 
 server = FastMCP(

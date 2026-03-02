@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from donkit_ragops.rag_builder.query import RagQueryClient
+from donkit.rag_toolkit.query import RagQueryClient
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ async def test_search_documents_success():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("donkit_ragops.rag_builder.query.client.httpx.AsyncClient", return_value=mock_client):
+    with patch("donkit.rag_toolkit.query.client.httpx.AsyncClient", return_value=mock_client):
         result = await RagQueryClient.search_documents("test query")
 
     assert result["query"] == "test query"
@@ -37,7 +37,7 @@ async def test_search_documents_connection_error():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("donkit_ragops.rag_builder.query.client.httpx.AsyncClient", return_value=mock_client):
+    with patch("donkit.rag_toolkit.query.client.httpx.AsyncClient", return_value=mock_client):
         result = await RagQueryClient.search_documents("test query")
 
     assert "error" in result
@@ -56,7 +56,7 @@ async def test_get_rag_prompt_success():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("donkit_ragops.rag_builder.query.client.httpx.AsyncClient", return_value=mock_client):
+    with patch("donkit.rag_toolkit.query.client.httpx.AsyncClient", return_value=mock_client):
         result = await RagQueryClient.get_rag_prompt("test query")
 
     assert isinstance(result, str)
@@ -70,7 +70,7 @@ async def test_get_rag_prompt_error():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("donkit_ragops.rag_builder.query.client.httpx.AsyncClient", return_value=mock_client):
+    with patch("donkit.rag_toolkit.query.client.httpx.AsyncClient", return_value=mock_client):
         result = await RagQueryClient.get_rag_prompt("test query")
 
     assert isinstance(result, dict)

@@ -15,9 +15,9 @@ warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
 
+from donkit.rag_toolkit.chunking import ChunkingService
 from fastmcp import FastMCP
 
-from donkit_ragops.rag_builder.chunking import ChunkingService
 from donkit_ragops.schemas.tool_schemas import ChunkDocumentsArgs
 
 server = FastMCP(

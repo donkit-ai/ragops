@@ -13,7 +13,7 @@ def tool_chunk_documents() -> AgentTool:
     """Tool for chunking processed documents."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.chunking import ChunkingService
+        from donkit.rag_toolkit.chunking import ChunkingService
 
         parsed = ChunkDocumentsArgs(**args)
         result = ChunkingService.chunk_documents(

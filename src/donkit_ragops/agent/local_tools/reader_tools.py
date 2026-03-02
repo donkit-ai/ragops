@@ -19,7 +19,7 @@ def tool_process_documents(
     """Tool for processing documents from various formats."""
 
     async def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.document_processing import DocumentProcessor
+        from donkit.rag_toolkit.document_processing import DocumentProcessor
 
         parsed = ProcessDocumentsArgs(**args)
 
@@ -31,7 +31,6 @@ def tool_process_documents(
             source_path=parsed.source_path,
             project_id=parsed.project_id,
             reading_format=parsed.reading_format.value,
-            use_llm=parsed.reading_pipeline.value != "docling",
             llm_model=llm_model,
             reader_progress_callback=progress_callback,
             file_progress_callback=file_progress if progress_callback else None,

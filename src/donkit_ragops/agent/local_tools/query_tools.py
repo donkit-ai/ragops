@@ -13,7 +13,7 @@ def tool_search_documents() -> AgentTool:
     """Tool for searching documents in the RAG vector database."""
 
     async def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.query import RagQueryClient
+        from donkit.rag_toolkit.query import RagQueryClient
 
         parsed = SearchQueryArgs(**args)
         result = await RagQueryClient.search_documents(
@@ -43,7 +43,7 @@ def tool_get_rag_prompt() -> AgentTool:
     """Tool for getting a formatted RAG prompt with retrieved context."""
 
     async def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.query import RagQueryClient
+        from donkit.rag_toolkit.query import RagQueryClient
 
         parsed = SearchQueryArgs(**args)
         result = await RagQueryClient.get_rag_prompt(

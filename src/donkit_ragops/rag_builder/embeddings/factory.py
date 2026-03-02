@@ -1,7 +1,7 @@
 """Embedder factory for creating embedding providers.
 
-Supports 6 providers: openai, vertex, azure_openai, ollama, donkit.
-Can be used independently of MCP servers.
+Thin CLI wrapper around donkit.embeddings shared implementations.
+Reads credentials from env variables and delegates to shared classes.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class EmbedderFactory:
                 For openai: api_key, base_url, model
                 For vertex: credentials_path, credentials_data
                 For azure_openai: api_key, endpoint, api_version, deployment
-                For ollama: api_key, base_url, model
+                For ollama: base_url, model
                 For donkit: api_key, base_url
 
         Returns:
@@ -50,7 +50,7 @@ class EmbedderFactory:
 
     @staticmethod
     def _create_openai(**overrides) -> Embeddings:
-        from langchain_openai import OpenAIEmbeddings
+        from donkit.embeddings import OpenAIEmbeddings
 
         api_key = overrides.get(
             "api_key", os.getenv("OPENAI_API_KEY", os.getenv("RAGOPS_OPENAI_API_KEY"))
@@ -58,16 +58,23 @@ class EmbedderFactory:
         if not api_key:
             raise ValueError("env variable 'OPENAI_API_KEY' or 'RAGOPS_OPENAI_API_KEY' is not set")
         base_url = overrides.get(
-            "base_url", os.getenv("OPENAI_BASE_URL", os.getenv("RAGOPS_OPENAI_BASE_URL"))
+            "base_url",
+            os.getenv(
+                "OPENAI_BASE_URL", os.getenv("RAGOPS_OPENAI_BASE_URL", "https://api.openai.com/v1")
+            ),
         )
         model = overrides.get(
             "model",
-            os.getenv("OPENAI_EMBEDDINGS_MODEL", os.getenv("RAGOPS_OPENAI_EMBEDDINGS_MODEL")),
+            os.getenv(
+                "OPENAI_EMBEDDINGS_MODEL",
+                os.getenv("RAGOPS_OPENAI_EMBEDDINGS_MODEL", "text-embedding-3-small"),
+            ),
         )
         return OpenAIEmbeddings(
+            base_url=base_url,
             api_key=api_key,
-            openai_api_base=base_url,
-            model=model or "text-embedding-3-small",
+            model=model,
+            vector_size=overrides.get("vector_size"),
         )
 
     @staticmethod
@@ -85,7 +92,7 @@ class EmbedderFactory:
 
     @staticmethod
     def _create_azure_openai(**overrides) -> Embeddings:
-        from langchain_openai import AzureOpenAIEmbeddings
+        from donkit.embeddings import get_azure_openai_embeddings
 
         api_key = overrides.get(
             "api_key",
@@ -103,7 +110,7 @@ class EmbedderFactory:
             "deployment",
             os.getenv(
                 "RAGOPS_AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT",
-                os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"),
+                os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT", "text-embedding-ada-002"),
             ),
         )
         if not api_key or not endpoint or not api_version:
@@ -111,20 +118,18 @@ class EmbedderFactory:
                 "env variables 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT' "
                 "and 'AZURE_OPENAI_API_VERSION' must be set"
             )
-        return AzureOpenAIEmbeddings(
-            openai_api_key=api_key,
+        return get_azure_openai_embeddings(
             azure_endpoint=endpoint,
-            openai_api_version=api_version,
-            deployment=deployment
-            if deployment and "embed" in deployment
-            else "text-embedding-ada-002",
+            api_key=api_key,
+            api_version=api_version,
+            embedding_deployment_name=deployment,
+            vector_size=overrides.get("vector_size"),
         )
 
     @staticmethod
     def _create_ollama(**overrides) -> Embeddings:
         from donkit.embeddings import get_ollama_embeddings
 
-        api_key = overrides.get("api_key", os.getenv("RAGOPS_OLLAMA_API_KEY", "ollama"))
         base_url = overrides.get(
             "base_url",
             os.getenv("RAGOPS_OLLAMA_BASE_URL", "http://localhost:11434").replace("/v1", ""),
@@ -132,7 +137,7 @@ class EmbedderFactory:
         model = overrides.get(
             "model", os.getenv("RAGOPS_OLLAMA_EMBEDDINGS_MODEL", "embeddinggemma")
         )
-        logger.debug(f"Using Ollama API key: {api_key}, with base URL: {base_url}, model: {model}")
+        logger.debug(f"Using Ollama base URL: {base_url}, model: {model}")
         return get_ollama_embeddings(host=base_url, model=model)
 
     @staticmethod
@@ -143,7 +148,7 @@ class EmbedderFactory:
         base_url = overrides.get(
             "base_url", os.getenv("RAGOPS_DONKIT_BASE_URL", "https://api.dev.donkit.ai")
         )
-        logger.debug(f"Using Donkit API key: {api_key}, with base URL: {base_url}")
+        logger.debug(f"Using Donkit base URL: {base_url}")
         return get_donkit_embeddings(
             base_url=base_url,
             api_token=api_key,

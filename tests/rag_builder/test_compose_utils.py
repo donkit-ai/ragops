@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from donkit_ragops.rag_builder.deployment import DockerEnvironment
+from donkit.rag_toolkit.deployment import DockerEnvironment
 
 
 class TestDockerEnvironment:

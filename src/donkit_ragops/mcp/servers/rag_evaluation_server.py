@@ -16,9 +16,9 @@ warnings.simplefilter("ignore", DeprecationWarning)
 import json
 import os
 
+from donkit.rag_toolkit.evaluation import RagEvaluator
 from fastmcp import FastMCP
 
-from donkit_ragops.rag_builder.evaluation import RagEvaluator
 from donkit_ragops.schemas.tool_schemas import BatchEvaluationArgs
 
 server = FastMCP(
