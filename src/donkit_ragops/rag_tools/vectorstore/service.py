@@ -14,7 +14,7 @@ from donkit.rag_toolkit.vectorstore.loader import (
     VectorstoreLoader,
 )
 
-from donkit_ragops.rag_builder.embeddings import create_embedder
+from donkit_ragops.rag_tools.embeddings import create_embedder
 
 
 def _validate_localhost_uri(database_uri: str) -> str | None:

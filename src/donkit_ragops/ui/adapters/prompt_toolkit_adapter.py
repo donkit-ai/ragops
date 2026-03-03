@@ -187,6 +187,34 @@ class PromptToolkitLiveContext:
         self.stop()
 
 
+class PromptToolkitToolSpinner:
+    """Prompt Toolkit tool spinner — prints formatted status."""
+
+    def start(self, tool_name: str) -> None:
+        print_formatted_text(
+            FormattedText([("class:dim", f"⠋ {tool_name}")]),
+            style=PT_STYLES,
+        )
+
+    def complete(self, tool_name: str) -> None:
+        print_formatted_text(
+            FormattedText([("class:success", "✓ "), ("", tool_name)]),
+            style=PT_STYLES,
+        )
+
+    def fail(self, tool_name: str, error: str) -> None:
+        print_formatted_text(
+            FormattedText([("class:error", "✗ "), ("", f"{tool_name} - {error}")]),
+            style=PT_STYLES,
+        )
+
+    def update_progress(self, message: str) -> None:
+        print_formatted_text(
+            FormattedText([("class:dim", f"  {message}")]),
+            style=PT_STYLES,
+        )
+
+
 class PromptToolkitUI:
     """Prompt Toolkit-based UI implementation.
 
@@ -311,6 +339,10 @@ class PromptToolkitUI:
             print("\033[2J\033[H", end="")
 
     # === PROGRESS COMPONENTS ===
+
+    def create_tool_spinner(self) -> PromptToolkitToolSpinner:
+        """Create a tool execution spinner."""
+        return PromptToolkitToolSpinner()
 
     def create_spinner(self, message: str = "Loading...") -> Spinner:
         """Create a loading spinner."""

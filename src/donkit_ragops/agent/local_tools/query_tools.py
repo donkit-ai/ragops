@@ -28,10 +28,10 @@ def tool_search_documents() -> AgentTool:
     return AgentTool(
         name="search_documents",
         description=(
-            "Search for relevant documents in the RAG vector database. "
-            "Returns the most relevant document chunks based on the query. "
-            "This tool just use retriever without any options. Result may be inaccurate. "
-            "Use this tool only for testing purposes. Not for answering questions."
+            "Test the rag-service API by searching documents via HTTP. "
+            "Requires a running rag-service container. "
+            "Use ONLY for testing/verifying rag-service, NOT for answering user questions. "
+            "For answering questions use `local_search_documents` instead."
         ),
         parameters=schema,
         handler=_handler,
@@ -59,10 +59,10 @@ def tool_get_rag_prompt() -> AgentTool:
     return AgentTool(
         name="get_rag_prompt",
         description=(
-            "Get a formatted RAG prompt with retrieved context for a query. "
-            "Returns ready-to-use prompt string with relevant document chunks embedded. "
-            "Use full rag-config for prompt generation. "
-            "Use this tool for answering."
+            "Test the rag-service API by getting a formatted RAG prompt via HTTP. "
+            "Requires a running rag-service container. "
+            "Use ONLY for testing/verifying rag-service, NOT for answering user questions. "
+            "For answering questions use `local_search_documents` instead."
         ),
         parameters=schema,
         handler=_handler,

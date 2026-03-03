@@ -2,7 +2,7 @@
 
 import pytest
 
-from donkit_ragops.rag_builder.embeddings import EmbedderFactory, create_embedder
+from donkit_ragops.rag_tools.embeddings import EmbedderFactory, create_embedder
 
 
 class TestEmbedderFactory:

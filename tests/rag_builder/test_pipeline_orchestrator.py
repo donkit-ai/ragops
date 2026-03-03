@@ -11,7 +11,7 @@ from donkit.rag_toolkit.pipeline.orchestrator import (
     RagPipelineOrchestrator,
 )
 from donkit.rag_toolkit.schemas.config import EmbedderType, GenerationModelType
-from donkit_ragops.rag_builder.quick_config import (
+from donkit_ragops.rag_tools.quick_config import (
     _map_provider_to_embedder_type,
     _map_provider_to_generation_type,
     build_quick_rag_config,
@@ -119,7 +119,7 @@ class TestMapProviderToGenerationType:
 
 
 class TestBuildQuickRagConfig:
-    @patch("donkit_ragops.rag_builder.quick_config.get_recommended_config")
+    @patch("donkit_ragops.rag_tools.quick_config.get_recommended_config")
     def test_builds_valid_config(self, mock_recommended):
         mock_recommended.return_value = {
             "embedder_provider": "openai",
@@ -143,7 +143,7 @@ class TestBuildQuickRagConfig:
         assert config.retriever_options.query_rewrite is True
         assert config.ranker is False
 
-    @patch("donkit_ragops.rag_builder.quick_config.get_recommended_config")
+    @patch("donkit_ragops.rag_tools.quick_config.get_recommended_config")
     def test_chroma_db_type(self, mock_recommended):
         mock_recommended.return_value = {
             "embedder_provider": "openai",
@@ -155,7 +155,7 @@ class TestBuildQuickRagConfig:
         assert config.db_type == "chroma"
         assert config.database_uri == "http://chroma:8000"
 
-    @patch("donkit_ragops.rag_builder.quick_config.get_recommended_config")
+    @patch("donkit_ragops.rag_tools.quick_config.get_recommended_config")
     def test_milvus_db_type(self, mock_recommended):
         mock_recommended.return_value = {
             "embedder_provider": "openai",
@@ -167,7 +167,7 @@ class TestBuildQuickRagConfig:
         assert config.db_type == "milvus"
         assert config.database_uri == "http://milvus:19530"
 
-    @patch("donkit_ragops.rag_builder.quick_config.get_recommended_config")
+    @patch("donkit_ragops.rag_tools.quick_config.get_recommended_config")
     def test_vertex_provider(self, mock_recommended):
         mock_recommended.return_value = {
             "embedder_provider": "vertex",

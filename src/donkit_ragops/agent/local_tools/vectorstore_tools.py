@@ -12,7 +12,7 @@ def tool_vectorstore_load(progress_callback: Any | None = None) -> AgentTool:
     """Tool for loading chunks into a vectorstore."""
 
     async def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.vectorstore.service import VectorstoreService
+        from donkit_ragops.rag_tools.vectorstore.service import VectorstoreService
 
         async def async_progress(current: int, total: int, message: str) -> None:
             if progress_callback:
@@ -49,7 +49,7 @@ def tool_delete_from_vectorstore() -> AgentTool:
     """Tool for deleting documents from a vectorstore."""
 
     def _handler(args: dict[str, Any]) -> str:
-        from donkit_ragops.rag_builder.vectorstore.service import VectorstoreService
+        from donkit_ragops.rag_tools.vectorstore.service import VectorstoreService
 
         parsed = VectorstoreDeleteArgs(**args)
         return VectorstoreService.delete(

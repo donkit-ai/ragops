@@ -1,6 +1,6 @@
 """Tests for rag_builder.vectorstore.service."""
 
-from donkit_ragops.rag_builder.vectorstore.service import VectorstoreService, _validate_localhost_uri
+from donkit_ragops.rag_tools.vectorstore.service import VectorstoreService, _validate_localhost_uri
 
 
 class TestValidateLocalhostUri:

@@ -134,6 +134,22 @@ class PlainLiveContext:
         self.stop()
 
 
+class PlainToolSpinner:
+    """Plain text tool spinner — no animation, just prints status."""
+
+    def start(self, tool_name: str) -> None:
+        print(f"... {tool_name}")
+
+    def complete(self, tool_name: str) -> None:
+        print(f"✓ {tool_name}")
+
+    def fail(self, tool_name: str, error: str) -> None:
+        print(f"✗ {tool_name} - {error}")
+
+    def update_progress(self, message: str) -> None:
+        print(f"  {message}")
+
+
 class PlainUI(UI):
     """Plain text UI implementation.
 
@@ -204,6 +220,10 @@ class PlainUI(UI):
         print("\n" * 3)
 
     # === PROGRESS COMPONENTS ===
+
+    def create_tool_spinner(self) -> PlainToolSpinner:
+        """Create a plain text tool spinner."""
+        return PlainToolSpinner()
 
     def create_spinner(self, message: str = "Loading...") -> PlainSpinner:
         """Create a plain text spinner."""
