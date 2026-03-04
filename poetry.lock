@@ -1601,6 +1601,24 @@ openai = ">=2.1.0,<3.0.0"
 pydantic = ">=2.8.0,<3.0.0"
 
 [[package]]
+name = "donkit-llm-agent"
+version = "0.2.0"
+description = "Reusable LLM Agent with tool calling and MCP support"
+optional = false
+python-versions = "<3.14,>=3.12"
+groups = ["main"]
+markers = "python_version == \"3.12\" or python_version == \"3.13\""
+files = [
+    {file = "donkit_llm_agent-0.2.0-py3-none-any.whl", hash = "sha256:3e4025fa6f23971c9be11fa925a0226106fa4552892f2f1efe1d1c19429b1150"},
+    {file = "donkit_llm_agent-0.2.0.tar.gz", hash = "sha256:a1b93d41110d5cf7e888f0da9d61233275669864e09d3a11b755c93c7b0b7229"},
+]
+
+[package.dependencies]
+donkit-llm = ">=0.1.15,<0.2.0"
+loguru = ">=0.7.3,<0.8.0"
+pydantic = ">=2.8.0,<3.0.0"
+
+[[package]]
 name = "donkit-rag-toolkit"
 version = "0.1.2"
 description = "RAG toolkit - standalone library for building, searching, and evaluating RAG pipelines"
@@ -10403,4 +10421,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "d14f78ebe17dec761af39ddcd6c399d3318207ff47303e3109abf1efc50eabd9"
+content-hash = "4ff43b9eb84222b82c7867186b7bbd16def02e1b666bcb2e42368df5fe16c320"

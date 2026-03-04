@@ -106,7 +106,6 @@ class SessionManager:
         agent = LLMAgent(
             provider=llm_provider,
             tools=web_default_tools(llm_model=llm_provider),
-            project_id_provider=get_project_id,
         )
 
         # Create files directory
@@ -399,7 +398,6 @@ class SessionManager:
             provider=llm_provider,
             tools=enterprise_tools,
             mcp_clients=[mcp_client],
-            project_id_provider=get_project_id,
         )
 
         # Create message persister (optional)
