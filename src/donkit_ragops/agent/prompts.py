@@ -66,8 +66,8 @@ WORKFLOW:
     1. Call `init_project_compose(project_id)` WITHOUT rag_config — auto-detected defaults will be used.
     2. Call `start_service(service="qdrant", project_id=project_id)` — start vectorstore container. Use the returned URL.
     3. Call `quick_rag_build(source_path, project_id)` WITHOUT config parameter — processes docs, chunks, loads to vectorstore.
-    4. Call `start_service(service="rag-service", project_id=project_id)` — start RAG query service.
-    Show: project_id, URLs, counts. Auto-send test question.
+    Show: project_id, URLs, counts. Send test question via `local_search_documents`.
+    Then offer `interactive_user_choice`: "Ask questions here" / "Deploy RAG API (rag-service for external apps)".
 
 3b. CUSTOM: Call `get_recommended_defaults` FIRST. Then for EACH setting below call `interactive_user_choice` tool (do NOT list options as text).
    IMPORTANT: For provider choices (embedder, generation), use ONLY providers from `get_recommended_defaults` → `available_providers`.
@@ -94,11 +94,13 @@ WORKFLOW:
    1. Call `init_project_compose(project_id, rag_config=<validated_config>)` — initialize docker-compose files
    2. Call `start_service(service=<db_type>, project_id=project_id)` — start vectorstore container
    3. Call `quick_rag_build(source_path, project_id, config=<validated_config>)` — processes docs, chunks, loads to vectorstore
-   4. Call `start_service(service="rag-service", project_id=project_id)` — start RAG query service
+   Same as automatic: show results, send test question, offer choice.
+
+QUERYING:
+- `local_search_documents` — primary tool for answering questions. Searches vectorstore directly. Pass rag_config + query.
+- `search_documents` / `get_rag_prompt` — for testing rag-service API (requires running rag-service container).
 
 POST-BUILD:
-- Update config: stop rag-service → compose init with new config -> start rag-service
-- Query: MCP rag_query tools
 - Services: compose_manager (start/stop/status/logs)
 - Docs: process/chunk/load
 - Eval: evaluation tools

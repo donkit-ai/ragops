@@ -219,6 +219,42 @@ class RichLiveContext:
         self.stop()
 
 
+class RichToolSpinner:
+    """Animated spinner for tool execution display.
+
+    Shows dots animation during execution, then replaces with ✓/✗ on completion.
+    Uses Rich Status (transient Live) so the spinner line disappears on stop.
+    """
+
+    def __init__(self, console: Console):
+        self._console = console
+        self._status: Status | None = None
+
+    def start(self, tool_name: str) -> None:
+        self._status = Status(
+            f"[yellow]{tool_name}[/yellow]",
+            spinner="dots",
+            console=self._console,
+        )
+        self._status.start()
+
+    def complete(self, tool_name: str) -> None:
+        if self._status:
+            self._status.stop()
+            self._status = None
+        self._console.print(f"[bold green]✓[/bold green] [green]{tool_name}[/green]")
+
+    def fail(self, tool_name: str, error: str) -> None:
+        if self._status:
+            self._status.stop()
+            self._status = None
+        self._console.print(f"[bold red]✗[/bold red] [red]{tool_name}[/red] - {error}")
+
+    def update_progress(self, message: str) -> None:
+        if self._status:
+            self._status.update(message)
+
+
 class RichUI(UI):
     """Rich-based UI implementation.
 
@@ -333,6 +369,10 @@ class RichUI(UI):
     def create_spinner(self, message: str = "Loading...") -> Spinner:
         """Create a loading spinner."""
         return RichSpinner(self._console, message)
+
+    def create_tool_spinner(self) -> RichToolSpinner:
+        """Create a tool execution spinner."""
+        return RichToolSpinner(self._console)
 
     def create_progress(self, total: int = 100, description: str = "") -> ProgressBar:
         """Create a progress bar."""

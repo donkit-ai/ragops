@@ -45,6 +45,7 @@ from donkit_ragops.agent.local_tools.project_tools import (
 )
 from donkit_ragops.agent.local_tools.query_tools import tool_get_rag_prompt, tool_search_documents
 from donkit_ragops.agent.local_tools.reader_tools import tool_process_documents
+from donkit_ragops.agent.local_tools.retriever_tools import tool_local_search_documents
 from donkit_ragops.agent.local_tools.tools import (
     AgentTool,
     tool_db_get,
@@ -123,6 +124,7 @@ def default_tools(llm_model: LLMModelAbstract | None = None) -> list[AgentTool]:
         tool_rag_config_plan(),
         tool_search_documents(),
         tool_get_rag_prompt(),
+        tool_local_search_documents(),
         tool_evaluate_batch(),
     ]
 

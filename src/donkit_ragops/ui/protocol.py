@@ -103,6 +103,14 @@ class UI(ABC):
 
     # === PROGRESS COMPONENTS ===
 
+    def create_tool_spinner(self):
+        """Create a tool execution spinner.
+
+        Returns a spinner that shows animated dots during tool execution
+        and replaces with a checkmark/error indicator on completion.
+        """
+        ...
+
     def create_spinner(self, message: str = "Loading...") -> Spinner:
         """Create a loading spinner.
 

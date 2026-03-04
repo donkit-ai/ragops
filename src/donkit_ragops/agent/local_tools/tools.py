@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from donkit.llm import FunctionDefinition, LLMModelAbstract, Tool
+from donkit.rag_toolkit.schemas.config import RagConfig
 
 from donkit_ragops.credential_checker import (
     get_available_providers,
@@ -14,7 +15,6 @@ from donkit_ragops.credential_checker import (
 )
 from donkit_ragops.db import kv_get, migrate, open_db
 from donkit_ragops.interactive_input import interactive_confirm, interactive_select
-from donkit.rag_toolkit.schemas.config import RagConfig
 
 
 class AgentTool:
@@ -502,17 +502,43 @@ def tool_get_recommended_defaults() -> AgentTool:
     )
 
 
-def _default_cli_progress(step: int, total: int, message: str) -> None:
-    """Default progress callback that prints to stdout with \\r overwrite."""
-    import sys
+_PIPELINE_STEP_LABELS = {
+    1: "Validating config",
+    2: "Reading documents",
+    3: "Chunking",
+    4: "Loading to vectorstore",
+}
 
-    percentage = (step / total) * 100 if total else 0
-    text = f"  ⏳ [{step}/{total}] {percentage:.0f}% — {message}"
-    sys.stdout.write(f"\r\033[K{text}")
-    sys.stdout.flush()
-    if step >= total:
-        sys.stdout.write("\n")
+
+def _default_cli_progress(step: int, total: int, message: str) -> None:
+    """Default progress callback that updates the active tool spinner.
+
+    The orchestrator calls this callback at multiple levels:
+    - Pipeline steps: (step, 4, message) — top-level stage transitions
+    - File progress:  (idx, file_count, "Processing file X - idx/count")
+    - Page progress:  (page, total_pages, "N/M pages (Xs elapsed, ~Ys remaining)")
+    - VS load:        (batch, total_batches, message)
+    """
+    from donkit_ragops.repl_helpers import get_active_tool_spinner
+
+    if total == 4 and step in _PIPELINE_STEP_LABELS:
+        # Pipeline step — show stage label with step indicator
+        text = f"[{step}/4] {_PIPELINE_STEP_LABELS[step]}"
+    else:
+        # Sub-progress (file/page/vectorstore) — show message as-is
+        text = message
+
+    spinner = get_active_tool_spinner()
+    if spinner is not None and hasattr(spinner, "update_progress"):
+        spinner.update_progress(text)
+    else:
+        import sys
+
+        sys.stdout.write(f"\r\033[K  {text}")
         sys.stdout.flush()
+        if step >= total:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
 
 def tool_quick_rag_build(
@@ -549,8 +575,8 @@ def tool_quick_rag_build(
         from donkit.rag_toolkit.pipeline.orchestrator import RagPipelineOrchestrator
         from donkit.rag_toolkit.schemas.config import RagConfig
 
-        from donkit_ragops.rag_builder.embeddings import create_embedder
-        from donkit_ragops.rag_builder.quick_config import build_quick_rag_config
+        from donkit_ragops.rag_tools.embeddings import create_embedder
+        from donkit_ragops.rag_tools.quick_config import build_quick_rag_config
 
         # Parse optional config or auto-detect
         rag_config = None
@@ -598,6 +624,25 @@ def tool_quick_rag_build(
                 progress_callback=_progress_cb,
                 llm_model=llm_model,
             )
+
+            # Save rag_config to project after successful build
+            if project_id:
+                try:
+                    from donkit_ragops.db import close, kv_get, kv_set, open_db
+
+                    db = open_db()
+                    try:
+                        key = f"project_{project_id}"
+                        state_raw = kv_get(db, key)
+                        if state_raw:
+                            state = json.loads(state_raw)
+                            state["configuration"] = rag_config.model_dump(mode="json")
+                            kv_set(db, key, json.dumps(state))
+                    finally:
+                        close(db)
+                except Exception as e:
+                    logger.warning(f"[quick_rag_build] Failed to save config: {e}")
+
             return json.dumps(
                 {
                     "status": "success",
@@ -607,6 +652,7 @@ def tool_quick_rag_build(
                     "chunks_created": result.chunks_created,
                     "chunks_loaded": result.chunks_loaded,
                     "errors": result.errors,
+                    "rag_config": rag_config.model_dump(mode="json"),
                     "message": result.to_agent_response(),
                 }
             )

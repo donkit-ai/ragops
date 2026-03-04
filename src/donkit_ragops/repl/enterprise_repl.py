@@ -26,6 +26,7 @@ from donkit_ragops.repl_helpers import (
     render_markdown_to_rich,
 )
 from donkit_ragops.ui import UIAdapter, get_ui, set_ui_adapter
+from donkit_ragops.ui.mdstream import MarkdownStream
 from donkit_ragops.ui.styles import StyleName
 
 if TYPE_CHECKING:
@@ -167,6 +168,7 @@ class EnterpriseREPL(BaseREPL):
                 session_started_at=self.context.session_started_at,
                 show_checklist=self.context.show_checklist,
             )
+            self.context.mcp_handler.set_ui(self.context.ui)
         # Initialize agent MCP tools
         if self.context.agent is not None:
             await self.context.agent.ainit_mcp_tools()
@@ -551,30 +553,34 @@ class EnterpriseREPL(BaseREPL):
         spinner = self.context.ui.create_spinner(texts.THINKING_MESSAGE_PLAIN)
         spinner.start()
 
+        mdstream: MarkdownStream | None = None
+        content_buffer = ""  # accumulated content for markdown rendering
+
         try:
             display_content = ""
             temp_executing = ""
 
             async for event in self.context.agent.arespond_stream(self.context.history):
-                # logger.debug(f"Event: {event}")
                 # Stop spinner on first event
                 if first_content:
                     spinner.stop()
                     first_content = False
-                    if event.type == event.type.CONTENT:
-                        if self.context.render_helper:
-                            self.context.render_helper.print_agent_prefix()
 
-                # Print content directly and accumulate reply
+                # Render content via MarkdownStream
                 if event.type == event.type.CONTENT:
-                    self.context.ui.print(event.content)
-                # Handle tool calls
+                    content_buffer += event.content
+                    if mdstream is None:
+                        console = getattr(self.context.ui, "console", None)
+                        mdstream = MarkdownStream(console=console)
+                    mdstream.update(content_buffer)
+
+                # Tool calls: finalize mdstream, show spinner, reset buffer
                 if event.type == event.type.TOOL_CALL_START and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_executing_message(
-                            event.tool_name, event.tool_args
-                        )
-                    )
+                    if mdstream and content_buffer:
+                        mdstream.update(content_buffer, final=True)
+                        mdstream = None
+                        content_buffer = ""
+                    self.context.mcp_handler.start_tool(event.tool_name)
                     # Persist tool call (if persistence is enabled)
                     if self.message_persister:
                         tool_call = {
@@ -589,16 +595,14 @@ class EnterpriseREPL(BaseREPL):
                             tool_calls=[tool_call],
                         )
                 elif event.type == event.type.TOOL_CALL_END and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_done_message(event.tool_name)
-                    )
+                    self.context.mcp_handler.complete_tool(event.tool_name)
                 elif event.type == event.type.TOOL_CALL_ERROR and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_error_message(
-                            event.tool_name, event.error or ""
-                        )
-                    )
+                    self.context.mcp_handler.fail_tool(event.tool_name, event.error or "")
                 elif event.type == event.type.HISTORY_COMPRESSED:
+                    if mdstream and content_buffer:
+                        mdstream.update(content_buffer, final=True)
+                        mdstream = None
+                        content_buffer = ""
                     self.context.ui.print(f"\n{texts.HISTORY_COMPRESSED}\n")
 
                 if self.context.mcp_handler:
@@ -617,9 +621,19 @@ class EnterpriseREPL(BaseREPL):
                         response_index, display_content, temp_executing
                     )
 
+            # Finalize markdown stream after loop completes
+            if mdstream and content_buffer:
+                mdstream.update(content_buffer, final=True)
+                mdstream = None
+
         except (KeyboardInterrupt, asyncio.CancelledError):
             if first_content:
                 spinner.stop()
+            if mdstream:
+                mdstream.stop()
+                mdstream = None
+            if self.context.mcp_handler:
+                self.context.mcp_handler.stop_tool_spinner()
             interrupted = True
             if reply:
                 self.context.history.append(Message(role="assistant", content=reply))
@@ -637,6 +651,11 @@ class EnterpriseREPL(BaseREPL):
         except Exception as e:
             if first_content:
                 spinner.stop()
+            if mdstream:
+                mdstream.stop()
+                mdstream = None
+            if self.context.mcp_handler:
+                self.context.mcp_handler.stop_tool_spinner()
             error_msg = f"{format_timestamp()}[bold red]Error:[/bold red] {e}"
             if response_index is not None:
                 self.context.transcript[response_index] = error_msg

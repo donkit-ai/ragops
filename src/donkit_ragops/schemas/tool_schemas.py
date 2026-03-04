@@ -194,6 +194,21 @@ class SearchQueryArgs(BaseModel):
 
 
 # ============================================================================
+# Local Retriever (local_search_documents)
+# ============================================================================
+
+
+class LocalSearchArgs(BaseModel):
+    query: str = Field(description="Search query text")
+    k: int = Field(default=5, description="Number of top results to return")
+    rag_config: RagConfig = Field(description="RAG configuration from project")
+    database_uri: str = Field(
+        default="http://localhost:6333",
+        description="Local vectorstore URI (localhost, NOT docker internal)",
+    )
+
+
+# ============================================================================
 # RAG Evaluation (evaluate_batch)
 # ============================================================================
 

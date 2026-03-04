@@ -21,6 +21,7 @@ from donkit_ragops.repl_helpers import (
     format_timestamp,
     render_markdown_to_rich,
 )
+from donkit_ragops.ui.mdstream import MarkdownStream
 from donkit_ragops.ui.styles import StyleName
 
 
@@ -75,6 +76,7 @@ class LocalREPL(BaseREPL):
                 session_started_at=self.context.session_started_at,
                 show_checklist=self.context.show_checklist,
             )
+            self.context.mcp_handler.set_ui(self.context.ui)
 
         # Attach progress callback to MCP clients so they use in-place updates
         if self.context.mcp_handler is not None:
@@ -362,6 +364,9 @@ class LocalREPL(BaseREPL):
         spinner = self.context.ui.create_spinner(texts.THINKING_MESSAGE_PLAIN)
         spinner.start()
 
+        mdstream: MarkdownStream | None = None
+        content_buffer = ""  # accumulated content for markdown rendering
+
         try:
             display_content = ""
             temp_executing = ""
@@ -373,32 +378,31 @@ class LocalREPL(BaseREPL):
                 if first_content:
                     spinner.stop()
                     first_content = False
-                    if event.type.name == "CONTENT" and event.content:
-                        if self.context.render_helper:
-                            self.context.render_helper.print_agent_prefix()
 
-                # Print content directly
+                # Render content via MarkdownStream
                 if event.type.name == "CONTENT" and event.content:
-                    self.context.ui.print(event.content, end="")
+                    content_buffer += event.content
+                    if mdstream is None:
+                        console = getattr(self.context.ui, "console", None)
+                        mdstream = MarkdownStream(console=console)
+                    mdstream.update(content_buffer)
 
-                # Print tool messages
+                # Tool calls: finalize mdstream, show spinner, reset buffer
                 if event.type.name == "TOOL_CALL_START" and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_executing_message(
-                            event.tool_name, event.tool_args
-                        )
-                    )
+                    if mdstream and content_buffer:
+                        mdstream.update(content_buffer, final=True)
+                        mdstream = None
+                        content_buffer = ""
+                    self.context.mcp_handler.start_tool(event.tool_name)
                 elif event.type.name == "TOOL_CALL_END" and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_done_message(event.tool_name)
-                    )
+                    self.context.mcp_handler.complete_tool(event.tool_name)
                 elif event.type.name == "TOOL_CALL_ERROR" and self.context.mcp_handler:
-                    self.context.ui.print(
-                        self.context.mcp_handler.tool_error_message(
-                            event.tool_name, event.error or ""
-                        )
-                    )
+                    self.context.mcp_handler.fail_tool(event.tool_name, event.error or "")
                 elif event.type.name == "HISTORY_COMPRESSED":
+                    if mdstream and content_buffer:
+                        mdstream.update(content_buffer, final=True)
+                        mdstream = None
+                        content_buffer = ""
                     self.context.ui.print(f"\n{texts.HISTORY_COMPRESSED}\n")
 
                 if self.context.mcp_handler:
@@ -417,9 +421,19 @@ class LocalREPL(BaseREPL):
                         response_index, display_content, temp_executing
                     )
 
+            # Finalize markdown stream after loop completes
+            if mdstream and content_buffer:
+                mdstream.update(content_buffer, final=True)
+                mdstream = None
+
         except (KeyboardInterrupt, asyncio.CancelledError):
             if first_content:
                 spinner.stop()
+            if mdstream:
+                mdstream.stop()
+                mdstream = None
+            if self.context.mcp_handler:
+                self.context.mcp_handler.stop_tool_spinner()
             interrupted = True
             if reply:
                 self.context.history.append(Message(role="assistant", content=reply))
@@ -437,6 +451,11 @@ class LocalREPL(BaseREPL):
         except Exception as e:
             if first_content:
                 spinner.stop()
+            if mdstream:
+                mdstream.stop()
+                mdstream = None
+            if self.context.mcp_handler:
+                self.context.mcp_handler.stop_tool_spinner()
             error_msg = f"{format_timestamp()}[bold red]Error:[/bold red] {e}"
             if response_index is not None:
                 self.context.transcript[response_index] = error_msg

@@ -22,7 +22,7 @@ def tool_init_project_compose() -> AgentTool:
     def _handler(args: dict[str, Any]) -> str:
         from donkit.rag_toolkit.deployment import ComposeManager
 
-        from donkit_ragops.rag_builder.quick_config import build_quick_rag_config
+        from donkit_ragops.rag_tools.quick_config import build_quick_rag_config
 
         parsed = InitProjectComposeArgs(**args)
         rag_config = parsed.rag_config

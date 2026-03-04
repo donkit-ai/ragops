@@ -175,6 +175,27 @@ class ReplRenderHelper:
         ui.print(line)
 
 
+# Tools that use Rich Live internally (interactive menus, checklist rendering)
+# and should not show a spinner to avoid "only one live display" conflicts.
+_SILENT_TOOLS = frozenset(
+    {
+        "interactive_user_choice",
+        "interactive_user_confirm",
+        "create_checklist",
+        "update_checklist_item",
+    }
+)
+
+# Module-level reference to the active tool spinner so that tool-internal
+# progress callbacks (e.g. quick_rag_build) can update it without tight coupling.
+_active_tool_spinner: object | None = None
+
+
+def get_active_tool_spinner():
+    """Return the currently active tool spinner, or None."""
+    return _active_tool_spinner
+
+
 @dataclass
 class MCPEventHandler:
     """Handles MCP progress updates and stream events.
@@ -187,6 +208,56 @@ class MCPEventHandler:
     session_started_at: float
     show_checklist: bool
     progress_line_index: int | None = field(default=None, init=False)
+    _tool_spinner: object | None = field(default=None, init=False)
+    _ui: object | None = field(default=None, init=False)
+
+    def set_ui(self, ui) -> None:
+        """Set UI reference for tool spinner creation."""
+        self._ui = ui
+
+    def start_tool(self, tool_name: str) -> None:
+        """Start an animated spinner for tool execution."""
+        global _active_tool_spinner
+        if tool_name in _SILENT_TOOLS:
+            return
+        if self._ui is not None and hasattr(self._ui, "create_tool_spinner"):
+            self._tool_spinner = self._ui.create_tool_spinner()
+            self._tool_spinner.start(tool_name)
+            _active_tool_spinner = self._tool_spinner
+        else:
+            ui = get_ui()
+            ui.print(self.tool_executing_message(tool_name, None))
+
+    def complete_tool(self, tool_name: str) -> None:
+        """Stop spinner and show success indicator."""
+        global _active_tool_spinner
+        if self._tool_spinner is not None:
+            self._tool_spinner.complete(tool_name)
+            self._tool_spinner = None
+            _active_tool_spinner = None
+        elif tool_name not in _SILENT_TOOLS:
+            ui = get_ui()
+            ui.print(self.tool_done_message(tool_name))
+
+    def fail_tool(self, tool_name: str, error: str) -> None:
+        """Stop spinner and show error indicator."""
+        global _active_tool_spinner
+        if self._tool_spinner is not None:
+            self._tool_spinner.fail(tool_name, error)
+            self._tool_spinner = None
+            _active_tool_spinner = None
+        elif tool_name not in _SILENT_TOOLS:
+            ui = get_ui()
+            ui.print(self.tool_error_message(tool_name, error))
+
+    def stop_tool_spinner(self) -> None:
+        """Force-stop the tool spinner (e.g. on interrupt)."""
+        global _active_tool_spinner
+        if self._tool_spinner is not None:
+            if hasattr(self._tool_spinner, "fail"):
+                self._tool_spinner.fail("", "interrupted")
+            self._tool_spinner = None
+            _active_tool_spinner = None
 
     def progress_callback(self, progress: float, total: float | None, message: str | None) -> None:
         """Callback compatible with `MCPClient` progress updates.
@@ -212,9 +283,13 @@ class MCPEventHandler:
         else:
             self.render_helper.transcript[self.progress_line_index] = progress_text
 
-        # Overwrite the same line in terminal using \r
-        sys.stdout.write(f"\r\033[K{progress_text}")
-        sys.stdout.flush()
+        # If tool spinner is active, update its message instead of raw stdout
+        if self._tool_spinner is not None and hasattr(self._tool_spinner, "update_progress"):
+            self._tool_spinner.update_progress(progress_text)
+        else:
+            # Fallback to original \r behavior
+            sys.stdout.write(f"\r\033[K{progress_text}")
+            sys.stdout.flush()
 
     def clear_progress(self) -> None:
         """Clear progress tracking and move to next line."""

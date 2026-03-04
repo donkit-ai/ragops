@@ -1602,15 +1602,15 @@ pydantic = ">=2.8.0,<3.0.0"
 
 [[package]]
 name = "donkit-rag-toolkit"
-version = "0.1.0"
+version = "0.1.2"
 description = "RAG toolkit - standalone library for building, searching, and evaluating RAG pipelines"
 optional = false
 python-versions = "<3.14,>=3.12"
 groups = ["main"]
 markers = "python_version == \"3.12\" or python_version == \"3.13\""
 files = [
-    {file = "donkit_rag_toolkit-0.1.0-py3-none-any.whl", hash = "sha256:63bed9f5a376d710aa2e5f278c119838a5ce31b46e2aa17ec01202aaf19f60d0"},
-    {file = "donkit_rag_toolkit-0.1.0.tar.gz", hash = "sha256:68667013785170632995505bca3b1c42eec8aaf384c88faf3acf5d3e327cd7d1"},
+    {file = "donkit_rag_toolkit-0.1.2-py3-none-any.whl", hash = "sha256:a183ba5789aabc1c9f9ab66aa327fa478ebaee507b407233307459e2641056c7"},
+    {file = "donkit_rag_toolkit-0.1.2.tar.gz", hash = "sha256:dd2a67040525882137f577982e0a3df8f164498bbf1a9e7a4a09259d0585ec12"},
 ]
 
 [package.dependencies]
@@ -10403,4 +10403,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "a257cce368c339123153eab69eca687f9e6a5aa4477416575d49d8137c1350ea"
+content-hash = "d14f78ebe17dec761af39ddcd6c399d3318207ff47303e3109abf1efc50eabd9"

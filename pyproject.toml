@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "donkit-ragops"
-version = "0.5.20"
+version = "0.5.21"
 description = "CLI agent for building RAG pipelines"
 authors = ["Donkit AI <opensource@donkit.ai>"]
 license = "MIT"
@@ -41,7 +41,7 @@ donkit-vectorstore-loader = "^0.1.10"
 donkit-embeddings = "0.1.10"
 donkit-read-engine = "^0.3.1"
 donkit-llm = "0.1.15"
-donkit-rag-toolkit = "0.1.0"
+donkit-rag-toolkit = "^0.1.2"
 # Web interface dependencies
 fastapi = "^0.115"
 uvicorn = {extras = ["standard"], version = "^0.34"}
@@ -69,6 +69,7 @@ pytest-cov = "^6.0.0"
 ruff = "^0.12.0"
 pytest-asyncio = "^1.3.0"
 # local dev deps
+#donkit-rag-toolkit = { path = "../ragops-agent/shared/rag-toolkit", develop = true }
 #donkit-ragops-api-gateway-client = { path = "../ragops-agent/shared/ragops-api-gateway-client", develop = true }
 #donkit-llm = { path = "../ragops-agent/shared/donkit-llm", develop = true }
 #donkit-chunker = { path = "../ragops-agent/shared/chunker", develop = true }
