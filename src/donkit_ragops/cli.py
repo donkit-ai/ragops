@@ -252,12 +252,10 @@ def _run_enterprise_mode() -> None:
         api_client=api_client,
     )
 
-    # Create LLMAgent with project_id_provider from context
     agent = LLMAgent(
         provider=provider,
         tools=local_tools,
         mcp_clients=[mcp_client],
-        project_id_provider=lambda: context.project_id,
     )
     context.agent = agent
 

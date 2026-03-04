@@ -403,6 +403,7 @@ class RichUI(UI):
     ) -> str | None:
         """Interactive selection with arrow keys."""
         selected_index = default_index if 0 <= default_index < len(choices) else 0
+        result: str | None = None
 
         old_settings = None
         if TERMIOS_AVAILABLE:
@@ -414,6 +415,7 @@ class RichUI(UI):
             self._create_select_panel(choices, title, selected_index),
             console=self._console,
             refresh_per_second=20,
+            transient=True,
         ) as live:
             try:
                 while True:
@@ -430,11 +432,12 @@ class RichUI(UI):
                             continue
 
                     if char in ("\r", "\n"):
-                        return choices[selected_index]
+                        result = choices[selected_index]
+                        break
                     elif char == "\x03":  # Ctrl+C
-                        return None
+                        break
                     elif char == "\x04":  # Ctrl+D
-                        return None
+                        break
                     elif char == "\x1b[A":  # Up
                         selected_index = (selected_index - 1) % len(choices)
                     elif char == "\x1b[B":  # Down
@@ -450,6 +453,45 @@ class RichUI(UI):
             finally:
                 if old_settings is not None:
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+        # Print collapsed summary line after selection
+        self._print_collapsed_select(title, result)
+        return result
+
+    @staticmethod
+    def _strip_markup(text: str) -> str:
+        """Strip Rich markup tags to get plain text."""
+        try:
+            return Text.from_markup(text).plain
+        except Exception:
+            return text
+
+    def _print_collapsed_select(self, title: str, result: str | None) -> None:
+        """Print a collapsed one-line summary after interactive select."""
+        summary = Text()
+        summary.append("  ")
+        summary.append(title, style="bold cyan")
+        summary.append(": ", style="dim")
+        if result is not None:
+            plain = self._strip_markup(result)
+            summary.append(plain, style="bold white")
+        else:
+            summary.append("cancelled", style="dim italic")
+        self._console.print(summary)
+
+    def _print_collapsed_confirm(self, question: str, result: bool | None) -> None:
+        """Print a collapsed one-line summary after interactive confirm."""
+        summary = Text()
+        summary.append("  ")
+        summary.append(question, style="bold yellow")
+        summary.append(": ", style="dim")
+        if result is True:
+            summary.append("Yes", style="bold green")
+        elif result is False:
+            summary.append("No", style="bold red")
+        else:
+            summary.append("cancelled", style="dim italic")
+        self._console.print(summary)
 
     def _create_select_panel(self, choices: list[str], title: str, selected_idx: int) -> Panel:
         """Create selection panel with choices."""
@@ -559,6 +601,7 @@ class RichUI(UI):
     def _interactive_confirm(self, question: str, default: bool) -> bool | None:
         """Interactive confirmation with arrow keys."""
         selected_yes = default
+        result: bool | None = None
 
         old_settings = None
         if TERMIOS_AVAILABLE:
@@ -570,6 +613,7 @@ class RichUI(UI):
             self._create_confirm_panel(question, selected_yes),
             console=self._console,
             refresh_per_second=20,
+            transient=True,
         ) as live:
             try:
                 while True:
@@ -586,15 +630,18 @@ class RichUI(UI):
                             continue
 
                     if char in ("\r", "\n"):
-                        return selected_yes
+                        result = selected_yes
+                        break
                     elif char in ("y", "Y"):
-                        return True
+                        result = True
+                        break
                     elif char in ("n", "N"):
-                        return False
+                        result = False
+                        break
                     elif char == "\x03":  # Ctrl+C
-                        return None
+                        break
                     elif char == "\x04":  # Ctrl+D
-                        return None
+                        break
                     elif char in ("\x1b[C", "\x1b[D"):  # Right or Left
                         selected_yes = not selected_yes
                     elif char == "\x1b" and not MSVCRT_AVAILABLE:
@@ -605,6 +652,10 @@ class RichUI(UI):
             finally:
                 if old_settings is not None:
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+        # Print collapsed summary line after confirmation
+        self._print_collapsed_confirm(question, result)
+        return result
 
     def _create_confirm_panel(self, question: str, selected_yes: bool) -> Panel:
         """Create confirmation panel."""

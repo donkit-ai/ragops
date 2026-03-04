@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from donkit.llm import FunctionDefinition, LLMModelAbstract, Tool
+from donkit.llm import LLMModelAbstract
+from donkit.llm_agent import AgentTool
 from donkit.rag_toolkit.schemas.config import RagConfig
 
 from donkit_ragops.credential_checker import (
@@ -15,29 +16,6 @@ from donkit_ragops.credential_checker import (
 )
 from donkit_ragops.db import kv_get, migrate, open_db
 from donkit_ragops.interactive_input import interactive_confirm, interactive_select
-
-
-class AgentTool:
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        parameters: dict[str, Any],
-        handler: Callable[[dict[str, Any]], str],
-        is_async: bool = False,
-    ) -> None:
-        self.name = name
-        self.description = description
-        self.parameters = parameters
-        self.handler = handler
-        self.is_async = is_async
-
-    def to_tool_spec(self) -> Tool:
-        return Tool(
-            function=FunctionDefinition(
-                name=self.name, description=self.description, parameters=self.parameters
-            )
-        )
 
 
 # Built-in tools
